@@ -35,7 +35,9 @@ export default function Home() {
             Protéger notre rendez-vous
           </a>
         </div>
-
+        <div className="mx-auto mt-16 max-w-md overflow-hidden rounded-2xl fade-up">
+        <img src="/hero.jpg" alt="Deux personnes qui se retrouvent" className="w-full h-auto" />
+        </div>
         <div className="pointer-events-none mx-auto mt-16 max-w-sm fade-up" aria-hidden="true">
           <svg viewBox="0 0 400 220" className="h-auto w-full">
             <defs>
