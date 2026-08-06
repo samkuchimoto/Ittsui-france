@@ -1,3 +1,5 @@
+"use client";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#FBF3E7] text-[#232B45] antialiased">

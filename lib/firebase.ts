@@ -2,8 +2,15 @@
 // Env vars come from Vercel project settings (NEXT_PUBLIC_ prefix = exposed to browser)
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -27,4 +34,33 @@ export async function getMessagingIfSupported(): Promise<Messaging | null> {
   if (typeof window === "undefined") return null;
   const supported = await isSupported();
   return supported ? getMessaging(app) : null;
+}
+
+// Opens the Google popup, signs the user in, and writes/updates their
+// users/{uid} doc with the email so /api/find-user can look them up later.
+export async function signInWithGoogle(): Promise<User> {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+
+  await setDoc(
+    doc(db, "users", user.uid),
+    {
+      email: user.email,
+      displayName: user.displayName ?? null,
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true }
+  );
+
+  return user;
+}
+
+export async function signOutUser(): Promise<void> {
+  await signOut(auth);
+}
+
+// Small wrapper so components don't import onAuthStateChanged directly
+export function watchAuthState(callback: (user: User | null) => void): () => void {
+  return onAuthStateChanged(auth, callback);
 }
