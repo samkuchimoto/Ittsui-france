@@ -1,12 +1,14 @@
 "use client";
 // /app/setup/page.tsx
-// One-time setup: link the other person by email, agree on a recurring day
-// + window, and set the preference profile. Never shown again after this.
+// One-time setup: name + email the person to link, agree on a recurring day
+// + window, set the preference profile, then send them an invite.
+// The pair activates later when they log in with Google (see
+// /app/invite/[pairId]/page.tsx + /api/activate-pending-pair).
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
-import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 
@@ -37,6 +39,7 @@ export default function SetupPage() {
   const [user, setUser] = useState<User | null | false>(null);
   const [checkingPair, setCheckingPair] = useState(true);
 
+  const [partnerName, setPartnerName] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
   const [day, setDay] = useState<Pair["agreedDay"]>("sun");
   const [windowStart, setWindowStart] = useState("15:00");
@@ -45,6 +48,7 @@ export default function SetupPage() {
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invited, setInvited] = useState<{ name: string; email: string } | null>(null);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -54,8 +58,8 @@ export default function SetupPage() {
     return unsub;
   }, []);
 
-  // Once we know who's signed in, check if they already have a pair.
-  // If so, skip setup entirely and go straight to the dashboard.
+  // Once we know who's signed in, check if they already have a pair
+  // (pending or active). If so, skip setup entirely.
   useEffect(() => {
     if (!user) {
       setCheckingPair(false);
@@ -65,7 +69,8 @@ export default function SetupPage() {
       const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
       const snap = await getDocs(q);
       if (!snap.empty) {
-        router.push("/dashboard");
+        const pair = snap.docs[0].data() as Pair;
+        router.push(pair.status === "active" ? "/dashboard" : "/setup/pending");
         return;
       }
       setCheckingPair(false);
@@ -109,30 +114,25 @@ export default function SetupPage() {
 
     setSubmitting(true);
     try {
-      const lookupRes = await fetch("/api/find-user", {
+      const res = await fetch("/api/invite-partner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: partnerEmail }),
+        body: JSON.stringify({
+          inviterUid: user.uid,
+          inviterName: user.displayName ?? "Quelqu'un",
+          partnerName,
+          partnerEmail,
+          agreedDay: day,
+          agreedWindowStart: windowStart,
+          agreedWindowEnd: windowEnd,
+          preferences: { venueTypes, dietaryFilters },
+        }),
       });
 
-      if (!lookupRes.ok) {
-        const data = await lookupRes.json().catch(() => null);
-        throw new Error(data?.error ?? "Partenaire introuvable — vérifiez l'e-mail.");
-      }
-      const { userId: partnerId } = await lookupRes.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
-      const pairRef = doc(collection(db, "pairs"));
-      await setDoc(pairRef, {
-        userIds: [user.uid, partnerId],
-        agreedDay: day,
-        agreedWindowStart: windowStart,
-        agreedWindowEnd: windowEnd,
-        preferences: { venueTypes, dietaryFilters },
-        subscriptionStatus: "trialing",
-        createdAt: new Date().toISOString(),
-      });
-
-      router.push("/dashboard");
+      setInvited({ name: partnerName, email: partnerEmail });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -140,8 +140,8 @@ export default function SetupPage() {
     }
   }
 
-  // Still checking auth state
-  if (user === null) {
+  // Still checking auth state, or checking for an existing pair
+  if (user === null || (user && checkingPair)) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
         <p className="text-sm text-neutral-500">Chargement…</p>
@@ -154,9 +154,7 @@ export default function SetupPage() {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
         <h1 className="text-2xl font-semibold text-neutral-900">Configuration</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Connectez-vous pour continuer.
-        </p>
+        <p className="mt-2 text-sm text-neutral-500">Connectez-vous pour continuer.</p>
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
         <button
           onClick={handleGoogleSignIn}
@@ -168,11 +166,15 @@ export default function SetupPage() {
     );
   }
 
-  // Signed in, but still checking whether they already have a pair
-  if (checkingPair) {
+  // Invitation just sent — confirmation screen
+  if (invited) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
+        <h1 className="text-2xl font-semibold text-neutral-900">Invitation envoyée</h1>
+        <p className="mt-3 text-sm text-neutral-600">
+          Un e-mail a été envoyé à {invited.name} ({invited.email}). Dès qu'ils se connectent, votre rendez-vous
+          hebdomadaire s'active.
+        </p>
       </main>
     );
   }
@@ -181,22 +183,28 @@ export default function SetupPage() {
   return (
     <main className="mx-auto max-w-md px-6 py-12">
       <h1 className="text-2xl font-semibold text-neutral-900">Configuration</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Une seule fois. Rien de tout ceci ne sera redemandé.
-      </p>
+      <p className="mt-1 text-sm text-neutral-500">Une seule fois. Rien de tout ceci ne sera redemandé.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-8">
         <section>
           <label className="block text-sm font-medium text-neutral-800">
-            E-mail de la personne à lier
+            Qui voulez-vous lier ?
           </label>
+          <input
+            type="text"
+            required
+            value={partnerName}
+            onChange={(e) => setPartnerName(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+            placeholder="Prénom"
+          />
           <input
             type="email"
             required
             value={partnerEmail}
             onChange={(e) => setPartnerEmail(e.target.value)}
             className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder="prenom@exemple.fr"
+            placeholder="Son e-mail"
           />
         </section>
 
@@ -288,7 +296,7 @@ export default function SetupPage() {
           disabled={submitting}
           className="w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white disabled:opacity-50"
         >
-          {submitting ? "Enregistrement…" : "Valider"}
+          {submitting ? "Envoi…" : "Envoyer l'invitation"}
         </button>
       </form>
     </main>

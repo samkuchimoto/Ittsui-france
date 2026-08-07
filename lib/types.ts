@@ -17,9 +17,15 @@ export interface Preferences {
 
 export type WeekStatus = "proposed" | "confirmed" | "cancelled";
 
+export type PairStatus = "pending" | "active" | "declined" | "expired";
+
 export interface Pair {
   id: string;
-  userIds: [string, string]; // the two linked users
+  userIds: string[]; // 1 while pending (inviter only), 2 once active
+  status: PairStatus;
+  partnerName: string; // name the inviter gave for the invited person
+  invitedEmail?: string; // set while pending; the email the invite was sent to
+  expiresAt?: string; // ISO date; pending invites older than this are dead
   agreedDay: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   agreedWindowStart: string; // e.g. "15:00"
   agreedWindowEnd: string; // e.g. "17:00"

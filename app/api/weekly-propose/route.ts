@@ -35,6 +35,7 @@ export async function GET(request: Request) {
   const pairsSnap = await adminDb
     .collection("pairs")
     .where("agreedDay", "==", today)
+    .where("status", "==", "active") // skip pending/declined/expired invites
     .where("subscriptionStatus", "in", ["active", "trialing"])
     .get();
 
