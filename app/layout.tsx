@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Ittsui",
   description: "Le rendez-vous de la semaine, sans y penser.",
   manifest: "/manifest.json",
-  icons: { icon: "/icon.png", apple: "/icon.png" },
+  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
 };
 
 export const viewport: Viewport = {
