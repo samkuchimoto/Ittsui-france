@@ -68,6 +68,6 @@ async function notifyInviter(inviterUid: string, text: string) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: "Ittsui <hello@ittsui.fr>", to: email, subject: "Mise à jour de votre invitation", text }),
+    body: JSON.stringify({ from: "Ittsui <onboarding@resend.dev>", to: email, subject: "Mise à jour de votre invitation", text }),
   });
 }

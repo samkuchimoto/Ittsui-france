@@ -10,7 +10,7 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -29,14 +29,29 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // --- Auth helpers ---
-// These are what app/setup/page.tsx, app/setup/pending/page.tsx, and
-// app/invite/[pairId]/page.tsx import. Previously missing from this file.
 
 const googleProvider = new GoogleAuthProvider();
 
+// Signs the user in with Google, then writes/updates their users/{uid} doc
+// with their email. This is what lets /api/invite-partner look up the
+// inviter's own email (for the self-invite check and confirmation email),
+// and what /api/find-user style lookups depend on generally. Without this
+// write, inviterEmail comes back undefined everywhere downstream.
 export async function signInWithGoogle(): Promise<User> {
   const result = await signInWithPopup(auth, googleProvider);
-  return result.user;
+  const user = result.user;
+
+  await setDoc(
+    doc(db, "users", user.uid),
+    {
+      email: user.email?.toLowerCase() ?? null,
+      displayName: user.displayName ?? null,
+      updatedAt: new Date().toISOString(),
+    },
+    { merge: true }
+  );
+
+  return user;
 }
 
 export async function signOutUser(): Promise<void> {

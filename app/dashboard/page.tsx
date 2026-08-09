@@ -4,32 +4,69 @@
 // Firestore listeners, so both people see a lock/cancel the moment it happens.
 
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import { auth, db, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import type { User } from "firebase/auth";
 import type { Pair, Week } from "@/lib/types";
 
 export default function DashboardPage() {
+  const router = useRouter();
+
+  // null = not checked yet, false = checked and not signed in
+  const [user, setUser] = useState<User | null | false>(null);
   const [pair, setPair] = useState<Pair | null>(null);
+  const [pairChecked, setPairChecked] = useState(false);
   const [week, setWeek] = useState<Week | null>(null);
   const [responding, setResponding] = useState(false);
 
-  // Find the pair this user belongs to
+  // Watch auth state on mount
   useEffect(() => {
-    const userId = auth.currentUser?.uid;
-    if (!userId) return;
-
-    const q = query(collection(db, "pairs"), where("userIds", "array-contains", userId));
-    const unsub = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        setPair({ id: snap.docs[0].id, ...snap.docs[0].data() } as Pair);
-      }
+    const unsub = watchAuthState((u) => {
+      setUser(u ?? false);
     });
     return unsub;
   }, []);
 
-  // Listen for the most recent week doc under that pair
+  // Redirect to setup if not signed in
+  useEffect(() => {
+    if (user === false) {
+      router.push("/setup");
+    }
+  }, [user, router]);
+
+  // Find the pair this user belongs to. Note: userIds array-contains also
+  // matches a pending pair (inviter's uid is in the array before the
+  // partner joins), so status is checked separately below before treating
+  // it as an active pair.
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        setPair({ id: snap.docs[0].id, ...snap.docs[0].data() } as Pair);
+      } else {
+        setPair(null);
+      }
+      setPairChecked(true);
+    });
+    return unsub;
+  }, [user]);
+
+  // If the matched pair isn't active yet, route to the right place instead
+  // of rendering it as if it were a live dashboard.
   useEffect(() => {
     if (!pair) return;
+    if (pair.status === "pending") {
+      router.push("/setup/pending");
+    } else if (pair.status === "declined" || pair.status === "expired") {
+      router.push("/setup");
+    }
+  }, [pair, router]);
+
+  // Listen for the most recent week doc under that pair, only once active
+  useEffect(() => {
+    if (!pair || pair.status !== "active") return;
     const q = query(
       collection(db, "pairs", pair.id, "weeks"),
       orderBy("weekOf", "desc"),
@@ -44,7 +81,7 @@ export default function DashboardPage() {
   }, [pair]);
 
   async function respond(response: "yes" | "no") {
-    if (!pair || !week) return;
+    if (!pair || !week || !user) return;
     setResponding(true);
     try {
       await fetch("/api/rsvp", {
@@ -53,13 +90,37 @@ export default function DashboardPage() {
         body: JSON.stringify({
           pairId: pair.id,
           weekId: week.id,
-          userId: auth.currentUser?.uid,
+          userId: user.uid,
           response,
         }),
       });
     } finally {
       setResponding(false);
     }
+  }
+
+  // Still checking auth state
+  if (user === null) {
+    return (
+      <main className="mx-auto max-w-md px-6 py-12 text-center">
+        <p className="text-sm text-neutral-500">Chargement…</p>
+      </main>
+    );
+  }
+
+  // Not signed in, redirect effect above handles navigation
+  if (user === false) {
+    return null;
+  }
+
+  // Signed in, still checking for a pair, or a pending/declined/expired
+  // pair that's about to redirect away
+  if (!pairChecked || (pair && pair.status !== "active")) {
+    return (
+      <main className="mx-auto max-w-md px-6 py-12 text-center">
+        <p className="text-sm text-neutral-500">Chargement…</p>
+      </main>
+    );
   }
 
   if (!pair) {
@@ -72,7 +133,7 @@ export default function DashboardPage() {
     );
   }
 
-  const myId = auth.currentUser?.uid;
+  const myId = user.uid;
   const myResponse = week && myId ? week.responses[myId] : null;
 
   return (

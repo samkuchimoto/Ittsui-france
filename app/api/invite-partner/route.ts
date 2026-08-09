@@ -9,6 +9,12 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 const PENDING_EXPIRY_DAYS = 14;
 
+// TODO: switch to a verified domain address once ittsui.fr (or whichever
+// domain you buy) is added and verified in Resend. Until then this only
+// delivers to the email address on your own Resend account, not to real
+// partners, so real invites will not arrive.
+const FROM_ADDRESS = "Ittsui <onboarding@resend.dev>";
+
 export async function POST(request: Request) {
   const { inviterUid, inviterName, partnerName, partnerEmail, agreedDay, agreedWindowStart, agreedWindowEnd, preferences } =
     await request.json();
@@ -19,14 +25,13 @@ export async function POST(request: Request) {
 
   const cleanEmail = String(partnerEmail).trim().toLowerCase();
 
-  // Don't allow inviting yourself
   const inviterSnap = await adminDb.collection("users").doc(inviterUid).get();
   const inviterEmail = inviterSnap.data()?.email;
+
   if (inviterEmail === cleanEmail) {
     return NextResponse.json({ error: "vous ne pouvez pas vous inviter vous-même" }, { status: 400 });
   }
 
-  // If a pending or active pair already targets this email, don't duplicate
   const existing = await adminDb
     .collection("pairs")
     .where("invitedEmail", "==", cleanEmail)
@@ -42,7 +47,7 @@ export async function POST(request: Request) {
 
   const pairRef = adminDb.collection("pairs").doc();
   await pairRef.set({
-    userIds: [inviterUid], // partner's uid added on activation
+    userIds: [inviterUid],
     invitedEmail: cleanEmail,
     partnerName,
     agreedDay,
@@ -57,7 +62,7 @@ export async function POST(request: Request) {
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${pairRef.id}`;
 
-  await sendEmail({
+  const partnerEmailSent = await sendEmail({
     to: cleanEmail,
     subject: `${inviterName} vous invite sur Ittsui`,
     text:
@@ -67,22 +72,47 @@ export async function POST(request: Request) {
       `Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.`,
   });
 
-  await sendEmail({
-    to: inviterEmail,
-    subject: `Invitation envoyée à ${partnerName}`,
-    text: `Votre invitation à ${partnerName} (${cleanEmail}) a été envoyée. Vous serez notifié(e) dès que la connexion est active.`,
-  });
+  // Only attempt the confirmation email if we actually have an address for
+  // the inviter. Sending with no "to" is what caused the earlier 422s.
+  let confirmationSent = false;
+  if (inviterEmail) {
+    confirmationSent = await sendEmail({
+      to: inviterEmail,
+      subject: `Invitation envoyée à ${partnerName}`,
+      text: `Votre invitation à ${partnerName} (${cleanEmail}) a été envoyée. Vous serez notifié(e) dès que la connexion est active.`,
+    });
+  } else {
+    console.warn(`invite-partner: no email on file for inviter ${inviterUid}, skipped confirmation`);
+  }
 
-  return NextResponse.json({ pairId: pairRef.id, status: "pending" });
+  return NextResponse.json({
+    pairId: pairRef.id,
+    status: "pending",
+    partnerEmailSent,
+    confirmationSent,
+  });
 }
 
-async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }) {
-  await fetch("https://api.resend.com/emails", {
+async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }): Promise<boolean> {
+  if (!to) {
+    console.warn("sendEmail: skipped, no recipient");
+    return false;
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: "Ittsui <hello@ittsui.fr>", to, subject, text }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text }),
   });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`sendEmail failed (${res.status}) to ${to}: ${body}`);
+    return false;
+  }
+
+  return true;
 }
