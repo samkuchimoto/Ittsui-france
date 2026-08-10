@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 
@@ -60,13 +60,21 @@ export default function SetupPage() {
 
   // Once we know who's signed in, check if they already have a pair
   // (pending or active). If so, skip setup entirely.
+  // NOTE: userIds array-contains has no natural order — always take the
+  // MOST RECENT pair (createdAt desc), not just docs[0], so a stale
+  // declined/expired pair can't shadow a fresh one.
   useEffect(() => {
     if (!user) {
       setCheckingPair(false);
       return;
     }
     (async () => {
-      const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+      const q = query(
+        collection(db, "pairs"),
+        where("userIds", "array-contains", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      );
       const snap = await getDocs(q);
       if (!snap.empty) {
         const pair = snap.docs[0].data() as Pair;

@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db, watchAuthState } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week } from "@/lib/types";
 
@@ -39,9 +39,17 @@ export default function DashboardPage() {
   // matches a pending pair (inviter's uid is in the array before the
   // partner joins), so status is checked separately below before treating
   // it as an active pair.
+  // NOTE: array-contains has no natural order — always take the MOST
+  // RECENT pair (createdAt desc), not just docs[0], so a stale
+  // declined/expired pair can't shadow a fresh one.
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+    const q = query(
+      collection(db, "pairs"),
+      where("userIds", "array-contains", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         setPair({ id: snap.docs[0].id, ...snap.docs[0].data() } as Pair);
