@@ -13,7 +13,7 @@ const PENDING_EXPIRY_DAYS = 14;
 // domain you buy) is added and verified in Resend. Until then this only
 // delivers to the email address on your own Resend account, not to real
 // partners, so real invites will not arrive.
-const FROM_ADDRESS = "Ittsui <onboarding@resend.dev>";
+const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 export async function POST(request: Request) {
   const { inviterUid, inviterName, partnerName, partnerEmail, agreedDay, agreedWindowStart, agreedWindowEnd, preferences } =

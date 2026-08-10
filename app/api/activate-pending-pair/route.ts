@@ -11,7 +11,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 // domain you buy) is added and verified in Resend. Keep this in sync with
 // the FROM_ADDRESS constant in app/api/invite-partner/route.ts, they are
 // not shared, both need updating together.
-const FROM_ADDRESS = "Ittsui <onboarding@resend.dev>";
+const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 export async function POST(request: Request) {
   const { pairId, userId, userEmail, decline } = await request.json();
