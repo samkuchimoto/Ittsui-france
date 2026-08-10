@@ -2,12 +2,18 @@
 // /app/setup/pending/page.tsx
 // Shown to the inviter after they send an invite. Live-listens on their
 // pair doc so the screen updates the moment the partner logs in (active),
-// declines, or the invite expires — no polling, no refresh needed.
+// declines, or the invite expires -- no polling, no refresh needed.
+//
+// Fixed: the pairs query now orders by createdAt descending and takes only
+// the most recent one. Previously it took snap.docs[0] with no ordering,
+// which let an old stale pair (from earlier testing) surface instead of
+// the current one -- that was the cause of an old partner name reappearing
+// even after starting a fresh invite.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db, watchAuthState } from "@/lib/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 
@@ -24,7 +30,12 @@ export default function PendingPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+    const q = query(
+      collection(db, "pairs"),
+      where("userIds", "array-contains", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
     const unsub = onSnapshot(q, (snap) => {
       if (snap.empty) {
         router.push("/setup");
@@ -41,7 +52,7 @@ export default function PendingPage() {
   if (user === null || user === false || !checked || !pair) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
+        <p className="text-sm text-neutral-500">Chargement...</p>
       </main>
     );
   }
