@@ -32,7 +32,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "vous ne pouvez pas vous inviter vous-même" }, { status: 400 });
   }
 
-const existingSnap = await adminDb
+  // Fetch all prior pairs between this inviter and this email, then filter
+  // in code for a "live" one (pending or active). Declined/expired/cancelled
+  // pairs no longer block a fresh invite. Deliberately no .where("status", ...)
+  // clause here — adding one would require a new Firestore composite index.
+  const existingSnap = await adminDb
     .collection("pairs")
     .where("invitedEmail", "==", cleanEmail)
     .where("userIds", "array-contains", inviterUid)
@@ -44,12 +48,6 @@ const existingSnap = await adminDb
   if (liveMatch) {
     return NextResponse.json({ error: "invitation déjà envoyée à cette personne" }, { status: 409 });
   }
-
-Declined, expired, and now cancelled pairs no longer block a fresh invite to the same email. Only a live (pending/active) pair does.
-
-Bug 1 — blocked. I don't have activate-pending-pair/route.ts in this session — the earlier confirmation of that bug came from context I don't have here, so I can't safely hand you a "replace X with Y" patch without seeing the real file (imports, exact error strings, response shape all matter for a clean match). Paste it and I'll write the fix.
-
-For reference, the fix should be: when status !== "pending", check first whether status === "active" and userIds already includes the requesting userId — if so, return 200 (idempotent success, frontend redirects to dashboard as normal) instead of "invitation déjà traitée". Only keep the rejection for declined/expired/cancelled, or for an active pair where the requesting user isn't one of the two userIds.
 
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PENDING_EXPIRY_DAYS);
