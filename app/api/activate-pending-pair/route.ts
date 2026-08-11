@@ -32,6 +32,15 @@ export async function POST(request: Request) {
 
   const pair = pairSnap.data()!;
 
+  // A pair already active for this same user isn't an error case — reopening
+  // the invite link (refresh, back button, an old email clicked again)
+  // should land them back on the dashboard, not throw "invitation déjà
+  // traitée". Only the accept path is idempotent this way; a decline attempt
+  // still falls through to the generic rejection below.
+  if (pair.status === "active" && !decline && userId && pair.userIds?.includes(userId)) {
+    return NextResponse.json({ status: "active", pairId });
+  }
+
   if (pair.status !== "pending") {
     return NextResponse.json({ error: "invitation déjà traitée" }, { status: 409 });
   }
