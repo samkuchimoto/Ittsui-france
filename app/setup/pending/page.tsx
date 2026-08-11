@@ -22,6 +22,8 @@ export default function PendingPage() {
   const [user, setUser] = useState<User | false | null>(null);
   const [pair, setPair] = useState<Pair | null>(null);
   const [checked, setChecked] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -48,6 +50,25 @@ export default function PendingPage() {
     });
     return unsub;
   }, [user, router]);
+
+  async function handleCancel() {
+    if (!pair || !user) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await fetch("/api/cancel-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pairId: pair.id, userId: user.uid }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      router.push("/setup");
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setCancelling(false);
+    }
+  }
 
   if (user === null || user === false || !checked || !pair) {
     return (
@@ -98,6 +119,14 @@ export default function PendingPage() {
       <p className="mt-3 text-sm text-neutral-600">
         {pair.partnerName} n'a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que c'est fait.
       </p>
+      {cancelError && <p className="mt-4 text-sm text-red-600">{cancelError}</p>}
+      <button
+        onClick={handleCancel}
+        disabled={cancelling}
+        className="mt-8 w-full rounded-lg border border-neutral-300 py-3 text-sm font-medium text-neutral-700 disabled:opacity-50"
+      >
+        {cancelling ? "Annulation..." : "Annuler l'invitation"}
+      </button>
     </main>
   );
 }
