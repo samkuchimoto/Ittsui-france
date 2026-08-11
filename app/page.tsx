@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 
 const fraunces = Fraunces({
@@ -20,8 +21,6 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-// Fades a section in once it enters the viewport. Falls back to always-visible
-// if IntersectionObserver isn't available, so nothing ever gets stuck hidden.
 function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -96,7 +95,6 @@ export default function Home() {
         }
       `}</style>
 
-      {/* HERO — full-bleed photo alone, no text on the image itself */}
       <div className="relative h-[70vh] w-full overflow-hidden sm:h-[80vh] md:h-[88vh]">
         <Image
           src="/hero-father-son-vineyard.jpg"
@@ -112,7 +110,6 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Headline / subhead / CTA — the photo already did the emotional work */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h1
@@ -126,16 +123,15 @@ export default function Home() {
           <p className="mx-auto mt-6 max-w-md text-[17px] text-[#232B45]/70">
             Puis le scroll a gagné, encore. Ittsui protège la seule chose qui compte : que le rendez-vous ait vraiment lieu.
           </p>
-          
+          <Link
             href="/setup"
             className="mt-10 inline-flex items-center justify-center rounded-full bg-[#232B45] px-8 py-4 text-base text-[#FBF3E7] transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E2963C]"
           >
             Protéger notre rendez-vous
-          </a>
+          </Link>
         </Reveal>
       </section>
 
-      {/* EROSION — pivot photo marks the turn, not decoration */}
       <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
         <Reveal className="mx-auto max-w-lg space-y-3 text-center">
           <p className="text-[#232B45]/70">Vendredi, on est fatigués.</p>
@@ -167,7 +163,6 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* COMMENT ÇA MARCHE */}
       <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
         <Reveal className="mx-auto max-w-2xl">
           <ol className="space-y-10">
@@ -223,14 +218,12 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* QUI EST-CE POUR — proof of breadth, tightest spacing, the one full-bleed layout break */}
       <section className="border-t border-[#232B45]/10 py-12 sm:py-16">
         <Reveal>
           <p className="px-6 text-center text-[17px] text-[#232B45]/70">
             Un partenaire. Un ami. Un parent.
           </p>
 
-          {/* Desktop: asymmetric mosaic, wider than the max-w used elsewhere on purpose */}
           <div className="mx-auto mt-6 hidden max-w-6xl grid-cols-4 grid-rows-2 gap-3 px-6 md:grid md:h-[560px]">
             {MOSAIC_IMAGES.map((img) => (
               <div
@@ -250,7 +243,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Mobile: horizontal scroll, snap per image */}
           <div className="mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 md:hidden">
             {MOSAIC_IMAGES.map((img) => (
               <div
@@ -264,7 +256,6 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* PRICING */}
       <section className="border-t border-[#232B45]/10 px-6 py-24 text-center sm:py-32">
         <Reveal className="mx-auto max-w-md">
           <p
@@ -273,12 +264,12 @@ export default function Home() {
             2,99 €/mois.
           </p>
           <p className="mt-2 text-[#232B45]/70">Ou 29,99 €/an. Annulez en un tap, aucune négociation.</p>
-          
+          <Link
             href="/setup"
             className="mt-8 inline-flex items-center justify-center rounded-full border border-[#232B45] px-8 py-4 text-base transition-colors hover:bg-[#232B45] hover:text-[#FBF3E7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E2963C]"
           >
             Commencer
-          </a>
+          </Link>
         </Reveal>
       </section>
 
