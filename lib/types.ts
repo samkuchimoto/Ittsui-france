@@ -17,7 +17,7 @@ export interface Preferences {
 
 export type WeekStatus = "proposed" | "confirmed" | "cancelled";
 
-export type PairStatus = "pending" | "active" | "declined" | "expired";
+export type PairStatus = "pending" | "active" | "declined" | "expired" | "cancelled";
 
 export interface Pair {
   id: string;
