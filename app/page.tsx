@@ -20,6 +20,8 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
+// Fades a section in once it enters the viewport. Falls back to always-visible
+// if IntersectionObserver isn't available, so nothing ever gets stuck hidden.
 function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -52,16 +54,34 @@ function Reveal({ children, className = "" }: { children: React.ReactNode; class
 }
 
 const MOSAIC_IMAGES = [
-  { src: "/friends-cafe-terrace.jpg", alt: "Deux amis discutent en terrasse, sur une rue pavée.", anchor: true },
-  { src: "/couple-parisian-cafe.jpg", alt: "Un couple partage un moment à une table de café parisien, à contre-jour." },
-  { src: "/mother-daughter-cafe.jpg", alt: "Une mère et sa fille partagent un café devant une fenêtre de brasserie parisienne." },
-  { src: "/mother-daughter-kitchen.jpg", alt: "Une mère et sa fille rient ensemble autour d'un thé, dans une cuisine familiale." },
-  { src: "/couple-living-room.jpg", alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir." },
+  {
+    src: "/friends-cafe-terrace.jpg",
+    alt: "Deux amis discutent en terrasse, sur une rue pavée.",
+    anchor: true,
+  },
+  {
+    src: "/couple-parisian-cafe.jpg",
+    alt: "Un couple partage un moment à une table de café parisien, à contre-jour.",
+  },
+  {
+    src: "/mother-daughter-cafe.jpg",
+    alt: "Une mère et sa fille partagent un café devant une fenêtre de brasserie parisienne.",
+  },
+  {
+    src: "/mother-daughter-kitchen.jpg",
+    alt: "Une mère et sa fille rient ensemble autour d'un thé, dans une cuisine familiale.",
+  },
+  {
+    src: "/couple-living-room.jpg",
+    alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.",
+  },
 ];
 
 export default function Home() {
   return (
-    <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF3E7] text-[#232B45] antialiased`}>
+    <main
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF3E7] text-[#232B45] antialiased`}
+    >
       <style jsx global>{`
         @media (prefers-reduced-motion: no-preference) {
           .reveal-in { animation: fadeUp 0.9s ease-out both; }
@@ -76,6 +96,7 @@ export default function Home() {
         }
       `}</style>
 
+      {/* HERO — full-bleed photo alone, no text on the image itself */}
       <div className="relative h-[70vh] w-full overflow-hidden sm:h-[80vh] md:h-[88vh]">
         <Image
           src="/hero-father-son-vineyard.jpg"
@@ -91,6 +112,7 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Headline / subhead / CTA — the photo already did the emotional work */}
       <section className="px-6 py-24 sm:py-32">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h1
@@ -113,12 +135,16 @@ export default function Home() {
         </Reveal>
       </section>
 
+      {/* EROSION — pivot photo marks the turn, not decoration */}
       <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
         <Reveal className="mx-auto max-w-lg space-y-3 text-center">
           <p className="text-[#232B45]/70">Vendredi, on est fatigués.</p>
           <p className="text-[#232B45]/70">Samedi, il pleut.</p>
           <p className="text-[#232B45]/70">« On se voit un autre jour. »</p>
-          <p className="pt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}>
+          <p
+            className="pt-6"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+          >
             Et puis un jour, ça fait un an.
           </p>
 
@@ -132,37 +158,62 @@ export default function Home() {
             />
           </div>
 
-          <p className="pt-6 text-[#232B45]" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}>
+          <p
+            className="pt-6 text-[#232B45]"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+          >
             Ittsui ne change rien à ça — sauf que ça arrive.
           </p>
         </Reveal>
       </section>
 
+      {/* COMMENT ÇA MARCHE */}
       <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
         <Reveal className="mx-auto max-w-2xl">
           <ol className="space-y-10">
             <li className="flex gap-6">
-              <span className="shrink-0 text-[#E2963C]" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>01</span>
+              <span
+                className="shrink-0 text-[#E2963C]"
+                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
+              >
+                01
+              </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>Une seule fois</h3>
+                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                  Une seule fois
+                </h3>
                 <p className="mt-1 text-[17px] text-[#232B45]/70">
                   Vous liez une personne — partenaire, ami, famille. Vous choisissez ensemble le dimanche, 15h–17h. Ça ne change plus.
                 </p>
               </div>
             </li>
             <li className="flex gap-6">
-              <span className="shrink-0 text-[#E2963C]" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>02</span>
+              <span
+                className="shrink-0 text-[#E2963C]"
+                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
+              >
+                02
+              </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>Chaque semaine</h3>
+                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                  Chaque semaine
+                </h3>
                 <p className="mt-1 text-[17px] text-[#232B45]/70">
                   Un message, une fois, avant le créneau : un lieu et une heure précis, jamais "qu'est-ce qu'on fait ?"
                 </p>
               </div>
             </li>
             <li className="flex gap-6">
-              <span className="shrink-0 text-[#E2963C]" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>03</span>
+              <span
+                className="shrink-0 text-[#E2963C]"
+                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
+              >
+                03
+              </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>Un tap chacun</h3>
+                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                  Un tap chacun
+                </h3>
                 <p className="mt-1 text-[17px] text-[#232B45]/70">
                   Les deux disent oui → c'est verrouillé. Sinon, ça s'annule en silence. Aucun fil de discussion.
                 </p>
@@ -172,26 +223,40 @@ export default function Home() {
         </Reveal>
       </section>
 
+      {/* QUI EST-CE POUR — proof of breadth, tightest spacing, the one full-bleed layout break */}
       <section className="border-t border-[#232B45]/10 py-12 sm:py-16">
         <Reveal>
           <p className="px-6 text-center text-[17px] text-[#232B45]/70">
             Un partenaire. Un ami. Un parent.
           </p>
 
+          {/* Desktop: asymmetric mosaic, wider than the max-w used elsewhere on purpose */}
           <div className="mx-auto mt-6 hidden max-w-6xl grid-cols-4 grid-rows-2 gap-3 px-6 md:grid md:h-[560px]">
             {MOSAIC_IMAGES.map((img) => (
               <div
                 key={img.src}
-                className={`relative overflow-hidden rounded-2xl ${img.anchor ? "col-span-2 row-span-2" : "col-span-1 row-span-1"}`}
+                className={`relative overflow-hidden rounded-2xl ${
+                  img.anchor ? "col-span-2 row-span-2" : "col-span-1 row-span-1"
+                }`}
               >
-                <Image src={img.src} alt={img.alt} fill sizes={img.anchor ? "50vw" : "20vw"} className="object-cover transition-transform duration-300 hover:scale-[1.02]" />
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  fill
+                  sizes={img.anchor ? "50vw" : "20vw"}
+                  className="object-cover transition-transform duration-300 hover:scale-[1.02]"
+                />
               </div>
             ))}
           </div>
 
+          {/* Mobile: horizontal scroll, snap per image */}
           <div className="mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 md:hidden">
             {MOSAIC_IMAGES.map((img) => (
-              <div key={img.src} className="relative h-64 w-[75vw] flex-shrink-0 snap-start overflow-hidden rounded-2xl">
+              <div
+                key={img.src}
+                className="relative h-64 w-[75vw] flex-shrink-0 snap-start overflow-hidden rounded-2xl"
+              >
                 <Image src={img.src} alt={img.alt} fill sizes="75vw" className="object-cover" />
               </div>
             ))}
@@ -199,9 +264,12 @@ export default function Home() {
         </Reveal>
       </section>
 
+      {/* PRICING */}
       <section className="border-t border-[#232B45]/10 px-6 py-24 text-center sm:py-32">
         <Reveal className="mx-auto max-w-md">
-          <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}>
+          <p
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+          >
             2,99 €/mois.
           </p>
           <p className="mt-2 text-[#232B45]/70">Ou 29,99 €/an. Annulez en un tap, aucune négociation.</p>
