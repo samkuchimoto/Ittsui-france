@@ -21,6 +21,11 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
+const INK = "#1C1917";
+const MUTED = "#78716C";
+const ACCENT = "#A84B38";
+const BORDER = "#E8E2D9";
+
 function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -52,34 +57,57 @@ function Reveal({ children, className = "" }: { children: React.ReactNode; class
   );
 }
 
-const MOSAIC_IMAGES = [
-  {
-    src: "/friends-cafe-terrace.jpg",
-    alt: "Deux amis discutent en terrasse, sur une rue pavée.",
-    anchor: true,
-  },
-  {
-    src: "/couple-parisian-cafe.jpg",
-    alt: "Un couple partage un moment à une table de café parisien, à contre-jour.",
-  },
-  {
-    src: "/mother-daughter-cafe.jpg",
-    alt: "Une mère et sa fille partagent un café devant une fenêtre de brasserie parisienne.",
-  },
-  {
-    src: "/mother-daughter-kitchen.jpg",
-    alt: "Une mère et sa fille rient ensemble autour d'un thé, dans une cuisine familiale.",
-  },
-  {
-    src: "/couple-living-room.jpg",
-    alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.",
-  },
+// Minimal inline icons, stroke-based, lucide-style. Avoids a new dependency.
+function IconArrowRight({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+function IconCheck({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+function IconSparkles({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
+    </svg>
+  );
+}
+function IconHeart({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 21s-7-4.35-9.5-8.6C.8 8.9 2.4 5 6 5c2 0 3.3 1.1 4 2.2C10.7 6.1 12 5 14 5c3.6 0 5.2 3.9 3.5 7.4C19 16.65 12 21 12 21z" />
+    </svg>
+  );
+}
+function IconCalendarX({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M9.5 14.5l5 5M14.5 14.5l-5 5" />
+    </svg>
+  );
+}
+
+const DUO_CARDS = [
+  { src: "/friends-cafe-terrace.jpg", alt: "Deux amis discutent en terrasse, sur une rue pavée.", label: "Vos ami(e)s proches" },
+  { src: "/couple-living-room.jpg", alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.", label: "Votre partenaire" },
+  { src: "/grandmother-granddaughter-park.jpg", alt: "Une grand-mère et sa petite-fille assises sur un banc, dans un parc.", label: "Votre famille" },
 ];
 
 export default function Home() {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF3E7] text-[#232B45] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      style={{ color: INK }}
     >
       <style jsx global>{`
         @media (prefers-reduced-motion: no-preference) {
@@ -95,122 +123,186 @@ export default function Home() {
         }
       `}</style>
 
-      <div className="relative h-[70vh] w-full overflow-hidden sm:h-[80vh] md:h-[88vh]">
-        <Image
-          src="/hero-father-son-vineyard.jpg"
-          alt="Un fils et son père marchent côte à côte sur un chemin de vigne, à la tombée du jour."
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/40 to-transparent" />
-        <p className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-white/30 bg-white/10 px-4 py-1.5 text-sm tracking-wide text-white backdrop-blur-sm">
-          Dimanche · 15h–17h
-        </p>
-      </div>
-
-      <section className="px-6 py-24 sm:py-32">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h1
-            className="leading-[1.05]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.75rem, 6vw, 4.5rem)" }}
-          >
-            Vous vous êtes promis
-            <br />
-            <em className="text-[#9C4A56]">ce dimanche.</em>
-          </h1>
-          <p className="mx-auto mt-6 max-w-md text-[17px] text-[#232B45]/70">
-            Puis le scroll a gagné, encore. Ittsui protège la seule chose qui compte : que le rendez-vous ait vraiment lieu.
-          </p>
+      {/* Nav */}
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+        <div className="flex items-baseline gap-2">
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem" }}>Ittsui</span>
+          <span className="text-sm" style={{ color: MUTED }}>一対</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <Link href="/setup" className="text-sm transition-colors" style={{ color: MUTED }}>
+            Connexion
+          </Link>
           <Link
             href="/setup"
-            className="mt-10 inline-flex items-center justify-center rounded-full bg-[#232B45] px-8 py-4 text-base text-[#FBF3E7] transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E2963C]"
+            className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm text-white transition-transform hover:scale-[1.02]"
+            style={{ backgroundColor: ACCENT }}
           >
-            Protéger notre rendez-vous
+            Lancer mon duo
           </Link>
-        </Reveal>
-      </section>
+        </div>
+      </header>
 
-      <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
-        <Reveal className="mx-auto max-w-lg space-y-3 text-center">
-          <p className="text-[#232B45]/70">Vendredi, on est fatigués.</p>
-          <p className="text-[#232B45]/70">Samedi, il pleut.</p>
-          <p className="text-[#232B45]/70">« On se voit un autre jour. »</p>
-          <p
-            className="pt-6"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+      {/* Hero */}
+      <section className="px-6 pb-8 pt-4 sm:pb-12">
+        <Reveal className="mx-auto max-w-3xl text-center">
+          <h1
+            className="leading-[1.08]"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
           >
-            Et puis un jour, ça fait un an.
+            Protégez le rendez-vous
+            <br />
+            qu&apos;il vous reste.
+          </h1>
+          <p className="mx-auto mt-5 max-w-md text-[17px]" style={{ color: MUTED }}>
+            Un seul moment par semaine. Une proposition concrète. Zéro calendrier à gérer.
           </p>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <Link
+              href="/setup"
+              className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Essayer avec un proche
+              <IconArrowRight className="h-4 w-4" />
+            </Link>
+            <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
+              <IconSparkles className="h-3.5 w-3.5" />
+              Sans calendrier à synchroniser · Configuration en 1 minute
+            </p>
+          </div>
+        </Reveal>
 
-          <div className="relative mx-auto mt-8 h-44 w-36 -rotate-3 overflow-hidden rounded-md shadow-lg sm:h-52 sm:w-40">
+        <Reveal className="mx-auto mt-12 max-w-3xl">
+          <div
+            className="relative h-[50vh] w-full overflow-hidden rounded-3xl border sm:h-[60vh]"
+            style={{ borderColor: BORDER }}
+          >
             <Image
-              src="/grandmother-granddaughter-park.jpg"
-              alt="Une grand-mère et sa petite-fille assises sur un banc, dans un parc, un après-midi d'automne."
+              src="/mother-daughter-cafe.jpg"
+              alt="Mère et fille au café"
               fill
-              sizes="200px"
+              priority
+              sizes="(max-width: 768px) 100vw, 768px"
               className="object-cover"
             />
           </div>
-
-          <p
-            className="pt-6 text-[#232B45]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
-          >
-            Ittsui ne change rien à ça — sauf que ça arrive.
-          </p>
         </Reveal>
       </section>
 
-      <section className="border-t border-[#232B45]/10 px-6 py-20 sm:py-24">
+      {/* Any duo */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            Pas de réseau social.
+            <br />
+            Pas d&apos;application de rencontre.
+          </h2>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-5 sm:grid-cols-3">
+          {DUO_CARDS.map((card, i) => (
+            <div
+              key={card.src}
+              className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${i === 1 ? "sm:mt-8" : ""}`}
+              style={{ borderColor: BORDER }}
+            >
+              <div className="relative h-56 w-full">
+                <Image src={card.src} alt={card.alt} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
+              </div>
+              <p className="px-5 py-4 text-center text-sm font-medium">{card.label}</p>
+            </div>
+          ))}
+        </Reveal>
+      </section>
+
+      {/* Friday card mockup */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-md text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}>
+            Ce que vous voyez le vendredi.
+            <br />
+            Et rien d&apos;autre.
+          </h2>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-12 max-w-sm">
+          <div className="overflow-hidden rounded-3xl border bg-white shadow-sm" style={{ borderColor: BORDER }}>
+            <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
+              <span
+                className="rounded-full px-3 py-1 text-xs font-medium"
+                style={{ backgroundColor: "#FBF9F5", color: MUTED }}
+              >
+                Rendez-vous du Samedi · 15:30
+              </span>
+            </div>
+            <div className="relative h-48 w-full">
+              <Image src="/couple-parisian-cafe.jpg" alt="Café de Flore, Paris 6e" fill sizes="384px" className="object-cover" />
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm font-medium">Café de Flore · Paris 6e</p>
+              <span
+                className="mt-2 inline-block rounded-full px-2.5 py-1 text-xs"
+                style={{ backgroundColor: "#FBF9F5", color: MUTED }}
+              >
+                En attente de confirmation de Marie…
+              </span>
+              <div className="mt-4 flex items-center justify-between text-xs" style={{ color: MUTED }}>
+                <span>← Échanger (1 alternative)</span>
+                <span className="flex items-center gap-1" style={{ color: ACCENT }}>
+                  <IconCheck className="h-3.5 w-3.5" />
+                  Valider →
+                </span>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* How it works */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-2xl">
           <ol className="space-y-10">
             <li className="flex gap-6">
-              <span
-                className="shrink-0 text-[#E2963C]"
-                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
-              >
+              <span className="shrink-0" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: ACCENT }}>
                 01
               </span>
               <div>
                 <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Une seule fois
+                  Définissez vos habitudes
+                  <span className="ml-2 text-sm font-normal" style={{ color: MUTED }}>
+                    (une seule fois)
+                  </span>
                 </h3>
-                <p className="mt-1 text-[17px] text-[#232B45]/70">
-                  Vous liez une personne — partenaire, ami, famille. Vous choisissez ensemble le dimanche, 15h–17h. Ça ne change plus.
+                <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
+                  Préférences de lieux : café, parc, restaurant, chez l&apos;un des deux.
                 </p>
               </div>
             </li>
             <li className="flex gap-6">
-              <span
-                className="shrink-0 text-[#E2963C]"
-                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
-              >
+              <span className="shrink-0" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: ACCENT }}>
                 02
               </span>
               <div>
                 <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Chaque semaine
+                  La proposition du vendredi
                 </h3>
-                <p className="mt-1 text-[17px] text-[#232B45]/70">
-                  Un message, une fois, avant le créneau : un lieu et une heure précis, jamais "qu'est-ce qu'on fait ?"
+                <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
+                  Chaque vendredi à 18h, recevez une proposition unique, prête à être validée en un clic.
                 </p>
               </div>
             </li>
             <li className="flex gap-6">
-              <span
-                className="shrink-0 text-[#E2963C]"
-                style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
-              >
+              <span className="shrink-0" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: ACCENT }}>
                 03
               </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Un tap chacun
+                <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                  Silence le reste de la semaine
+                  <IconCalendarX className="h-4 w-4" style={{ color: MUTED }} />
                 </h3>
-                <p className="mt-1 text-[17px] text-[#232B45]/70">
-                  Les deux disent oui → c'est verrouillé. Sinon, ça s'annule en silence. Aucun fil de discussion.
+                <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
+                  Une fois le rendez-vous bloqué, l&apos;application se tait. Zéro notification parasite.
                 </p>
               </div>
             </li>
@@ -218,63 +310,29 @@ export default function Home() {
         </Reveal>
       </section>
 
-      <section className="border-t border-[#232B45]/10 py-12 sm:py-16">
-        <Reveal>
-          <p className="px-6 text-center text-[17px] text-[#232B45]/70">
-            Un partenaire. Un ami. Un parent.
-          </p>
-
-          <div className="mx-auto mt-6 hidden max-w-6xl grid-cols-4 grid-rows-2 gap-3 px-6 md:grid md:h-[560px]">
-            {MOSAIC_IMAGES.map((img) => (
-              <div
-                key={img.src}
-                className={`relative overflow-hidden rounded-2xl ${
-                  img.anchor ? "col-span-2 row-span-2" : "col-span-1 row-span-1"
-                }`}
-              >
-                <Image
-                  src={img.src}
-                  alt={img.alt}
-                  fill
-                  sizes={img.anchor ? "50vw" : "20vw"}
-                  className="object-cover transition-transform duration-300 hover:scale-[1.02]"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 md:hidden">
-            {MOSAIC_IMAGES.map((img) => (
-              <div
-                key={img.src}
-                className="relative h-64 w-[75vw] flex-shrink-0 snap-start overflow-hidden rounded-2xl"
-              >
-                <Image src={img.src} alt={img.alt} fill sizes="75vw" className="object-cover" />
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      <section className="border-t border-[#232B45]/10 px-6 py-24 text-center sm:py-32">
+      {/* Footer CTA */}
+      <section className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md">
+          <IconHeart className="mx-auto h-6 w-6" style={{ color: ACCENT }} />
           <p
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+            className="mt-5"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}
           >
-            2,99 €/mois.
+            Offrez du temps réel à la personne qui compte.
           </p>
-          <p className="mt-2 text-[#232B45]/70">Ou 29,99 €/an. Annulez en un tap, aucune négociation.</p>
           <Link
             href="/setup"
-            className="mt-8 inline-flex items-center justify-center rounded-full border border-[#232B45] px-8 py-4 text-base transition-colors hover:bg-[#232B45] hover:text-[#FBF3E7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E2963C]"
+            className="mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
+            style={{ backgroundColor: ACCENT }}
           >
-            Commencer
+            Commencer mon rituel hebdomadaire
+            <IconArrowRight className="h-4 w-4" />
           </Link>
         </Reveal>
       </section>
 
-      <footer className="px-6 pb-10 text-center text-sm text-[#232B45]/40">
-        Ittsui France — un rendez-vous, protégé.
+      <footer className="px-6 pb-10 text-center text-sm" style={{ color: `${MUTED}99` }}>
+        © 2026 Ittsui France. Conçu avec retenue.
       </footer>
     </main>
   );
