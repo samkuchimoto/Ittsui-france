@@ -58,43 +58,45 @@ function Reveal({ children, className = "" }: { children: React.ReactNode; class
 }
 
 // Minimal inline icons, stroke-based, lucide-style. Avoids a new dependency.
-function IconArrowRight({ className = "" }: { className?: string }) {
+// Minimal inline icons, stroke-based, lucide-style. Avoids a new dependency.
+function IconArrowRight({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
-function IconCheck({ className = "" }: { className?: string }) {
+function IconCheck({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <path d="M20 6L9 17l-5-5" />
     </svg>
   );
 }
-function IconSparkles({ className = "" }: { className?: string }) {
+function IconSparkles({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
       <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
     </svg>
   );
 }
-function IconHeart({ className = "" }: { className?: string }) {
+function IconHeart({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <path d="M12 21s-7-4.35-9.5-8.6C.8 8.9 2.4 5 6 5c2 0 3.3 1.1 4 2.2C10.7 6.1 12 5 14 5c3.6 0 5.2 3.9 3.5 7.4C19 16.65 12 21 12 21z" />
     </svg>
   );
 }
-function IconCalendarX({ className = "" }: { className?: string }) {
+function IconCalendarX({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
       <path d="M9.5 14.5l5 5M14.5 14.5l-5 5" />
     </svg>
   );
+}
 }
 
 const DUO_CARDS = [
@@ -299,7 +301,9 @@ export default function Home() {
               <div>
                 <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
                   Silence le reste de la semaine
-                  <IconCalendarX className="h-4 w-4" style={{ color: MUTED }} />
+                  <span style={{ color: MUTED }}>
+                    <IconCalendarX className="h-4 w-4" />
+                  </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Une fois le rendez-vous bloqué, l&apos;application se tait. Zéro notification parasite.
