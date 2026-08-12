@@ -97,7 +97,6 @@ function IconCalendarX({ className = "", style }: { className?: string; style?: 
     </svg>
   );
 }
-}
 
 const DUO_CARDS = [
   { src: "/friends-cafe-terrace.jpg", alt: "Deux amis discutent en terrasse, sur une rue pavée.", label: "Vos ami(e)s proches" },
