@@ -357,9 +357,9 @@ export default function Home() {
             className="leading-[1.08]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
           >
-            Protégez le rendez-vous
+            Le temps de vos proches,
             <br />
-            qu&apos;il vous reste.
+            protégé.
           </h1>
           <p className="mx-auto mt-5 max-w-md text-[17px]" style={{ color: MUTED }}>
             Un seul moment par semaine. Une proposition concrète. Zéro calendrier à gérer.
