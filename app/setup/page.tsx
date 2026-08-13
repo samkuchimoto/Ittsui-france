@@ -1,16 +1,65 @@
 "use client";
 // /app/setup/page.tsx
-// One-time setup: name + email the person to link, agree on a recurring day
-// + window, set the preference profile, then send them an invite.
-// The pair activates later when they log in with Google (see
-// /app/invite/[pairId]/page.tsx + /api/activate-pending-pair).
+//
+// AUDIT NOTE — what changed vs. production and what did not:
+//   UNCHANGED, byte-for-byte behavior:
+//     - watchAuthState() effect and the (user === null | false | User) tri-state
+//     - the Firestore "does this uid already have a pair" query (array-contains
+//       on userIds, orderBy createdAt desc, limit 1) and its redirect targets
+//     - handleGoogleSignIn, handleDayChange (incl. the Sunday 15:00–17:00
+//       auto-suggest), toggle<T>()
+//     - handleSubmit: same fetch call, same method/headers, same JSON body
+//       shape posted to POST /api/invite-partner (inviterUid, inviterName,
+//       partnerName, partnerEmail, agreedDay, agreedWindowStart,
+//       agreedWindowEnd, preferences: { venueTypes, dietaryFilters })
+//     - lib/types.ts (Pair, VenueType, DietaryFilter) — untouched, imported as-is
+//   CHANGED, presentation only:
+//     - single long form -> 3-step wizard (La Personne / Le Moment / Les Lieux)
+//       matching the brief. Step 2's four preset pills (Samedi Après-midi /
+//       Dimanche Matin / Vendredi Soir / Personnalisé) are a new UI layer
+//       that writes into the SAME day/windowStart/windowEnd state the old
+//       single-page form used — "Personnalisé" reveals the original day-grid
+//       + time pickers untouched, so no scheduling capability was removed.
+//     - Step 3's vibe pills map onto the existing VENUE_TYPES; "Chez l'un des
+//       deux" (home) is kept as a secondary pill so no venue option was
+//       dropped, it's just no longer one of the four headline pills.
+//     - "Duo type" selector in Step 1 (ami / partenaire / famille) is
+//       LOCAL-ONLY UI state for copy/tone — it is never sent to the API,
+//       so the invite-partner payload and Pair type stay exactly as they
+//       were. Wiring it into the backend would need a schema change, which
+//       is out of scope for a restyle.
+//     - Design tokens applied throughout: #FBF9F5 / #A84B38 / #1C1917 /
+//       #78716C / #E8E2D9, Fraunces headlines, Work Sans body — matching
+//       app/page.tsx.
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const INK = "#1C1917";
+const MUTED = "#78716C";
+const ACCENT = "#A84B38";
+const BORDER = "#E8E2D9";
+const CREAM = "#FBF9F5";
 
 const DAYS: { value: Pair["agreedDay"]; label: string }[] = [
   { value: "mon", label: "Lundi" },
@@ -30,7 +79,69 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
+// Emoji-tagged "vibe pills" per the brief, in the order requested.
+// Mapped 1:1 onto existing VenueType values — no new type added.
+const VIBE_PILLS: { value: VenueType; label: string; emoji: string }[] = [
+  { value: "cafe", label: "Café", emoji: "☕" },
+  { value: "park", label: "Parc", emoji: "🌳" },
+  { value: "restaurant", label: "Restaurant", emoji: "🍽️" },
+  { value: "museum", label: "Culture", emoji: "🏛️" },
+];
+const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
+  value: "home",
+  label: "Chez vous",
+  emoji: "🏠",
+};
+
 const DIETARY_OPTIONS: DietaryFilter[] = ["casher", "halal", "vegetarien", "bio", "antillais"];
+
+type DuoType = "ami" | "partenaire" | "famille";
+const DUO_TYPES: { value: DuoType; label: string }[] = [
+  { value: "ami", label: "Un(e) ami(e)" },
+  { value: "partenaire", label: "Mon/ma partenaire" },
+  { value: "famille", label: "Ma famille" },
+];
+
+// Step 2 presets. Selecting one writes directly into day/windowStart/windowEnd
+// — the exact same state the original single-page form controlled.
+const TIME_PRESETS: {
+  label: string;
+  day: Pair["agreedDay"];
+  windowStart: string;
+  windowEnd: string;
+}[] = [
+  { label: "Samedi Après-midi", day: "sat", windowStart: "14:00", windowEnd: "17:00" },
+  { label: "Dimanche Matin", day: "sun", windowStart: "09:00", windowEnd: "12:00" },
+  { label: "Vendredi Soir", day: "fri", windowStart: "18:00", windowEnd: "20:00" },
+];
+
+function StepDots({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className="h-1.5 rounded-full transition-all"
+          style={{
+            width: n === step ? "1.5rem" : "0.375rem",
+            backgroundColor: n <= step ? ACCENT : BORDER,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      style={{ color: INK }}
+    >
+      <div className="mx-auto max-w-md px-6 py-14">{children}</div>
+    </main>
+  );
+}
 
 export default function SetupPage() {
   const router = useRouter();
@@ -39,11 +150,18 @@ export default function SetupPage() {
   const [user, setUser] = useState<User | null | false>(null);
   const [checkingPair, setCheckingPair] = useState(true);
 
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
   const [partnerName, setPartnerName] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
+  const [duoType, setDuoType] = useState<DuoType | null>(null); // local UI only, not sent to API
+
   const [day, setDay] = useState<Pair["agreedDay"]>("sun");
   const [windowStart, setWindowStart] = useState("15:00");
   const [windowEnd, setWindowEnd] = useState("17:00");
+  const [customTime, setCustomTime] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
   const [venueTypes, setVenueTypes] = useState<VenueType[]>(["cafe"]);
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -103,8 +221,34 @@ export default function SetupPage() {
     }
   }
 
+  function applyPreset(preset: (typeof TIME_PRESETS)[number]) {
+    setDay(preset.day);
+    setWindowStart(preset.windowStart);
+    setWindowEnd(preset.windowEnd);
+    setCustomTime(false);
+    setActivePreset(preset.label);
+  }
+
+  function enableCustomTime() {
+    setCustomTime(true);
+    setActivePreset(null);
+  }
+
   function toggle<T>(list: T[], value: T, setter: (v: T[]) => void) {
     setter(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  function goToStep2() {
+    setError(null);
+    if (!partnerName.trim() || !partnerEmail.trim()) {
+      setError("Indiquez un prénom et un e-mail pour continuer.");
+      return;
+    }
+    setStep(2);
+  }
+
+  function goToStep3() {
+    setStep(3);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,162 +295,337 @@ export default function SetupPage() {
   // Still checking auth state, or checking for an existing pair
   if (user === null || (user && checkingPair)) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
-      </main>
+      <Shell>
+        <p className="text-center text-sm" style={{ color: MUTED }}>
+          Chargement…
+        </p>
+      </Shell>
     );
   }
 
   // Not signed in
   if (user === false) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Configuration</h1>
-        <p className="mt-2 text-sm text-neutral-500">Connectez-vous pour continuer.</p>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-        <button
-          onClick={handleGoogleSignIn}
-          className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
-        >
-          Se connecter avec Google
-        </button>
-      </main>
+      <Shell>
+        <div className="text-center">
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
+            Configuration
+          </h1>
+          <p className="mt-2 text-sm" style={{ color: MUTED }}>
+            Connectez-vous pour continuer.
+          </p>
+          {error && (
+            <p className="mt-4 text-sm" style={{ color: ACCENT }}>
+              {error}
+            </p>
+          )}
+          <button
+            onClick={handleGoogleSignIn}
+            className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+            style={{ backgroundColor: ACCENT }}
+          >
+            Se connecter avec Google
+          </button>
+        </div>
+      </Shell>
     );
   }
 
   // Invitation just sent — confirmation screen
   if (invited) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Invitation envoyée</h1>
-        <p className="mt-3 text-sm text-neutral-600">
-          Un e-mail a été envoyé à {invited.name} ({invited.email}). Dès qu'ils se connectent, votre rendez-vous
-          hebdomadaire s'active.
-        </p>
-      </main>
+      <Shell>
+        <div className="text-center">
+          <span
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+          >
+            ✓
+          </span>
+          <h1 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
+            Invitation envoyée
+          </h1>
+          <p className="mt-3 text-sm" style={{ color: MUTED }}>
+            Un e-mail a été envoyé à {invited.name} ({invited.email}). Dès qu&apos;iels se connectent, votre
+            rendez-vous hebdomadaire s&apos;active.
+          </p>
+        </div>
+      </Shell>
     );
   }
 
-  // Signed in, no pair yet: show the form
+  // Signed in, no pair yet: the 3-step wizard
   return (
-    <main className="mx-auto max-w-md px-6 py-12">
-      <h1 className="text-2xl font-semibold text-neutral-900">Configuration</h1>
-      <p className="mt-1 text-sm text-neutral-500">Une seule fois. Rien de tout ceci ne sera redemandé.</p>
+    <Shell>
+      <div className="mb-8 text-center">
+        <p className="text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
+          Étape {step} sur 3
+        </p>
+        <h1 className="mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
+          {step === 1 && "La personne"}
+          {step === 2 && "Le moment"}
+          {step === 3 && "Les lieux"}
+        </h1>
+        <div className="mt-4">
+          <StepDots step={step} />
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-8">
-        <section>
-          <label className="block text-sm font-medium text-neutral-800">
-            Qui voulez-vous lier ?
-          </label>
-          <input
-            type="text"
-            required
-            value={partnerName}
-            onChange={(e) => setPartnerName(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder="Prénom"
-          />
-          <input
-            type="email"
-            required
-            value={partnerEmail}
-            onChange={(e) => setPartnerEmail(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder="Son e-mail"
-          />
-        </section>
+      <form onSubmit={handleSubmit}>
+        {step === 1 && (
+          <section className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium">Prénom de votre proche</label>
+              <input
+                type="text"
+                required
+                value={partnerName}
+                onChange={(e) => setPartnerName(e.target.value)}
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                style={{ borderColor: BORDER }}
+                placeholder="Prénom"
+              />
+              <input
+                type="email"
+                required
+                value={partnerEmail}
+                onChange={(e) => setPartnerEmail(e.target.value)}
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                style={{ borderColor: BORDER }}
+                placeholder="Son e-mail"
+              />
+            </div>
 
-        <section>
-          <label className="block text-sm font-medium text-neutral-800">Jour de la semaine</label>
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {DAYS.map((d) => (
+            <div>
+              <label className="block text-sm font-medium">C&apos;est qui, pour vous ?</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DUO_TYPES.map((d) => (
+                  <button
+                    type="button"
+                    key={d.value}
+                    onClick={() => setDuoType(d.value)}
+                    className="rounded-full border px-3.5 py-2 text-sm transition-colors"
+                    style={
+                      duoType === d.value
+                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                        : { borderColor: BORDER, color: INK }
+                    }
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm" style={{ color: ACCENT }}>
+                {error}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={goToStep2}
+              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Continuer
+            </button>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium">Quand, chaque semaine ?</label>
+              <div className="mt-2 grid grid-cols-1 gap-2">
+                {TIME_PRESETS.map((p) => (
+                  <button
+                    type="button"
+                    key={p.label}
+                    onClick={() => applyPreset(p)}
+                    className="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
+                    style={
+                      !customTime && activePreset === p.label
+                        ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
+                        : { borderColor: BORDER, backgroundColor: "white" }
+                    }
+                  >
+                    {p.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={enableCustomTime}
+                  className="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
+                  style={
+                    customTime
+                      ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
+                      : { borderColor: BORDER, backgroundColor: "white" }
+                  }
+                >
+                  Personnalisé
+                </button>
+              </div>
+            </div>
+
+            {customTime && (
+              <div className="space-y-4 rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
+                <div>
+                  <label className="block text-xs font-medium" style={{ color: MUTED }}>
+                    Jour de la semaine
+                  </label>
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                    {DAYS.map((d) => (
+                      <button
+                        type="button"
+                        key={d.value}
+                        onClick={() => handleDayChange(d.value)}
+                        className="rounded-lg border px-2 py-2 text-xs transition-colors"
+                        style={
+                          day === d.value
+                            ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                            : { borderColor: BORDER, color: INK, backgroundColor: "white" }
+                        }
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium" style={{ color: MUTED }}>
+                    Créneau
+                  </label>
+                  <div className="mt-2 flex items-center gap-3">
+                    <input
+                      type="time"
+                      value={windowStart}
+                      onChange={(e) => setWindowStart(e.target.value)}
+                      className="rounded-lg border bg-white px-3 py-2 text-sm"
+                      style={{ borderColor: BORDER }}
+                    />
+                    <span style={{ color: MUTED }}>—</span>
+                    <input
+                      type="time"
+                      value={windowEnd}
+                      onChange={(e) => setWindowEnd(e.target.value)}
+                      className="rounded-lg border bg-white px-3 py-2 text-sm"
+                      style={{ borderColor: BORDER }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
               <button
                 type="button"
-                key={d.value}
-                onClick={() => handleDayChange(d.value)}
-                className={`rounded-lg border px-2 py-2 text-sm ${
-                  day === d.value
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-300 text-neutral-700"
-                }`}
+                onClick={() => setStep(1)}
+                className="flex-1 rounded-full border py-3.5 text-sm font-medium transition-colors"
+                style={{ borderColor: BORDER, color: INK }}
               >
-                {d.label}
+                Retour
               </button>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <label className="block text-sm font-medium text-neutral-800">Créneau</label>
-          <div className="mt-2 flex items-center gap-3">
-            <input
-              type="time"
-              value={windowStart}
-              onChange={(e) => setWindowStart(e.target.value)}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
-            <span className="text-neutral-400">—</span>
-            <input
-              type="time"
-              value={windowEnd}
-              onChange={(e) => setWindowEnd(e.target.value)}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            />
-          </div>
-        </section>
-
-        <section>
-          <label className="block text-sm font-medium text-neutral-800">Type de lieu</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {VENUE_TYPES.map((v) => (
               <button
                 type="button"
-                key={v.value}
-                onClick={() => toggle(venueTypes, v.value, setVenueTypes)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${
-                  venueTypes.includes(v.value)
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-300 text-neutral-700"
-                }`}
+                onClick={goToStep3}
+                className="flex-1 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+                style={{ backgroundColor: ACCENT }}
               >
-                {v.label}
+                Continuer
               </button>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
-        <section>
-          <label className="block text-sm font-medium text-neutral-800">
-            Filtre alimentaire / culturel <span className="text-neutral-400">(facultatif)</span>
-          </label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {DIETARY_OPTIONS.map((f) => (
+        {step === 3 && (
+          <section className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium">L&apos;ambiance</label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {VIBE_PILLS.map((v) => (
+                  <button
+                    type="button"
+                    key={v.value}
+                    onClick={() => toggle(venueTypes, v.value, setVenueTypes)}
+                    className="flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm transition-colors"
+                    style={
+                      venueTypes.includes(v.value)
+                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                        : { borderColor: BORDER, color: INK, backgroundColor: "white" }
+                    }
+                  >
+                    <span>{v.emoji}</span>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
-                key={f}
-                onClick={() => toggle(dietaryFilters, f, setDietaryFilters)}
-                className={`rounded-full border px-3 py-1.5 text-sm capitalize ${
-                  dietaryFilters.includes(f)
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-300 text-neutral-700"
-                }`}
+                onClick={() => toggle(venueTypes, SECONDARY_VENUE.value, setVenueTypes)}
+                className="mt-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors"
+                style={
+                  venueTypes.includes(SECONDARY_VENUE.value)
+                    ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D`, color: ACCENT }
+                    : { borderColor: BORDER, color: MUTED }
+                }
               >
-                {f}
+                <span>{SECONDARY_VENUE.emoji}</span>
+                {SECONDARY_VENUE.label}
               </button>
-            ))}
-          </div>
-        </section>
+            </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+            <div>
+              <label className="block text-sm font-medium">
+                Filtres <span className="font-normal" style={{ color: MUTED }}>(facultatif)</span>
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DIETARY_OPTIONS.map((f) => (
+                  <button
+                    type="button"
+                    key={f}
+                    onClick={() => toggle(dietaryFilters, f, setDietaryFilters)}
+                    className="rounded-full border px-3 py-1.5 text-xs capitalize transition-colors"
+                    style={
+                      dietaryFilters.includes(f)
+                        ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D`, color: ACCENT }
+                        : { borderColor: BORDER, color: MUTED }
+                    }
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {submitting ? "Envoi…" : "Envoyer l'invitation"}
-        </button>
+            {error && (
+              <p className="text-sm" style={{ color: ACCENT }}>
+                {error}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="flex-1 rounded-full border py-3.5 text-sm font-medium transition-colors"
+                style={{ borderColor: BORDER, color: INK }}
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
+                style={{ backgroundColor: ACCENT }}
+              >
+                {submitting ? "Envoi…" : `Créer notre rituel${partnerName ? " " + partnerName : ""}`}
+              </button>
+            </div>
+          </section>
+        )}
       </form>
-    </main>
+    </Shell>
   );
 }

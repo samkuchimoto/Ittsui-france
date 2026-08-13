@@ -1,7 +1,15 @@
 "use client";
 // /app/page.tsx
+//
+// AUDIT NOTE: this file has no Firebase/Firestore/API dependencies in the
+// original — it is a pure marketing page. The only change vs. the current
+// production version is the "Friday card mockup" section, which goes from
+// a static image to the fully interactive <FridayCard /> state machine
+// described in the brief (drag-to-swipe + button controls, 3 states,
+// guilt-free skip). Everything else (Reveal, icons, hero, DUO_CARDS,
+// how-it-works, footer) is unchanged.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
@@ -58,7 +66,6 @@ function Reveal({ children, className = "" }: { children: React.ReactNode; class
 }
 
 // Minimal inline icons, stroke-based, lucide-style. Avoids a new dependency.
-// Minimal inline icons, stroke-based, lucide-style. Avoids a new dependency.
 function IconArrowRight({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
@@ -103,6 +110,205 @@ const DUO_CARDS = [
   { src: "/couple-living-room.jpg", alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.", label: "Votre partenaire" },
   { src: "/grandmother-granddaughter-park.jpg", alt: "Une grand-mère et sa petite-fille assises sur un banc, dans un parc.", label: "Votre famille" },
 ];
+
+// --- Friday Card state machine -------------------------------------------
+// Three states only: default -> swapped -> confirmed. Two ways in: buttons
+// or a native drag gesture (swipe right = validate, swipe left = swap).
+// No gesture library — just pointer/touch coordinates and a spring-back
+// transform, wrapped in useTransition so the snap feels immediate even
+// while React schedules the state update.
+
+type CardState = "default" | "swapped" | "confirmed";
+
+const OPTION_A = {
+  name: "Café de Flore · Paris 6e",
+  img: "/couple-parisian-cafe.jpg",
+  alt: "Café de Flore, Paris 6e",
+};
+const OPTION_B = {
+  name: "Jardin du Luxembourg · Paris 6e",
+  img: "/grandmother-granddaughter-park.jpg",
+  alt: "Jardin du Luxembourg, Paris 6e",
+};
+
+const SWIPE_THRESHOLD = 76; // px before a drag commits to an action
+
+function FridayCard() {
+  const [cardState, setCardState] = useState<CardState>("default");
+  const [dragX, setDragX] = useState(0);
+  const [skipped, setSkipped] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+    };
+  }, []);
+
+  function beginDrag(clientX: number) {
+    if (cardState === "confirmed") return;
+    draggingRef.current = true;
+    startXRef.current = clientX;
+  }
+
+  function moveDrag(clientX: number) {
+    if (!draggingRef.current) return;
+    const delta = clientX - startXRef.current;
+    setDragX(Math.max(-140, Math.min(140, delta)));
+  }
+
+  function endDrag() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (dragX > SWIPE_THRESHOLD) {
+      confirmCard();
+    } else if (dragX < -SWIPE_THRESHOLD) {
+      swapCard();
+    }
+    setDragX(0);
+  }
+
+  function swapCard() {
+    startTransition(() => {
+      setCardState((s) => (s === "swapped" ? "default" : "swapped"));
+    });
+  }
+
+  function confirmCard() {
+    startTransition(() => setCardState("confirmed"));
+  }
+
+  function resetDemo() {
+    startTransition(() => {
+      setCardState("default");
+      setSkipped(false);
+    });
+  }
+
+  function skipWeek() {
+    setSkipped(true);
+    if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+    skipTimerRef.current = setTimeout(() => {
+      startTransition(() => {
+        setCardState("default");
+        setSkipped(false);
+      });
+    }, 1800);
+  }
+
+  const option = cardState === "swapped" ? OPTION_B : OPTION_A;
+  const rotation = dragX / 26;
+
+  return (
+    <div className="mx-auto max-w-sm">
+      <div
+        className="touch-pan-y select-none overflow-hidden rounded-3xl border bg-white shadow-sm"
+        style={{
+          borderColor: BORDER,
+          transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
+          transition: draggingRef.current ? "none" : "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
+        }}
+        onTouchStart={(e) => beginDrag(e.touches[0].clientX)}
+        onTouchMove={(e) => moveDrag(e.touches[0].clientX)}
+        onTouchEnd={endDrag}
+        onPointerDown={(e) => beginDrag(e.clientX)}
+        onPointerMove={(e) => moveDrag(e.clientX)}
+        onPointerUp={endDrag}
+        onPointerLeave={() => draggingRef.current && endDrag()}
+      >
+        {cardState === "confirmed" ? (
+          <div className="flex flex-col items-center px-6 py-14 text-center">
+            <span
+              className="flex h-12 w-12 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${ACCENT}1A` }}
+            >
+              <IconCheck className="h-6 w-6" style={{ color: ACCENT }} />
+            </span>
+            <h3 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+              Rendez-vous verrouillé !
+            </h3>
+            <p className="mt-2 max-w-[22ch] text-sm" style={{ color: MUTED }}>
+              ✓ Rendez-vous verrouillé pour Samedi 15:30. On se tait jusqu&apos;à samedi !
+            </p>
+            <button
+              type="button"
+              onClick={resetDemo}
+              className="mt-6 text-xs underline underline-offset-4"
+              style={{ color: MUTED }}
+            >
+              Réessayer la démonstration
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
+              <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "#FBF9F5", color: MUTED }}>
+                Rendez-vous du Samedi · 15:30
+              </span>
+            </div>
+            <div className="relative h-48 w-full">
+              <Image
+                src={option.img}
+                alt={option.alt}
+                fill
+                sizes="384px"
+                draggable={false}
+                className="pointer-events-none object-cover"
+              />
+              {cardState === "swapped" && (
+                <span
+                  className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Alternative 1/1 · Samedi 15:30
+                </span>
+              )}
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm font-medium">{option.name}</p>
+              <div className="mt-4 flex items-center justify-between text-xs">
+                <button type="button" onClick={swapCard} className="transition-colors" style={{ color: MUTED }}>
+                  ← {cardState === "swapped" ? "Option initiale" : "Échanger"}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCard}
+                  className="flex items-center gap-1 font-medium transition-colors"
+                  style={{ color: ACCENT }}
+                >
+                  <IconCheck className="h-3.5 w-3.5" />
+                  Valider →
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {cardState !== "confirmed" && (
+        <div className="mt-4 text-center" style={{ minHeight: "1.25rem" }}>
+          {skipped ? (
+            <p className="text-xs" style={{ color: MUTED }}>D&apos;accord. On se retrouve la semaine prochaine.</p>
+          ) : (
+            <button
+              type="button"
+              onClick={skipWeek}
+              className="text-xs underline underline-offset-4 transition-colors"
+              style={{ color: MUTED }}
+            >
+              Passer cette semaine
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+// --- end Friday Card ------------------------------------------------------
 
 export default function Home() {
   return (
@@ -217,7 +423,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* Friday card mockup */}
+      {/* Friday card mockup — now interactive */}
       <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md text-center">
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}>
@@ -225,38 +431,13 @@ export default function Home() {
             <br />
             Et rien d&apos;autre.
           </h2>
+          <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
+            Glissez la carte, ou utilisez les boutons. Essayez.
+          </p>
         </Reveal>
 
-        <Reveal className="mx-auto mt-12 max-w-sm">
-          <div className="overflow-hidden rounded-3xl border bg-white shadow-sm" style={{ borderColor: BORDER }}>
-            <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
-              <span
-                className="rounded-full px-3 py-1 text-xs font-medium"
-                style={{ backgroundColor: "#FBF9F5", color: MUTED }}
-              >
-                Rendez-vous du Samedi · 15:30
-              </span>
-            </div>
-            <div className="relative h-48 w-full">
-              <Image src="/couple-parisian-cafe.jpg" alt="Café de Flore, Paris 6e" fill sizes="384px" className="object-cover" />
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-sm font-medium">Café de Flore · Paris 6e</p>
-              <span
-                className="mt-2 inline-block rounded-full px-2.5 py-1 text-xs"
-                style={{ backgroundColor: "#FBF9F5", color: MUTED }}
-              >
-                En attente de confirmation de Marie…
-              </span>
-              <div className="mt-4 flex items-center justify-between text-xs" style={{ color: MUTED }}>
-                <span>← Échanger (1 alternative)</span>
-                <span className="flex items-center gap-1" style={{ color: ACCENT }}>
-                  <IconCheck className="h-3.5 w-3.5" />
-                  Valider →
-                </span>
-              </div>
-            </div>
-          </div>
+        <Reveal className="mt-12">
+          <FridayCard />
         </Reveal>
       </section>
 

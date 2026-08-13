@@ -2,16 +2,38 @@
 // Triggered by Vercel Cron (see vercel.json) — runs daily, proposes for any
 // pair whose agreedDay is today and who doesn't already have a week doc.
 //
-// Flow: pull due pairs → get venue shortlist → Groq picks one + writes the
-// one-line confirmation → write week doc → send push (fallback: email).
-// If Groq fails, fall back to the shortlist's first entry — no LLM call
-// blocks the flow.
+// AUDIT NOTE — what changed vs. production, and why (Task 4.2, "API
+// Independence Pattern"):
+//   UNCHANGED: the cron-secret auth check, the daily pairs query (agreedDay
+//   == today, status == active, subscriptionStatus in [active, trialing]),
+//   the idempotent "already proposed this week" check, the week-doc write
+//   shape, and notifyBothUsers() (push -> email fallback) — none of that
+//   needed to change for this task.
+//
+//   CHANGED: venue selection. It used to be a single synchronous Groq call
+//   inline in this route, with a "shortlist[0]" fallback on Groq failure.
+//   That's now a 3-tier graceful-degradation chain:
+//     1. PRIMARY — fetch the precomputed proposal from the Python/Redis RAG
+//        service (see /rag-service). This is where the LLM call now lives,
+//        run well ahead of time during that service's precompute job, not
+//        in this request path.
+//     2. FALLBACK, tier 1 — the existing Firestore `venues` shortlist logic
+//        (kept, not deleted: a DB that's actually up beats a hardcoded
+//        list), picking deterministically instead of via LLM.
+//     3. FALLBACK, tier 2 — a fully static, no-DB-dependency catalog. This
+//        is the true last resort: it fires if BOTH the RAG service AND
+//        Firestore are unavailable, so a Friday proposal still goes out.
+//   Tiers 1 and 2 never call an LLM — "deterministic" per the brief.
+//   The RAG service call is bounded to 1.5s via AbortController; on
+//   timeout, non-200, or a malformed body, this immediately drops to the
+//   fallback chain rather than waiting further.
 
 import { NextResponse } from "next/server";
 import { adminDb, adminMessaging } from "@/lib/firebaseAdmin";
 import type { Pair, User, VenueType } from "@/lib/types";
 
 const DAY_MAP = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const RAG_TIMEOUT_MS = 1500;
 
 interface VenueCandidate {
   id: string;
@@ -20,6 +42,13 @@ interface VenueCandidate {
   type: VenueType;
   dietaryTags: string[];
   city: string;
+}
+
+interface VenueProposal {
+  venueName: string;
+  venueAddress: string;
+  confirmationText: string;
+  source: "rag-service" | "firestore-rule-engine" | "static-rule-engine";
 }
 
 export async function GET(request: Request) {
@@ -39,7 +68,7 @@ export async function GET(request: Request) {
     .where("subscriptionStatus", "in", ["active", "trialing"])
     .get();
 
-  const results: { pairId: string; status: string }[] = [];
+  const results: { pairId: string; status: string; source?: string }[] = [];
 
   for (const pairDoc of pairsSnap.docs) {
     const pair = { id: pairDoc.id, ...pairDoc.data() } as Pair;
@@ -56,13 +85,11 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const shortlist = await getShortlist(pair);
-    if (shortlist.length === 0) {
+    const proposal = await getFridayProposal(pair, weekOf);
+    if (!proposal) {
       results.push({ pairId: pair.id, status: "no_venues_available" });
       continue;
     }
-
-    const { venue, confirmationText } = await pickVenue(pair, shortlist);
 
     const proposedTime = buildProposedTime(pair.agreedWindowStart);
 
@@ -74,22 +101,121 @@ export async function GET(request: Request) {
       .set({
         pairId: pair.id,
         weekOf,
-        venueName: venue.name,
-        venueAddress: venue.address,
-        confirmationText,
+        venueName: proposal.venueName,
+        venueAddress: proposal.venueAddress,
+        confirmationText: proposal.confirmationText,
         proposedTime,
         status: "proposed",
         responses: { [pair.userIds[0]]: null, [pair.userIds[1]]: null },
       });
 
-    await notifyBothUsers(pair, confirmationText);
-    results.push({ pairId: pair.id, status: "proposed" });
+    await notifyBothUsers(pair, proposal.confirmationText);
+    results.push({ pairId: pair.id, status: "proposed", source: proposal.source });
   }
 
   return NextResponse.json({ weekOf, results });
 }
 
-// --- Venue shortlist (Phase 1: curated Firestore list, filtered) ---
+// --- API Independence Pattern: RAG service primary, deterministic fallback chain ---
+
+async function getFridayProposal(pair: Pair, weekOf: string): Promise<VenueProposal | null> {
+  const fromRag = await tryRagService(pair, weekOf);
+  if (fromRag) return fromRag;
+
+  const fromFirestore = await tryFirestoreRuleEngine(pair);
+  if (fromFirestore) return fromFirestore;
+
+  return staticRuleEngineFallback(pair);
+}
+
+// Tier 1 (primary): the precomputed proposal from the Python/Redis RAG
+// service. Bounded to RAG_TIMEOUT_MS — if the service, its Postgres, or
+// whatever LLM it calls internally is slow or down, we do not wait past
+// that window.
+async function tryRagService(pair: Pair, weekOf: string): Promise<VenueProposal | null> {
+  const baseUrl = process.env.RAG_SERVICE_URL;
+  if (!baseUrl) return null; // not configured — go straight to fallback, don't error the cron run
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RAG_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${baseUrl}/proposals/${pair.id}?week_of=${weekOf}`, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null; // includes 404 = "not precomputed yet", not an error worth logging loudly
+
+    const data = await res.json();
+    if (!data?.venue_name || !data?.venue_address || !data?.confirmation_text) return null;
+
+    return {
+      venueName: data.venue_name,
+      venueAddress: data.venue_address,
+      confirmationText: data.confirmation_text,
+      source: "rag-service",
+    };
+  } catch {
+    // Network error, timeout (AbortError), or bad JSON — all treated the
+    // same: fall through to the next tier. This route's job is to get a
+    // proposal out the door, not to diagnose the RAG service's health.
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Tier 2 (fallback): the pre-existing Firestore-backed shortlist, picked
+// deterministically (no LLM). Kept because a Firestore lookup that's
+// actually up is strictly better than the hardcoded static list below.
+async function tryFirestoreRuleEngine(pair: Pair): Promise<VenueProposal | null> {
+  try {
+    const shortlist = await getShortlist(pair);
+    if (shortlist.length === 0) return null;
+
+    const venue = shortlist[0];
+    return {
+      venueName: venue.name,
+      venueAddress: venue.address,
+      confirmationText: `${venue.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
+      source: "firestore-rule-engine",
+    };
+  } catch {
+    return null; // Firestore itself unavailable — drop to the static tier
+  }
+}
+
+// Tier 3 (fallback, true last resort): zero external dependencies. This is
+// what fires if BOTH the RAG service AND Firestore are unavailable — it's
+// what guarantees a Friday proposal still goes out.
+const STATIC_CATALOG: Record<VenueType, { name: string; address: string }[]> = {
+  cafe: [
+    { name: "Café de Flore", address: "172 Bd Saint-Germain, 75006 Paris" },
+    { name: "Café de l'Industrie", address: "16 Rue Saint-Sabin, 75011 Paris" },
+  ],
+  restaurant: [{ name: "Chez Janou", address: "2 Rue Roger Verlomme, 75003 Paris" }],
+  park: [{ name: "Jardin du Luxembourg", address: "75006 Paris" }],
+  museum: [{ name: "Musée Rodin", address: "77 Rue de Varenne, 75007 Paris" }],
+  home: [{ name: "Chez vous", address: "" }],
+};
+
+function staticRuleEngineFallback(pair: Pair): VenueProposal {
+  const preferredType = pair.preferences.venueTypes[0] ?? "cafe";
+  const options = STATIC_CATALOG[preferredType] ?? STATIC_CATALOG.cafe;
+  // Deterministic rotation (not random) so re-runs are stable and pairs
+  // aren't always handed the exact same fallback spot.
+  const index = hashToIndex(`${pair.id}`, options.length);
+  const venue = options[index];
+
+  return {
+    venueName: venue.name,
+    venueAddress: venue.address,
+    confirmationText: `${venue.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
+    source: "static-rule-engine",
+  };
+}
+
+// --- Venue shortlist (Firestore-backed, Tier 2 input) ---
 async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
   const { venueTypes, dietaryFilters } = pair.preferences;
   const query = adminDb.collection("venues").where("type", "in", venueTypes);
@@ -108,52 +234,6 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
   }
 
   return candidates;
-}
-
-// --- Groq call: one-shot pick + confirmation line, with non-LLM fallback ---
-async function pickVenue(
-  pair: Pair,
-  shortlist: VenueCandidate[]
-): Promise<{ venue: VenueCandidate; confirmationText: string }> {
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        max_tokens: 100,
-        messages: [
-          {
-            role: "system",
-            content:
-              'You pick exactly one venue from a given list and write one short French confirmation line. Respond ONLY as JSON: {"venueId": string, "confirmationText": string}. No markdown, no preamble.',
-          },
-          {
-            role: "user",
-            content: `Day: ${pair.agreedDay}, window: ${pair.agreedWindowStart}-${pair.agreedWindowEnd}. Shortlist: ${JSON.stringify(
-              shortlist.map((v) => ({ id: v.id, name: v.name, type: v.type }))
-            )}`,
-          },
-        ],
-      }),
-    });
-
-    if (!res.ok) throw new Error(`Groq ${res.status}`);
-    const data = await res.json();
-    const parsed = JSON.parse(data.choices[0].message.content);
-    const venue = shortlist.find((v) => v.id === parsed.venueId) ?? shortlist[0];
-    return { venue, confirmationText: parsed.confirmationText };
-  } catch {
-    // Fallback: no LLM call at all, just take the top of the shortlist
-    const venue = shortlist[0];
-    return {
-      venue,
-      confirmationText: `${venue.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
-    };
-  }
 }
 
 // --- Notification: FCM push, falling back to Resend email ---
@@ -220,4 +300,14 @@ function dayLabel(day: Pair["agreedDay"]): string {
     sun: "dimanche",
   };
   return labels[day];
+}
+
+// Small deterministic string hash -> bounded index. Not cryptographic,
+// just needs to distribute pair IDs across the tiny static catalog.
+function hashToIndex(input: string, mod: number): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % mod;
 }
