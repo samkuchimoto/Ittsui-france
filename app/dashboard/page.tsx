@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db, watchAuthState } from "@/lib/firebase";
+import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week } from "@/lib/types";
@@ -88,6 +88,10 @@ export default function DashboardPage() {
     return unsub;
   }, [pair]);
 
+  async function handleSignOut() {
+    await signOutUser();
+  }
+
   async function respond(response: "yes" | "no") {
     if (!pair || !week || !user) return;
     setResponding(true);
@@ -137,6 +141,12 @@ export default function DashboardPage() {
         <p className="text-sm text-neutral-500">
           Aucune personne liée pour le moment.
         </p>
+        <button
+          onClick={handleSignOut}
+          className="mt-6 text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Se déconnecter
+        </button>
       </main>
     );
   }
@@ -146,7 +156,15 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-md px-6 py-12">
-      <h1 className="text-2xl font-semibold text-neutral-900">Cette semaine</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-neutral-900">Cette semaine</h1>
+        <button
+          onClick={handleSignOut}
+          className="text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Se déconnecter
+        </button>
+      </div>
 
       {!week && (
         <p className="mt-6 text-sm text-neutral-500">

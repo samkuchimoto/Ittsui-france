@@ -126,12 +126,18 @@ export default function InvitePage() {
       <p className="mt-3 text-sm text-neutral-600">
         Connectez-vous avec le même e-mail que celui qui a reçu cette invitation pour activer le lien.
       </p>
-      {errorMsg && <p className="mt-4 text-sm text-red-600">{errorMsg}</p>}
+      {errorMsg && (
+        <p className="mt-4 text-sm text-red-600">
+          {errorMsg}
+          {errorMsg.includes("ne correspond pas") &&
+            " Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation."}
+        </p>
+      )}
       <button
         onClick={handleSignIn}
         className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
       >
-        Se connecter avec Google
+        {errorMsg ? "Se connecter avec un autre compte" : "Se connecter avec Google"}
       </button>
     </main>
   );

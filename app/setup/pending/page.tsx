@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db, watchAuthState } from "@/lib/firebase";
+import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
@@ -50,6 +50,11 @@ export default function PendingPage() {
     });
     return unsub;
   }, [user, router]);
+
+  async function handleSignOut() {
+    await signOutUser();
+    router.push("/setup");
+  }
 
   async function handleCancel() {
     if (!pair || !user) return;
@@ -91,6 +96,12 @@ export default function PendingPage() {
         >
           Nouvelle invitation
         </button>
+        <button
+          onClick={handleSignOut}
+          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Se déconnecter
+        </button>
       </main>
     );
   }
@@ -107,6 +118,12 @@ export default function PendingPage() {
           className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
         >
           Nouvelle invitation
+        </button>
+        <button
+          onClick={handleSignOut}
+          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Se déconnecter
         </button>
       </main>
     );
@@ -126,6 +143,12 @@ export default function PendingPage() {
         className="mt-8 w-full rounded-lg border border-neutral-300 py-3 text-sm font-medium text-neutral-700 disabled:opacity-50"
       >
         {cancelling ? "Annulation..." : "Annuler l'invitation"}
+      </button>
+      <button
+        onClick={handleSignOut}
+        className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
+      >
+        Se déconnecter
       </button>
     </main>
   );
