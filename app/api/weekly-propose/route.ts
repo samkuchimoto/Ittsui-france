@@ -37,6 +37,16 @@
 //   meeting), so "is this pair due today" is now computed per-pair via
 //   isDueToday() instead of expressed as a single Firestore equality
 //   filter — see that function for why.
+//
+//   ALSO CHANGED: venue selection is now postal-code-aware. Tier 2
+//   (Firestore) soft-prefers venues whose city matches the pair's metro,
+//   without dropping anything. Tier 3 (static) routes park/museum to real
+//   landmarks in 5 major metros (Paris, Marseille, Lyon, Lille, Bordeaux)
+//   — deliberately limited to large, long-standing public institutions,
+//   not small businesses whose current address isn't something to guess
+//   at. Cafe/restaurant stay Paris-only for the same reason; "home" always
+//   resolves everywhere. This is an honest partial step toward nationwide
+//   coverage, not the finished thing — see departmentFromPostalCode().
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -221,20 +231,84 @@ async function tryFirestoreRuleEngine(pair: Pair): Promise<VenueProposal | null>
 // Tier 3 (fallback, true last resort): zero external dependencies. This is
 // what fires if BOTH the RAG service AND Firestore are unavailable — it's
 // what guarantees a Friday proposal still goes out.
-const STATIC_CATALOG: Record<VenueType, { name: string; address: string }[]> = {
-  cafe: [
-    { name: "Café de Flore", address: "172 Bd Saint-Germain, 75006 Paris" },
-    { name: "Café de l'Industrie", address: "16 Rue Saint-Sabin, 75011 Paris" },
-  ],
-  restaurant: [{ name: "Chez Janou", address: "2 Rue Roger Verlomme, 75003 Paris" }],
-  park: [{ name: "Jardin du Luxembourg", address: "75006 Paris" }],
-  museum: [{ name: "Musée Rodin", address: "77 Rue de Varenne, 75007 Paris" }],
-  home: [{ name: "Chez vous", address: "" }],
+type Metro = "paris" | "marseille" | "lyon" | "lille" | "bordeaux";
+
+// Coarse department-level routing from a French postal code's first two
+// digits — good enough to pick the right metro's landmarks, not precise
+// geolocation. Returns null for anywhere else in France (still ~most of
+// the country by area, honestly not by population) rather than guessing.
+function departmentFromPostalCode(postalCode: string | undefined): Metro | null {
+  if (!postalCode || postalCode.length < 2) return null;
+  const prefix = postalCode.slice(0, 2);
+  if (["75", "92", "93", "94"].includes(prefix)) return "paris"; // Paris + inner ring
+  if (prefix === "13") return "marseille";
+  if (prefix === "69") return "lyon";
+  if (prefix === "59") return "lille";
+  if (prefix === "33") return "bordeaux";
+  return null;
+}
+
+// Real, large, long-standing public institutions only — parks and museums
+// are the kind of landmark that doesn't quietly close or move, which is a
+// deliberately higher confidence bar than a small private café/restaurant
+// whose current address isn't something to guess at for a city nobody's
+// verified. Cafe/restaurant stay Paris-only for that reason.
+const STATIC_CATALOG: Record<Metro, Partial<Record<VenueType, { name: string; address: string }[]>>> = {
+  paris: {
+    cafe: [
+      { name: "Café de Flore", address: "172 Bd Saint-Germain, 75006 Paris" },
+      { name: "Café de l'Industrie", address: "16 Rue Saint-Sabin, 75011 Paris" },
+    ],
+    restaurant: [{ name: "Chez Janou", address: "2 Rue Roger Verlomme, 75003 Paris" }],
+    park: [{ name: "Jardin du Luxembourg", address: "75006 Paris" }],
+    museum: [{ name: "Musée Rodin", address: "77 Rue de Varenne, 75007 Paris" }],
+  },
+  marseille: {
+    park: [{ name: "Parc Borély", address: "Av. du Parc Borély, 13008 Marseille" }],
+    museum: [{ name: "MuCEM", address: "7 Promenade Robert Laffont, 13002 Marseille" }],
+  },
+  lyon: {
+    park: [{ name: "Parc de la Tête d'Or", address: "Place du Général Leclerc, 69006 Lyon" }],
+    museum: [{ name: "Musée des Beaux-Arts de Lyon", address: "20 Place des Terreaux, 69001 Lyon" }],
+  },
+  lille: {
+    park: [{ name: "Parc de la Citadelle", address: "Av. Mathias Delobel, 59000 Lille" }],
+    museum: [{ name: "Palais des Beaux-Arts de Lille", address: "Place de la République, 59000 Lille" }],
+  },
+  bordeaux: {
+    park: [{ name: "Jardin Public de Bordeaux", address: "Cours de Verdun, 33000 Bordeaux" }],
+    museum: [{ name: "Musée d'Aquitaine", address: "20 Cours Pasteur, 33000 Bordeaux" }],
+  },
 };
 
+const HOME_FALLBACK = { name: "Chez vous", address: "" };
+
 function staticRuleEngineFallback(pair: Pair): VenueProposal {
-  const preferredType = pair.preferences.venueTypes[0] ?? "cafe";
-  const options = STATIC_CATALOG[preferredType] ?? STATIC_CATALOG.cafe;
+  const metro = departmentFromPostalCode(pair.postalCode) ?? "paris";
+  const catalog = STATIC_CATALOG[metro];
+  const preferences = pair.preferences.venueTypes.length ? pair.preferences.venueTypes : (["cafe"] as VenueType[]);
+
+  // Walk the pair's preferences in order and take the first one that
+  // actually has real coverage in their metro. "home" always resolves. If
+  // nothing in their metro matches any preference, "home" is the honest
+  // last resort — everywhere in France — rather than quietly substituting
+  // a Paris address for someone in Lyon, or fabricating a venue.
+  let options: { name: string; address: string }[] = [HOME_FALLBACK];
+  let resolvedType: VenueType = "home";
+  for (const type of preferences) {
+    if (type === "home") {
+      options = [HOME_FALLBACK];
+      resolvedType = "home";
+      break;
+    }
+    const forType = catalog[type];
+    if (forType?.length) {
+      options = forType;
+      resolvedType = type;
+      break;
+    }
+  }
+
   // Deterministic rotation (not random) so re-runs are stable and pairs
   // aren't always handed the exact same fallback spot.
   const indexA = hashToIndex(`${pair.id}`, options.length);
@@ -243,15 +317,23 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
   const venueB = indexB !== null ? options[indexB] : null;
 
   return {
-    optionA: { venueId: `static-${preferredType}-${indexA}`, venueName: venueA.name, venueAddress: venueA.address },
+    optionA: { venueId: `static-${metro}-${resolvedType}-${indexA}`, venueName: venueA.name, venueAddress: venueA.address },
     optionB:
       venueB && indexB !== null
-        ? { venueId: `static-${preferredType}-${indexB}`, venueName: venueB.name, venueAddress: venueB.address }
+        ? { venueId: `static-${metro}-${resolvedType}-${indexB}`, venueName: venueB.name, venueAddress: venueB.address }
         : undefined,
     confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
     source: "static-rule-engine",
   };
 }
+
+const METRO_CITY_NAMES: Record<Metro, string> = {
+  paris: "paris",
+  marseille: "marseille",
+  lyon: "lyon",
+  lille: "lille",
+  bordeaux: "bordeaux",
+};
 
 // --- Venue shortlist (Firestore-backed, Tier 2 input) ---
 async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
@@ -269,6 +351,20 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
         v.type === "park" || // park has no menu
         dietaryFilters.some((f) => v.dietaryTags.includes(f))
     );
+  }
+
+  // Soft preference, not a filter: if a metro is known from the postal
+  // code, candidates in that city sort first — but nothing is dropped, so
+  // a Firestore venues collection that's actually been seeded still wins
+  // over the static tier regardless of city coverage.
+  const metro = departmentFromPostalCode(pair.postalCode);
+  if (metro) {
+    const cityName = METRO_CITY_NAMES[metro];
+    candidates = [...candidates].sort((a, b) => {
+      const aMatch = a.city?.toLowerCase() === cityName ? 0 : 1;
+      const bMatch = b.city?.toLowerCase() === cityName ? 0 : 1;
+      return aMatch - bMatch;
+    });
   }
 
   return candidates;

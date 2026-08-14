@@ -488,6 +488,9 @@ export default function Home() {
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Une fois le rendez-vous bloqué, l&apos;application se tait. Zéro notification parasite.
                 </p>
+                <p className="mt-1 text-sm" style={{ color: MUTED }}>
+                  Le droit à la déconnexion, appliqué à vos relations.
+                </p>
               </div>
             </li>
           </ol>
@@ -515,8 +518,11 @@ export default function Home() {
         </Reveal>
       </section>
 
-      <footer className="px-6 pb-10 text-center text-sm" style={{ color: `${MUTED}99` }}>
-        © 2026 Ittsui France. Conçu avec retenue.
+      <footer className="flex flex-col items-center gap-2 px-6 pb-10 text-center text-sm" style={{ color: `${MUTED}99` }}>
+        <span>© 2026 Ittsui France. Conçu avec retenue.</span>
+        <Link href="/confidentialite" className="underline underline-offset-4">
+          Confidentialité
+        </Link>
       </footer>
     </main>
   );

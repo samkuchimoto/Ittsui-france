@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     agreedWindowStart,
     agreedWindowEnd,
     notifyDaysBefore,
+    postalCode,
     preferences,
   } = await request.json();
 
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
     agreedWindowStart,
     agreedWindowEnd,
     notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
+    ...(typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
     preferences,
     status: "pending",
     subscriptionStatus: "trialing",

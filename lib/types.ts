@@ -35,6 +35,13 @@ export interface Pair {
   // without touching agreedDay/agreedWindowStart/agreedWindowEnd, which
   // already fully describe the meeting itself.
   notifyDaysBefore?: number;
+  // 5-digit French postal code for where this pair actually meets.
+  // Optional, read-side default is "no preference" (Paris-only static
+  // catalog, existing behavior) — see weekly-propose/route.ts's
+  // departmentFromPostalCode(). Real nationwide venue coverage still needs
+  // a live venues data source; this only unlocks the handful of major
+  // metros that are honestly hardcoded today.
+  postalCode?: string;
   preferences: Preferences;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled";
   createdAt: string; // ISO date

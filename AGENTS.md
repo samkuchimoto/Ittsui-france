@@ -87,6 +87,15 @@ existing field's meaning.
 integration wired up yet in this repo — the field exists ahead of that
 work. Don't assume billing is live.
 
+**Product principle, not yet enforced by code:** the core weekly ritual
+(one proposal, one action, silence otherwise) is intended to stay free.
+When Stripe billing does get wired up, `subscriptionStatus` should gate
+optional add-ons, not the base loop — every pair is created with
+`subscriptionStatus: "trialing"` today (see `app/api/invite-partner/route.ts`),
+which happens to keep everyone on the free path only because no billing
+exists yet to move them off it. Don't treat that as accidental slack to
+close without a deliberate pricing decision first.
+
 ## Firestore rules
 
 `firestore.rules` restricts `pairs/{pairId}` reads/writes to the two
@@ -123,6 +132,20 @@ scheduler (see `/rag-service/README.md`) to actually run an hour ahead of
 whichever day it's precomputing for is real follow-up work, not done as
 part of this pass — do not assume the timing described in product copy
 is already true of the infrastructure.
+
+**Venue coverage is honestly partial, not nationwide.** `Pair.postalCode`
+(optional) routes tier 3's static catalog to real park/museum landmarks in
+five metros (Paris, Marseille, Lyon, Lille, Bordeaux) and tier 2 soft-sorts
+Firestore `venues` by city when one matches. Cafe/restaurant stayed
+Paris-only on purpose — those are small businesses, and guessing at a
+current address in a city nobody's verified is exactly the kind of thing
+not to fabricate (same reasoning as not inventing venue photos: see the
+dashboard's two-option card). Every other postal code, and every
+cafe/restaurant preference outside Paris, falls back to "home" — always
+real, everywhere, rather than a wrong Paris suggestion or a silent
+failure. True nationwide coverage needs a live venues data source (Google
+Places, data.gouv.fr, or similar) — this is a deliberate step toward that,
+not a replacement for it.
 
 ## What NOT to touch without a good reason
 

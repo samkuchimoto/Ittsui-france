@@ -165,6 +165,7 @@ export default function SetupPage() {
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(0);
 
   const [venueTypes, setVenueTypes] = useState<VenueType[]>(["cafe"]);
+  const [postalCode, setPostalCode] = useState("");
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -282,6 +283,7 @@ export default function SetupPage() {
           agreedWindowStart: windowStart,
           agreedWindowEnd: windowEnd,
           notifyDaysBefore,
+          postalCode: postalCode || undefined,
           preferences: { venueTypes, dietaryFilters },
         }),
       });
@@ -615,6 +617,25 @@ export default function SetupPage() {
                 <span>{SECONDARY_VENUE.emoji}</span>
                 {SECONDARY_VENUE.label}
               </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">
+                Code postal <span className="font-normal" style={{ color: MUTED }}>(facultatif)</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                style={{ borderColor: BORDER }}
+                placeholder="75001"
+              />
+              <p className="mt-2 text-xs" style={{ color: MUTED }}>
+                Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.
+              </p>
             </div>
 
             <div>
