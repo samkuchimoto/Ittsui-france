@@ -24,6 +24,7 @@ export default function PendingPage() {
   const [checked, setChecked] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [pastInvites, setPastInvites] = useState<Pair[]>([]);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -50,6 +51,30 @@ export default function PendingPage() {
     });
     return unsub;
   }, [user, router]);
+
+  // Read-only history: past invitations this user sent that are no longer
+  // live (declined/expired/cancelled), so "invitation déjà envoyée" isn't
+  // a dead end with no way to see what you already tried. Doesn't include
+  // received invitations — those aren't queryable client-side today (an
+  // invitee isn't in userIds, and thus can't read the pending pair doc,
+  // until they accept via the emailed link), which is a real gap, not
+  // something faked here.
+  useEffect(() => {
+    if (!user || !pair) return;
+    const q = query(
+      collection(db, "pairs"),
+      where("userIds", "array-contains", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const others = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Pair)
+        .filter((p) => p.id !== pair.id && (p.status === "declined" || p.status === "expired" || p.status === "cancelled"));
+      setPastInvites(others);
+    });
+    return unsub;
+  }, [user, pair]);
 
   async function handleSignOut() {
     await signOutUser();
@@ -102,6 +127,7 @@ export default function PendingPage() {
         >
           Se déconnecter
         </button>
+        <InvitationHistory items={pastInvites} />
       </main>
     );
   }
@@ -125,6 +151,7 @@ export default function PendingPage() {
         >
           Se déconnecter
         </button>
+        <InvitationHistory items={pastInvites} />
       </main>
     );
   }
@@ -150,6 +177,30 @@ export default function PendingPage() {
       >
         Se déconnecter
       </button>
+      <InvitationHistory items={pastInvites} />
     </main>
+  );
+}
+
+const HISTORY_LABELS: Record<string, string> = {
+  declined: "Déclinée",
+  expired: "Expirée",
+  cancelled: "Annulée",
+};
+
+function InvitationHistory({ items }: { items: Pair[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-10 border-t border-neutral-200 pt-6 text-left">
+      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Invitations précédentes</p>
+      <ul className="mt-3 space-y-2">
+        {items.map((p) => (
+          <li key={p.id} className="flex items-center justify-between text-sm text-neutral-600">
+            <span>{p.partnerName}</span>
+            <span className="text-xs text-neutral-400">{HISTORY_LABELS[p.status] ?? p.status}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

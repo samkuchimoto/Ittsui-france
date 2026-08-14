@@ -1,14 +1,13 @@
 // /app/api/weekly-propose/route.ts
 // Triggered by Vercel Cron (see vercel.json) — runs daily, proposes for any
-// pair whose agreedDay is today and who doesn't already have a week doc.
+// pair whose weekly notification is due today and who doesn't already have
+// a week doc.
 //
 // AUDIT NOTE — what changed vs. production, and why (Task 4.2, "API
 // Independence Pattern"):
-//   UNCHANGED: the cron-secret auth check, the daily pairs query (agreedDay
-//   == today, status == active, subscriptionStatus in [active, trialing]),
-//   the idempotent "already proposed this week" check, the week-doc write
-//   shape, and notifyBothUsers() (push -> email fallback) — none of that
-//   needed to change for this task.
+//   UNCHANGED: the cron-secret auth check, the idempotent "already proposed
+//   this week" check, and notifyBothUsers() (push -> email fallback, moved
+//   to lib/notify.ts so rsvp/route.ts can reuse it unchanged).
 //
 //   CHANGED: venue selection. It used to be a single synchronous Groq call
 //   inline in this route, with a "shortlist[0]" fallback on Groq failure.
@@ -27,10 +26,22 @@
 //   The RAG service call is bounded to 1.5s via AbortController; on
 //   timeout, non-200, or a malformed body, this immediately drops to the
 //   fallback chain rather than waiting further.
+//   Tiers 2 and 3 now return up to TWO real candidates (optionA/optionB)
+//   instead of one, when the underlying source actually has two distinct
+//   ones — no fabricated second option. Tier 1 (RAG) still returns one,
+//   since the service's own HTTP contract wasn't changed here.
+//
+//   ALSO CHANGED: the pairs query no longer filters on agreedDay == today.
+//   Pair.notifyDaysBefore (new, optional field) lets the notification fire
+//   ahead of the meeting day itself (e.g. Thursday notify for a Saturday
+//   meeting), so "is this pair due today" is now computed per-pair via
+//   isDueToday() instead of expressed as a single Firestore equality
+//   filter — see that function for why.
 
 import { NextResponse } from "next/server";
-import { adminDb, adminMessaging } from "@/lib/firebaseAdmin";
-import type { Pair, User, VenueType } from "@/lib/types";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { dayLabel, notifyBothUsers } from "@/lib/notify";
+import type { Pair, VenueOption, VenueType } from "@/lib/types";
 
 const DAY_MAP = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const RAG_TIMEOUT_MS = 1500;
@@ -45,8 +56,8 @@ interface VenueCandidate {
 }
 
 interface VenueProposal {
-  venueName: string;
-  venueAddress: string;
+  optionA: VenueOption;
+  optionB?: VenueOption; // present only when a second distinct real candidate existed
   confirmationText: string;
   source: "rag-service" | "firestore-rule-engine" | "static-rule-engine";
 }
@@ -63,7 +74,6 @@ export async function GET(request: Request) {
 
   const pairsSnap = await adminDb
     .collection("pairs")
-    .where("agreedDay", "==", today)
     .where("status", "==", "active") // skip pending/declined/expired invites
     .where("subscriptionStatus", "in", ["active", "trialing"])
     .get();
@@ -72,6 +82,8 @@ export async function GET(request: Request) {
 
   for (const pairDoc of pairsSnap.docs) {
     const pair = { id: pairDoc.id, ...pairDoc.data() } as Pair;
+
+    if (!isDueToday(pair, today)) continue;
 
     // Skip if this week's proposal already exists (idempotent re-runs)
     const existing = await adminDb
@@ -101,12 +113,14 @@ export async function GET(request: Request) {
       .set({
         pairId: pair.id,
         weekOf,
-        venueName: proposal.venueName,
-        venueAddress: proposal.venueAddress,
+        venueName: proposal.optionA.venueName,
+        venueAddress: proposal.optionA.venueAddress,
         confirmationText: proposal.confirmationText,
         proposedTime,
         status: "proposed",
         responses: { [pair.userIds[0]]: null, [pair.userIds[1]]: null },
+        optionA: proposal.optionA,
+        ...(proposal.optionB ? { optionB: proposal.optionB } : {}),
       });
 
     await notifyBothUsers(pair, proposal.confirmationText);
@@ -114,6 +128,17 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({ weekOf, results });
+}
+
+// A pair is due for its weekly notification today if today's weekday is
+// exactly notifyDaysBefore days ahead of agreedDay. notifyDaysBefore
+// defaults to 0 (same day) — every pair created before this field existed
+// keeps its exact current behavior unchanged.
+function isDueToday(pair: Pair, today: (typeof DAY_MAP)[number]): boolean {
+  const leadDays = pair.notifyDaysBefore ?? 0;
+  const meetingIndex = DAY_MAP.indexOf(pair.agreedDay);
+  const notifyIndex = (meetingIndex - leadDays + DAY_MAP.length) % DAY_MAP.length;
+  return DAY_MAP[notifyIndex] === today;
 }
 
 // --- API Independence Pattern: RAG service primary, deterministic fallback chain ---
@@ -149,9 +174,16 @@ async function tryRagService(pair: Pair, weekOf: string): Promise<VenueProposal 
     const data = await res.json();
     if (!data?.venue_name || !data?.venue_address || !data?.confirmation_text) return null;
 
+    // The RAG service's own HTTP contract (see rag-service/main.py) only
+    // returns one venue per proposal — not extended here to a second
+    // option, since that service is a scaffold with RAG_SERVICE_URL unset
+    // in production (this tier never actually fires today).
     return {
-      venueName: data.venue_name,
-      venueAddress: data.venue_address,
+      optionA: {
+        venueId: data.venue_id ?? `rag-${pair.id}`,
+        venueName: data.venue_name,
+        venueAddress: data.venue_address,
+      },
       confirmationText: data.confirmation_text,
       source: "rag-service",
     };
@@ -173,11 +205,12 @@ async function tryFirestoreRuleEngine(pair: Pair): Promise<VenueProposal | null>
     const shortlist = await getShortlist(pair);
     if (shortlist.length === 0) return null;
 
-    const venue = shortlist[0];
+    const venueA = shortlist[0];
+    const venueB = shortlist[1]; // undefined if the shortlist only had one candidate — not faked
     return {
-      venueName: venue.name,
-      venueAddress: venue.address,
-      confirmationText: `${venue.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
+      optionA: { venueId: venueA.id, venueName: venueA.name, venueAddress: venueA.address },
+      optionB: venueB ? { venueId: venueB.id, venueName: venueB.name, venueAddress: venueB.address } : undefined,
+      confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
       source: "firestore-rule-engine",
     };
   } catch {
@@ -204,13 +237,18 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
   const options = STATIC_CATALOG[preferredType] ?? STATIC_CATALOG.cafe;
   // Deterministic rotation (not random) so re-runs are stable and pairs
   // aren't always handed the exact same fallback spot.
-  const index = hashToIndex(`${pair.id}`, options.length);
-  const venue = options[index];
+  const indexA = hashToIndex(`${pair.id}`, options.length);
+  const indexB = options.length > 1 ? (indexA + 1) % options.length : null;
+  const venueA = options[indexA];
+  const venueB = indexB !== null ? options[indexB] : null;
 
   return {
-    venueName: venue.name,
-    venueAddress: venue.address,
-    confirmationText: `${venue.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
+    optionA: { venueId: `static-${preferredType}-${indexA}`, venueName: venueA.name, venueAddress: venueA.address },
+    optionB:
+      venueB && indexB !== null
+        ? { venueId: `static-${preferredType}-${indexB}`, venueName: venueB.name, venueAddress: venueB.address }
+        : undefined,
+    confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
     source: "static-rule-engine",
   };
 }
@@ -236,43 +274,6 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
   return candidates;
 }
 
-// --- Notification: FCM push, falling back to Resend email ---
-async function notifyBothUsers(pair: Pair, confirmationText: string) {
-  for (const userId of pair.userIds) {
-    const userSnap = await adminDb.collection("users").doc(userId).get();
-    if (!userSnap.exists) continue;
-    const user = userSnap.data() as User;
-
-    if (user.notificationPrefs.pushEnabled && user.pushToken) {
-      try {
-        await adminMessaging.send({
-          token: user.pushToken,
-          notification: { title: "Ittsui", body: confirmationText },
-        });
-        continue;
-      } catch {
-        // fall through to email
-      }
-    }
-
-    if (user.notificationPrefs.emailEnabled) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: "Ittsui <hello@ittsui.fr>",
-          to: user.email,
-          subject: "Votre rendez-vous de la semaine",
-          text: confirmationText,
-        }),
-      });
-    }
-  }
-}
-
 // --- helpers ---
 function getMondayISO(d: Date): string {
   const date = new Date(d);
@@ -287,19 +288,6 @@ function buildProposedTime(windowStart: string): string {
   const d = new Date();
   d.setHours(h, m, 0, 0);
   return d.toISOString();
-}
-
-function dayLabel(day: Pair["agreedDay"]): string {
-  const labels: Record<Pair["agreedDay"], string> = {
-    mon: "lundi",
-    tue: "mardi",
-    wed: "mercredi",
-    thu: "jeudi",
-    fri: "vendredi",
-    sat: "samedi",
-    sun: "dimanche",
-  };
-  return labels[day];
 }
 
 // Small deterministic string hash -> bounded index. Not cryptographic,

@@ -162,10 +162,13 @@ export default function SetupPage() {
   const [customTime, setCustomTime] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState(0);
+
   const [venueTypes, setVenueTypes] = useState<VenueType[]>(["cafe"]);
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateInvite, setDuplicateInvite] = useState(false);
   const [invited, setInvited] = useState<{ name: string; email: string } | null>(null);
 
   // Watch auth state on mount
@@ -254,6 +257,7 @@ export default function SetupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setDuplicateInvite(false);
 
     if (!user) {
       setError("Vous devez être connecté(e).");
@@ -277,12 +281,16 @@ export default function SetupPage() {
           agreedDay: day,
           agreedWindowStart: windowStart,
           agreedWindowEnd: windowEnd,
+          notifyDaysBefore,
           preferences: { venueTypes, dietaryFilters },
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) {
+        if (data?.code === "DUPLICATE_INVITE") setDuplicateInvite(true);
+        throw new Error(data?.error ?? "Une erreur est survenue.");
+      }
 
       setInvited({ name: partnerName, email: partnerEmail });
     } catch (err) {
@@ -518,6 +526,39 @@ export default function SetupPage() {
               </div>
             )}
 
+            <div>
+              <label className="block text-sm font-medium">Quand recevoir la proposition ?</label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNotifyDaysBefore(0)}
+                  className="rounded-xl border px-4 py-3 text-sm transition-colors"
+                  style={
+                    notifyDaysBefore === 0
+                      ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
+                      : { borderColor: BORDER, backgroundColor: "white" }
+                  }
+                >
+                  Le jour même
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotifyDaysBefore(1)}
+                  className="rounded-xl border px-4 py-3 text-sm transition-colors"
+                  style={
+                    notifyDaysBefore === 1
+                      ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
+                      : { borderColor: BORDER, backgroundColor: "white" }
+                  }
+                >
+                  La veille
+                </button>
+              </div>
+              <p className="mt-2 text-xs" style={{ color: MUTED }}>
+                Utile si votre créneau tombe un jour où vous ne consultez pas vos messages (ex. Shabbat).
+              </p>
+            </div>
+
             <div className="flex gap-3">
               <button
                 type="button"
@@ -600,9 +641,21 @@ export default function SetupPage() {
             </div>
 
             {error && (
-              <p className="text-sm" style={{ color: ACCENT }}>
-                {error}
-              </p>
+              <div>
+                <p className="text-sm" style={{ color: ACCENT }}>
+                  {error}
+                </p>
+                {duplicateInvite && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/setup/pending")}
+                    className="mt-2 text-sm underline underline-offset-4"
+                    style={{ color: ACCENT }}
+                  >
+                    Voir cette invitation
+                  </button>
+                )}
+              </div>
             )}
 
             <div className="flex gap-3">

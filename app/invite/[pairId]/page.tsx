@@ -22,11 +22,22 @@ export default function InvitePage() {
   const [status, setStatus] = useState<Status>("checking");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<User | false | null>(null);
+  const [slowConnection, setSlowConnection] = useState(false);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
     return unsub;
   }, []);
+
+  // The initial auth check can hang indefinitely on a network that blocks
+  // or intercepts Google's sign-in traffic (seen on some public/institutional
+  // wifi) — an infinite spinner gives no way out. Bounded wait, then a
+  // visible retry instead of silence.
+  useEffect(() => {
+    if (user !== null) return; // already resolved, no need for the timer
+    const timer = setTimeout(() => setSlowConnection(true), 8000);
+    return () => clearTimeout(timer);
+  }, [user]);
 
   useEffect(() => {
     if (user === null) return; // still checking auth
@@ -91,6 +102,20 @@ export default function InvitePage() {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
         <p className="text-sm text-neutral-500">Chargement…</p>
+        {slowConnection && status === "checking" && (
+          <div className="mt-6">
+            <p className="text-sm text-neutral-600">
+              Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut
+              qu'il bloque la connexion à Google — essayez avec les données mobiles.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700"
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
       </main>
     );
   }

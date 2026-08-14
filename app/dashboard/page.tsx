@@ -3,7 +3,7 @@
 // Shows this week's proposal (if any) and its status. Real-time via
 // Firestore listeners, so both people see a lock/cancel the moment it happens.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -92,7 +92,7 @@ export default function DashboardPage() {
     await signOutUser();
   }
 
-  async function respond(response: "yes" | "no") {
+  async function respond(response: "yes" | "no" | "A" | "B") {
     if (!pair || !week || !user) return;
     setResponding(true);
     try {
@@ -109,6 +109,13 @@ export default function DashboardPage() {
     } finally {
       setResponding(false);
     }
+  }
+
+  // A proposal nobody acted on more than a day past its meeting time just
+  // goes quiet rather than lingering — display-only, no write, matches
+  // "silence the rest of the week" without needing a cron job for it.
+  function isLapsed(w: Week): boolean {
+    return w.status === "proposed" && Date.now() > new Date(w.proposedTime).getTime() + 24 * 60 * 60 * 1000;
   }
 
   // Still checking auth state
@@ -172,32 +179,52 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {week && (
+      {week && !week.optionB && (
         <div className="mt-6 rounded-xl border border-neutral-200 p-5">
           <p className="text-base text-neutral-900">{week.confirmationText}</p>
 
-          <StatusBadge status={week.status} />
+          <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
 
-          {week.status === "proposed" && myResponse === null && (
+          {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => respond("yes")}
                 disabled={responding}
-                className="flex-1 rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+                className="min-h-[56px] flex-1 rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-50"
               >
                 Oui
               </button>
               <button
                 onClick={() => respond("no")}
                 disabled={responding}
-                className="flex-1 rounded-lg border border-neutral-300 py-2.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
+                className="min-h-[56px] flex-1 rounded-lg border border-neutral-300 text-lg font-medium text-neutral-700 disabled:opacity-50"
               >
                 Non
               </button>
             </div>
           )}
 
-          {week.status === "proposed" && myResponse !== null && (
+          {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
+            <p className="mt-4 text-sm text-neutral-500">
+              En attente de l'autre personne…
+            </p>
+          )}
+        </div>
+      )}
+
+      {week && week.optionB && (
+        <div className="mt-6 rounded-xl border border-neutral-200 p-5">
+          <p className="text-base text-neutral-900">
+            {week.status === "proposed" ? "Deux propositions pour vous cette semaine :" : week.confirmationText}
+          </p>
+
+          <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+
+          {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
+            <TwoOptionPicker week={week} onVote={respond} voting={responding} />
+          )}
+
+          {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
             <p className="mt-4 text-sm text-neutral-500">
               En attente de l'autre personne…
             </p>
@@ -208,7 +235,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatusBadge({ status }: { status: Week["status"] }) {
+function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapsed?: boolean }) {
   const styles: Record<Week["status"], string> = {
     proposed: "bg-amber-50 text-amber-700",
     confirmed: "bg-emerald-50 text-emerald-700",
@@ -221,7 +248,92 @@ function StatusBadge({ status }: { status: Week["status"] }) {
   };
   return (
     <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
-      {labels[status]}
+      {lapsed ? "Expiré" : labels[status]}
     </span>
+  );
+}
+
+// Two real venue options, view-both + large tap-to-choose buttons as the
+// primary path (56px touch targets — readable and tappable across ages),
+// plus an optional drag gesture mirroring the marketing page's FridayCard
+// demo (swipe right = choose what's showing, swipe left = see the other
+// option). Confirms only once both people pick the same option — see
+// api/rsvp/route.ts.
+const SWIPE_THRESHOLD = 76;
+
+function TwoOptionPicker({
+  week,
+  onVote,
+  voting,
+}: {
+  week: Week;
+  onVote: (choice: "A" | "B") => void;
+  voting: boolean;
+}) {
+  const [viewing, setViewing] = useState<"A" | "B">("A");
+  const [dragX, setDragX] = useState(0);
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const option = viewing === "A" ? week.optionA! : week.optionB!;
+
+  function beginDrag(clientX: number) {
+    if (voting) return;
+    draggingRef.current = true;
+    startXRef.current = clientX;
+  }
+  function moveDrag(clientX: number) {
+    if (!draggingRef.current) return;
+    setDragX(Math.max(-140, Math.min(140, clientX - startXRef.current)));
+  }
+  function endDrag() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (dragX > SWIPE_THRESHOLD) {
+      onVote(viewing);
+    } else if (dragX < -SWIPE_THRESHOLD) {
+      setViewing((v) => (v === "A" ? "B" : "A"));
+    }
+    setDragX(0);
+  }
+
+  return (
+    <div className="mt-5">
+      <div
+        className="touch-pan-y select-none rounded-lg border border-neutral-200 p-4"
+        style={{
+          transform: `translateX(${dragX}px) rotate(${dragX / 26}deg)`,
+          transition: draggingRef.current ? "none" : "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
+        }}
+        onTouchStart={(e) => beginDrag(e.touches[0].clientX)}
+        onTouchMove={(e) => moveDrag(e.touches[0].clientX)}
+        onTouchEnd={endDrag}
+        onPointerDown={(e) => beginDrag(e.clientX)}
+        onPointerMove={(e) => moveDrag(e.clientX)}
+        onPointerUp={endDrag}
+        onPointerLeave={() => draggingRef.current && endDrag()}
+      >
+        <p className="text-xs text-neutral-400">{viewing === "A" ? "Option 1 sur 2" : "Option 2 sur 2"}</p>
+        <p className="mt-1 text-base font-medium text-neutral-900">{option.venueName}</p>
+        <p className="mt-1 text-sm text-neutral-500">{option.venueAddress}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setViewing((v) => (v === "A" ? "B" : "A"))}
+        disabled={voting}
+        className="mt-3 w-full text-sm text-neutral-500 underline underline-offset-4 disabled:opacity-50"
+      >
+        ← Voir l'autre option
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onVote(viewing)}
+        disabled={voting}
+        className="mt-3 min-h-[56px] w-full rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-50"
+      >
+        Choisir cette option →
+      </button>
+    </div>
   );
 }

@@ -16,8 +16,17 @@ const PENDING_EXPIRY_DAYS = 14;
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 export async function POST(request: Request) {
-  const { inviterUid, inviterName, partnerName, partnerEmail, agreedDay, agreedWindowStart, agreedWindowEnd, preferences } =
-    await request.json();
+  const {
+    inviterUid,
+    inviterName,
+    partnerName,
+    partnerEmail,
+    agreedDay,
+    agreedWindowStart,
+    agreedWindowEnd,
+    notifyDaysBefore,
+    preferences,
+  } = await request.json();
 
   if (!inviterUid || !partnerName || !partnerEmail) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
@@ -46,7 +55,18 @@ export async function POST(request: Request) {
     return status === "pending" || status === "active";
   });
   if (liveMatch) {
-    return NextResponse.json({ error: "invitation déjà envoyée à cette personne" }, { status: 409 });
+    // Not a dead end: give the frontend enough to point the user at the
+    // existing invite (cancel it, or just wait) instead of only a red
+    // error string with no way forward.
+    return NextResponse.json(
+      {
+        error: "invitation déjà envoyée à cette personne",
+        code: "DUPLICATE_INVITE",
+        pairId: liveMatch.id,
+        status: liveMatch.data().status,
+      },
+      { status: 409 }
+    );
   }
 
   const expiresAt = new Date();
@@ -60,6 +80,7 @@ export async function POST(request: Request) {
     agreedDay,
     agreedWindowStart,
     agreedWindowEnd,
+    notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
     preferences,
     status: "pending",
     subscriptionStatus: "trialing",
