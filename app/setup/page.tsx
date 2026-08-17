@@ -255,8 +255,15 @@ export default function SetupPage() {
     setStep(3);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Core submit, shared by the customizable wizard (handleSubmit) and the
+  // 1-tap path (handleOneTap) below — same request, same validation, same
+  // error handling, just a different source for day/window/venue values.
+  async function submitInvite(overrides?: {
+    day: Pair["agreedDay"];
+    windowStart: string;
+    windowEnd: string;
+    venueTypes: VenueType[];
+  }) {
     setError(null);
     setDuplicateInvite(false);
 
@@ -264,7 +271,11 @@ export default function SetupPage() {
       setError("Vous devez être connecté(e).");
       return;
     }
-    if (venueTypes.length === 0) {
+    const useDay = overrides?.day ?? day;
+    const useWindowStart = overrides?.windowStart ?? windowStart;
+    const useWindowEnd = overrides?.windowEnd ?? windowEnd;
+    const useVenueTypes = overrides?.venueTypes ?? venueTypes;
+    if (useVenueTypes.length === 0) {
       setError("Choisissez au moins un type de lieu.");
       return;
     }
@@ -279,12 +290,12 @@ export default function SetupPage() {
           inviterName: user.displayName ?? "Quelqu'un",
           partnerName,
           partnerEmail,
-          agreedDay: day,
-          agreedWindowStart: windowStart,
-          agreedWindowEnd: windowEnd,
+          agreedDay: useDay,
+          agreedWindowStart: useWindowStart,
+          agreedWindowEnd: useWindowEnd,
           notifyDaysBefore,
           postalCode: postalCode || undefined,
-          preferences: { venueTypes, dietaryFilters },
+          preferences: { venueTypes: useVenueTypes, dietaryFilters },
         }),
       });
 
@@ -300,6 +311,36 @@ export default function SetupPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await submitInvite();
+  }
+
+  // The 1-tap path: skips steps 2 and 3 entirely once name + email are in,
+  // using the same Sunday 15h-17h default Step 2 already suggests plus a
+  // café-or-park default, matching the most common picks rather than
+  // inventing a preference nobody chose. "Personnaliser" (goToStep2) stays
+  // one tap away for anyone who wants control — this doesn't replace that
+  // path, it shortcuts it.
+  const ONE_TAP_DAY: Pair["agreedDay"] = "sun";
+  const ONE_TAP_WINDOW_START = "15:00";
+  const ONE_TAP_WINDOW_END = "17:00";
+  const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
+
+  async function handleOneTap() {
+    setError(null);
+    if (!partnerName.trim() || !partnerEmail.trim()) {
+      setError("Indiquez un prénom et un e-mail pour continuer.");
+      return;
+    }
+    await submitInvite({
+      day: ONE_TAP_DAY,
+      windowStart: ONE_TAP_WINDOW_START,
+      windowEnd: ONE_TAP_WINDOW_END,
+      venueTypes: ONE_TAP_VENUE_TYPES,
+    });
   }
 
   // Still checking auth state, or checking for an existing pair
@@ -435,11 +476,21 @@ export default function SetupPage() {
 
             <button
               type="button"
-              onClick={goToStep2}
-              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+              onClick={handleOneTap}
+              disabled={submitting}
+              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              Continuer
+              {submitting ? "Envoi…" : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+            </button>
+            <button
+              type="button"
+              onClick={goToStep2}
+              disabled={submitting}
+              className="w-full rounded-full border py-3.5 text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ borderColor: BORDER, color: INK }}
+            >
+              Personnaliser le jour et le lieu
             </button>
           </section>
         )}

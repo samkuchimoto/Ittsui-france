@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
+import { registerNativePush } from "@/lib/nativePush";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -50,6 +51,8 @@ export async function signInWithGoogle(): Promise<User> {
     },
     { merge: true }
   );
+
+  await registerNativePush(user.uid);
 
   return user;
 }

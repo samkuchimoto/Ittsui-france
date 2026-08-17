@@ -111,6 +111,29 @@ export default function DashboardPage() {
     }
   }
 
+  // Hitbonenut: a brief, unskippable-but-short pause between choosing and
+  // it actually locking in — the moment worth protecting is agreeing to
+  // something, not declining, so "no" bypasses this and stays instant
+  // (matches the existing no-renegotiation rule elsewhere in this file).
+  const [pendingResponse, setPendingResponse] = useState<"yes" | "A" | "B" | null>(null);
+
+  function queueResponse(response: "yes" | "no" | "A" | "B") {
+    if (response === "no") {
+      respond("no");
+      return;
+    }
+    setPendingResponse(response);
+  }
+
+  async function confirmPending() {
+    if (!pendingResponse) return;
+    await respond(pendingResponse);
+    setPendingResponse(null);
+  }
+
+  const pendingVenueName =
+    pendingResponse === "A" ? week?.optionA?.venueName : pendingResponse === "B" ? week?.optionB?.venueName : week?.venueName;
+
   // A proposal nobody acted on more than a day past its meeting time just
   // goes quiet rather than lingering — display-only, no write, matches
   // "silence the rest of the week" without needing a cron job for it.
@@ -188,14 +211,14 @@ export default function DashboardPage() {
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <div className="mt-5 flex gap-3">
               <button
-                onClick={() => respond("yes")}
+                onClick={() => queueResponse("yes")}
                 disabled={responding}
                 className="min-h-[56px] flex-1 rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-50"
               >
                 Oui
               </button>
               <button
-                onClick={() => respond("no")}
+                onClick={() => queueResponse("no")}
                 disabled={responding}
                 className="min-h-[56px] flex-1 rounded-lg border border-neutral-300 text-lg font-medium text-neutral-700 disabled:opacity-50"
               >
@@ -221,7 +244,7 @@ export default function DashboardPage() {
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
-            <TwoOptionPicker week={week} onVote={respond} voting={responding} />
+            <TwoOptionPicker week={week} onVote={queueResponse} voting={responding} />
           )}
 
           {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
@@ -231,7 +254,90 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      <HitbonenutPause
+        open={pendingResponse !== null}
+        venueName={pendingVenueName ?? ""}
+        onConfirm={confirmPending}
+        onCancel={() => setPendingResponse(null)}
+        confirming={responding}
+      />
     </main>
+  );
+}
+
+// A brief pause between choosing and it actually locking in — long enough
+// to notice you're doing it, short enough to never feel like friction.
+// No skip button: at under 3 seconds, a skip would defeat the one thing
+// this exists to do. Declining bypasses it entirely (see queueResponse
+// in DashboardPage) — this is only ever in the path of saying yes.
+const PAUSE_MS = 2400;
+
+function HitbonenutPause({
+  open,
+  venueName,
+  onConfirm,
+  onCancel,
+  confirming,
+}: {
+  open: boolean;
+  venueName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirming: boolean;
+}) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setReady(false);
+      return;
+    }
+    const timer = setTimeout(() => setReady(true), PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" role="dialog" aria-modal="true">
+      <style jsx>{`
+        .breath {
+          animation: breathe 2.4s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .breath {
+            animation: none;
+          }
+        }
+        @keyframes breathe {
+          0%, 100% { transform: scale(0.85); opacity: 0.5; }
+          50% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+      <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center">
+        <span
+          className={`breath mx-auto block h-9 w-9 rounded-full border-2 ${ready ? "border-emerald-600" : "border-neutral-300"}`}
+        />
+        <p className="mt-4 text-sm text-neutral-500">Un instant, avant de confirmer.</p>
+        <p className="mt-1 text-base font-medium text-neutral-900">{venueName}</p>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={!ready || confirming}
+          className="mt-6 min-h-[56px] w-full rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-40"
+        >
+          {ready ? "Confirmer" : "…"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-3 text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
   );
 }
 
