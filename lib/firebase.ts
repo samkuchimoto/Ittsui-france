@@ -52,7 +52,7 @@ export async function signInWithGoogle(): Promise<User> {
     { merge: true }
   );
 
-  await registerNativePush(user.uid);
+  await registerNativePush(user);
 
   return user;
 }

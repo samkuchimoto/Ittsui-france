@@ -520,9 +520,14 @@ export default function Home() {
 
       <footer className="flex flex-col items-center gap-2 px-6 pb-10 text-center text-sm" style={{ color: `${MUTED}99` }}>
         <span>© 2026 Ittsui France. Conçu avec retenue.</span>
-        <Link href="/confidentialite" className="underline underline-offset-4">
-          Confidentialité
-        </Link>
+        <span className="flex items-center gap-3">
+          <Link href="/confidentialite" className="underline underline-offset-4">
+            Confidentialité
+          </Link>
+          <Link href="/mentions-legales" className="underline underline-offset-4">
+            Mentions légales
+          </Link>
+        </span>
       </footer>
     </main>
   );

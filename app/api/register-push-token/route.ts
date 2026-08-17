@@ -4,18 +4,30 @@
 // field lib/notify.ts already reads from, unchanged. This route is the
 // missing other half: pushToken existed in the schema and was read on
 // send, but nothing ever wrote it before native registration existed.
+//
+// A push token is enough to send someone a notification, so unlike most
+// routes in this app this one doesn't trust a client-supplied userId —
+// it requires a real Firebase ID token and writes to that verified uid
+// only. Consent itself is gated earlier and separately: nativePush.ts
+// only ever calls this after the OS-level permission prompt
+// (PushNotifications.requestPermissions()) is actually granted — a token
+// can't exist here without that having happened first.
 
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
-  const { userId, pushToken } = await request.json();
+  const uid = await verifyRequestUser(request);
+  if (!uid) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
-  if (!userId || typeof pushToken !== "string" || !pushToken) {
+  const { pushToken } = await request.json();
+  if (typeof pushToken !== "string" || !pushToken) {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
 
-  await adminDb.collection("users").doc(userId).set({ pushToken }, { merge: true });
+  await adminDb.collection("users").doc(uid).set({ pushToken }, { merge: true });
 
   return NextResponse.json({ status: "ok" });
 }

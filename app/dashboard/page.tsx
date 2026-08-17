@@ -92,6 +92,28 @@ export default function DashboardPage() {
     await signOutUser();
   }
 
+  // GDPR Article 17 (droit à l'effacement) — see api/user/delete/route.ts
+  // for exactly what is and isn't deleted and why. window.confirm is a
+  // deliberately minimal irreversibility gate; nothing fancier is needed
+  // for a single yes/no on a destructive action.
+  async function handleDeleteAccount() {
+    if (!user) return;
+    const confirmed = window.confirm(
+      "Supprimer définitivement votre compte Ittsui ? Cette action est irréversible."
+    );
+    if (!confirmed) return;
+    try {
+      const idToken = await user.getIdToken();
+      await fetch("/api/user/delete", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+    } finally {
+      await signOutUser();
+      router.push("/");
+    }
+  }
+
   async function respond(response: "yes" | "no" | "A" | "B") {
     if (!pair || !week || !user) return;
     setResponding(true);
@@ -177,6 +199,12 @@ export default function DashboardPage() {
         >
           Se déconnecter
         </button>
+        <button
+          onClick={handleDeleteAccount}
+          className="mt-2 block text-xs text-red-400 underline underline-offset-4"
+        >
+          Supprimer mon compte
+        </button>
       </main>
     );
   }
@@ -188,12 +216,20 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-md px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-neutral-900">Cette semaine</h1>
-        <button
-          onClick={handleSignOut}
-          className="text-xs text-neutral-400 underline underline-offset-4"
-        >
-          Se déconnecter
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={handleSignOut}
+            className="text-xs text-neutral-400 underline underline-offset-4"
+          >
+            Se déconnecter
+          </button>
+          <button
+            onClick={handleDeleteAccount}
+            className="text-xs text-red-400 underline underline-offset-4"
+          >
+            Supprimer mon compte
+          </button>
+        </div>
       </div>
 
       {!week && (

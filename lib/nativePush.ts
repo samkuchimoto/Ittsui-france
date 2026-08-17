@@ -14,8 +14,9 @@
 // for done.
 
 import { Capacitor } from "@capacitor/core";
+import type { User } from "firebase/auth";
 
-export async function registerNativePush(userId: string): Promise<void> {
+export async function registerNativePush(user: User): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
 
   const { PushNotifications } = await import("@capacitor/push-notifications");
@@ -30,10 +31,14 @@ export async function registerNativePush(userId: string): Promise<void> {
 
   PushNotifications.addListener("registration", async (token) => {
     try {
+      const idToken = await user.getIdToken();
       await fetch("/api/register-push-token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, pushToken: token.value }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ pushToken: token.value }),
       });
     } catch {
       // Best-effort — a failed save here just means push falls back to

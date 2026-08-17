@@ -1,0 +1,65 @@
+name: Android build
+
+# Builds a debug APK on every push to main. This wraps the live deployed
+# site (capacitor.config.ts uses server.url, not a bundled local build —
+# see that file's comment) — `npm run build` here is a compile/type-check
+# gate on the web app, not what actually ships inside the APK, and the
+# workflow doesn't need Firebase secrets configured for that reason.
+#
+# google-services.json is not present in this repo (see android/app/
+# build.gradle's own try/catch around the google-services plugin) — the
+# build below succeeds without it, but push notifications won't be live
+# on Android until that file is added from the Firebase console.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor Android shell
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x ./android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ittsui-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
