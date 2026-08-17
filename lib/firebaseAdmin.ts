@@ -1,11 +1,25 @@
 // Server-side Firebase Admin init — used only inside /app/api routes
-// (weekly-propose cron, rsvp handler). Never imported into client code.
+// (weekly-propose cron, rsvp handler, etc). Never imported into client code.
 // Needs a service account key set as env vars in Vercel (not the public config).
+//
+// adminDb/adminMessaging/adminAuth are lazy on purpose: cert() throws
+// synchronously if the FIREBASE_ADMIN_* env vars aren't set, and Next.js's
+// build step imports every API route module to inspect it (to collect
+// route metadata) without ever calling the handlers themselves. Eager
+// initialization here used to make `next build` itself require real
+// Firebase Admin credentials just to *import* this file — harmless on
+// Vercel (the real secrets are always present there) but it broke in a
+// clean CI environment with no secrets configured, since import alone
+// was enough to crash the build before a single route ever ran. The
+// Proxy defers construction (and cert()'s validation) until a property
+// is actually accessed at request time — every existing call site
+// (adminDb.collection(...), adminAuth.verifyIdToken(...), etc.) keeps
+// working unchanged.
 
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
-import { getAuth } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getMessaging, type Messaging } from "firebase-admin/messaging";
+import { getAuth, type Auth } from "firebase-admin/auth";
 
 function getAdminApp(): App {
   if (getApps().length) return getApps()[0];
@@ -20,11 +34,19 @@ function getAdminApp(): App {
   });
 }
 
-const adminApp = getAdminApp();
+function lazy<T extends object>(factory: () => T): T {
+  let instance: T | undefined;
+  return new Proxy({} as T, {
+    get(_target, prop, receiver) {
+      if (!instance) instance = factory();
+      return Reflect.get(instance as object, prop, receiver);
+    },
+  });
+}
 
-export const adminDb = getFirestore(adminApp);
-export const adminMessaging = getMessaging(adminApp);
-export const adminAuth = getAuth(adminApp);
+export const adminDb: Firestore = lazy(() => getFirestore(getAdminApp()));
+export const adminMessaging: Messaging = lazy(() => getMessaging(getAdminApp()));
+export const adminAuth: Auth = lazy(() => getAuth(getAdminApp()));
 
 // Verifies the caller's Firebase ID token and returns their real uid —
 // used by routes where trusting a client-supplied userId isn't safe
