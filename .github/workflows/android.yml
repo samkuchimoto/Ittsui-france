@@ -47,8 +47,23 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      # Temporary diagnostic: capture full output regardless of outcome and
+      # upload it, since job logs aren't readable without admin/write
+      # access to this repo. Remove once the sync failure is understood.
       - name: Sync Capacitor Android shell
-        run: npx cap sync android
+        run: npx cap sync android --verbose > sync-output.txt 2>&1
+        continue-on-error: true
+
+      - name: Upload sync diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-diagnostic-log
+          path: sync-output.txt
+          if-no-files-found: warn
+
+      - name: Fail if sync actually failed
+        run: test -f sync-output.txt && ! grep -q "Sync finished" sync-output.txt && exit 1 || exit 0
 
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
