@@ -45,6 +45,7 @@ import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
+import { tapHaptic, ImpactStyle } from "@/lib/haptics";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -188,6 +189,7 @@ export default function SetupClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
 
@@ -349,6 +351,49 @@ export default function SetupClient() {
     await submitInvite();
   }
 
+  // Native share sheet first (lets the recipient pick any app, not just
+  // WhatsApp) -> WhatsApp direct link if unsupported or the sheet itself
+  // fails to open -> clipboard + toast as the last resort. Mirrors the
+  // same graceful-degradation shape as weekly-propose/route.ts's venue
+  // pipeline (RAG -> Firestore -> static), just for sharing instead of
+  // venue selection.
+  async function handleShare() {
+    if (!invited) return;
+    tapHaptic(ImpactStyle.Light);
+
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
+    const shareData = {
+      title: "Ittsui - Notre moment",
+      text: "Je t'ai préparé notre moment de la semaine ! Rejoins-moi sur Ittsui :",
+      url: inviteUrl,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        // AbortError = the user closed the share sheet without picking
+        // anything — an expected, non-error outcome, not something to
+        // fall through to a fallback or surface to error tracking for.
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+
+    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${shareData.text} ${shareData.url}`)}`;
+    const opened = typeof window !== "undefined" ? window.open(whatsappHref, "_blank", "noopener,noreferrer") : null;
+    if (opened) return;
+
+    try {
+      await navigator.clipboard.writeText(shareData.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Nothing more to do silently — the link is still visible on screen
+      // for the user to select and copy manually.
+    }
+  }
+
   // The 1-tap path: skips steps 2 and 3 entirely once name + email are in,
   // using the same Sunday 15h-17h default Step 2 already suggests plus a
   // café-or-park default, matching the most common picks rather than
@@ -415,11 +460,6 @@ export default function SetupClient() {
 
   // Invitation just sent — confirmation screen
   if (invited) {
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
-    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
-      `${invited.name}, je t'invite sur Ittsui pour qu'on se voie chaque semaine, sans avoir à s'organiser : ${inviteUrl}`
-    )}`;
-
     return (
       <Shell>
         <div className="text-center">
@@ -441,17 +481,24 @@ export default function SetupClient() {
               steps={SENT_STEPS}
               currentKey="sent"
               doneSlot={
-                <a
-                  href={whatsappHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={handleShare}
                   className="ml-1 font-medium underline underline-offset-4"
                 >
-                  Partager sur WhatsApp
-                </a>
+                  Partager l&apos;invitation
+                </button>
               }
             />
           </div>
+          {copied && (
+            <p
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+            >
+              Lien copié !
+            </p>
+          )}
 
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
             <p className="text-sm font-medium">Et maintenant ?</p>
