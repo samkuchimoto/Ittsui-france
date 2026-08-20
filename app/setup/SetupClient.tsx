@@ -46,6 +46,7 @@ import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGri
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
+import { previewVenue } from "@/lib/venueCatalog";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -198,6 +199,17 @@ export default function SetupClient() {
   useEffect(() => {
     if (detectedPostalCode) setPostalCode(detectedPostalCode);
   }, [detectedPostalCode]);
+
+  // Fired proactively on mount rather than waiting for Step 3's manual
+  // "Utiliser ma position actuelle" button, so the Step 1 one-tap CTA can
+  // preview a real nearby venue instead of a generic "café ou parc" line.
+  // useUserLocation() already fails completely silently (denial, timeout,
+  // unsupported browser) and its own 5s timeout bounds how long this can
+  // leave postalCode unset — no separate deadline needed here.
+  useEffect(() => {
+    detectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -405,6 +417,14 @@ export default function SetupClient() {
   const ONE_TAP_WINDOW_END = "17:00";
   const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
 
+  // Same curated catalog the real weekly-propose pipeline falls back to
+  // (lib/venueCatalog.ts) — a genuinely real venue that could turn out to
+  // be the first proposal, not an invented one. Preview copy only: the
+  // actual submission below still sends venue TYPE preferences, never a
+  // specific pre-picked venue — the real pick happens server-side, same as
+  // for every other pair, once postal code and preferences are on file.
+  const ctaPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
+
   async function handleOneTap() {
     setError(null);
     if (!partnerName.trim() || !partnerEmail.trim()) {
@@ -600,7 +620,11 @@ export default function SetupClient() {
               className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              {submitting ? "Envoi…" : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              {submitting
+                ? "Envoi…"
+                : ctaPreview
+                  ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
+                  : "Envoyer en un clic · Dimanche 15h, café ou parc"}
             </button>
             <button
               type="button"

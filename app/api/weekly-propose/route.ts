@@ -52,6 +52,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import type { Pair, VenueOption, VenueType } from "@/lib/types";
+import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 
 const DAY_MAP = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const RAG_TIMEOUT_MS = 1500;
@@ -230,57 +231,10 @@ async function tryFirestoreRuleEngine(pair: Pair): Promise<VenueProposal | null>
 
 // Tier 3 (fallback, true last resort): zero external dependencies. This is
 // what fires if BOTH the RAG service AND Firestore are unavailable — it's
-// what guarantees a Friday proposal still goes out.
-type Metro = "paris" | "marseille" | "lyon" | "lille" | "bordeaux";
-
-// Coarse department-level routing from a French postal code's first two
-// digits — good enough to pick the right metro's landmarks, not precise
-// geolocation. Returns null for anywhere else in France (still ~most of
-// the country by area, honestly not by population) rather than guessing.
-function departmentFromPostalCode(postalCode: string | undefined): Metro | null {
-  if (!postalCode || postalCode.length < 2) return null;
-  const prefix = postalCode.slice(0, 2);
-  if (["75", "92", "93", "94"].includes(prefix)) return "paris"; // Paris + inner ring
-  if (prefix === "13") return "marseille";
-  if (prefix === "69") return "lyon";
-  if (prefix === "59") return "lille";
-  if (prefix === "33") return "bordeaux";
-  return null;
-}
-
-// Real, large, long-standing public institutions only — parks and museums
-// are the kind of landmark that doesn't quietly close or move, which is a
-// deliberately higher confidence bar than a small private café/restaurant
-// whose current address isn't something to guess at for a city nobody's
-// verified. Cafe/restaurant stay Paris-only for that reason.
-const STATIC_CATALOG: Record<Metro, Partial<Record<VenueType, { name: string; address: string }[]>>> = {
-  paris: {
-    cafe: [
-      { name: "Café de Flore", address: "172 Bd Saint-Germain, 75006 Paris" },
-      { name: "Café de l'Industrie", address: "16 Rue Saint-Sabin, 75011 Paris" },
-    ],
-    restaurant: [{ name: "Chez Janou", address: "2 Rue Roger Verlomme, 75003 Paris" }],
-    park: [{ name: "Jardin du Luxembourg", address: "75006 Paris" }],
-    museum: [{ name: "Musée Rodin", address: "77 Rue de Varenne, 75007 Paris" }],
-  },
-  marseille: {
-    park: [{ name: "Parc Borély", address: "Av. du Parc Borély, 13008 Marseille" }],
-    museum: [{ name: "MuCEM", address: "7 Promenade Robert Laffont, 13002 Marseille" }],
-  },
-  lyon: {
-    park: [{ name: "Parc de la Tête d'Or", address: "Place du Général Leclerc, 69006 Lyon" }],
-    museum: [{ name: "Musée des Beaux-Arts de Lyon", address: "20 Place des Terreaux, 69001 Lyon" }],
-  },
-  lille: {
-    park: [{ name: "Parc de la Citadelle", address: "Av. Mathias Delobel, 59000 Lille" }],
-    museum: [{ name: "Palais des Beaux-Arts de Lille", address: "Place de la République, 59000 Lille" }],
-  },
-  bordeaux: {
-    park: [{ name: "Jardin Public de Bordeaux", address: "Cours de Verdun, 33000 Bordeaux" }],
-    museum: [{ name: "Musée d'Aquitaine", address: "20 Cours Pasteur, 33000 Bordeaux" }],
-  },
-};
-
+// what guarantees a Friday proposal still goes out. Metro/postal-code
+// routing and the venue catalog itself live in lib/venueCatalog.ts, shared
+// with the setup wizard's one-tap CTA preview (SetupClient.tsx) so both
+// read the exact same curated data.
 const HOME_FALLBACK = { name: "Chez vous", address: "" };
 
 function staticRuleEngineFallback(pair: Pair): VenueProposal {
