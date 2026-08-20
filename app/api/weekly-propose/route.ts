@@ -219,8 +219,10 @@ async function tryFirestoreRuleEngine(pair: Pair): Promise<VenueProposal | null>
     const venueA = shortlist[0];
     const venueB = shortlist[1]; // undefined if the shortlist only had one candidate — not faked
     return {
-      optionA: { venueId: venueA.id, venueName: venueA.name, venueAddress: venueA.address },
-      optionB: venueB ? { venueId: venueB.id, venueName: venueB.name, venueAddress: venueB.address } : undefined,
+      optionA: { venueId: venueA.id, venueName: venueA.name, venueAddress: venueA.address, venueType: venueA.type },
+      optionB: venueB
+        ? { venueId: venueB.id, venueName: venueB.name, venueAddress: venueB.address, venueType: venueB.type }
+        : undefined,
       confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
       source: "firestore-rule-engine",
     };
@@ -271,10 +273,20 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
   const venueB = indexB !== null ? options[indexB] : null;
 
   return {
-    optionA: { venueId: `static-${metro}-${resolvedType}-${indexA}`, venueName: venueA.name, venueAddress: venueA.address },
+    optionA: {
+      venueId: `static-${metro}-${resolvedType}-${indexA}`,
+      venueName: venueA.name,
+      venueAddress: venueA.address,
+      venueType: resolvedType,
+    },
     optionB:
       venueB && indexB !== null
-        ? { venueId: `static-${metro}-${resolvedType}-${indexB}`, venueName: venueB.name, venueAddress: venueB.address }
+        ? {
+            venueId: `static-${metro}-${resolvedType}-${indexB}`,
+            venueName: venueB.name,
+            venueAddress: venueB.address,
+            venueType: resolvedType,
+          }
         : undefined,
     confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
     source: "static-rule-engine",

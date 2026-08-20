@@ -51,6 +51,12 @@ export interface VenueOption {
   venueId: string;
   venueName: string;
   venueAddress: string;
+  // Optional, additive — lets the dashboard show a real photo instead of
+  // plain text. Populated by the Firestore and static tiers of the venue
+  // pipeline (weekly-propose/route.ts), which know the type; left unset by
+  // the RAG tier's response shape, and by any week proposed before this
+  // field existed — both read-side as "no confident photo," not an error.
+  venueType?: VenueType;
 }
 
 export interface Week {
