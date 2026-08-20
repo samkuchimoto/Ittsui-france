@@ -66,12 +66,20 @@ jobs:
       - name: Copy web assets into Android shell
         run: npx cap copy android
         env:
-          CI: false
+          # NOT `false` — env vars are always strings, and the string
+          # "false" is truthy in JS, so `CI: false` here would have been a
+          # no-op for any tool doing a naive `if (process.env.CI)` check.
+          # An empty string is the correct falsy value.
+          CI: ""
 
       - name: Update Android native dependencies
         run: npx cap update android
         env:
-          CI: false
+          # NOT `false` — env vars are always strings, and the string
+          # "false" is truthy in JS, so `CI: false` here would have been a
+          # no-op for any tool doing a naive `if (process.env.CI)` check.
+          # An empty string is the correct falsy value.
+          CI: ""
 
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
