@@ -357,12 +357,12 @@ export default function Home() {
             className="leading-[1.08]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
           >
-            Le temps de vos proches,
-            <br />
-            protégé.
+            Protégez vos relations précieuses contre l&apos;érosion du quotidien.
           </h1>
           <p className="mx-auto mt-5 max-w-md text-[17px]" style={{ color: MUTED }}>
-            Un seul moment par semaine. Une proposition concrète. Zéro calendrier à gérer.
+            Ittsui est un outil de maintien relationnel conçu pour préserver vos liens existants (proches,
+            partenaire, famille) malgré le travail et la routine. Une proposition unique par semaine, validable en 1
+            clic—sans aucun agenda à gérer.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3">
             <Link
@@ -370,7 +370,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
               style={{ backgroundColor: ACCENT }}
             >
-              Essayer avec un proche
+              Protéger mes relations
               <IconArrowRight className="h-4 w-4" />
             </Link>
             <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
@@ -451,13 +451,10 @@ export default function Home() {
               </span>
               <div>
                 <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Définissez vos habitudes
-                  <span className="ml-2 text-sm font-normal" style={{ color: MUTED }}>
-                    (une seule fois)
-                  </span>
+                  1 proposition par semaine
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Préférences de lieux : café, parc, restaurant, chez l&apos;un des deux.
+                  Chaque semaine, recevez une proposition unique, prête à être validée en un clic.
                 </p>
               </div>
             </li>
@@ -467,10 +464,11 @@ export default function Home() {
               </span>
               <div>
                 <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  La proposition du vendredi
+                  Validation en 1 clic
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Chaque vendredi à 18h, recevez une proposition unique, prête à être validée en un clic.
+                  Un lieu, un horaire. Vous dites oui, ou vous changez d&apos;avis en un geste — sans négociation,
+                  sans fil de discussion.
                 </p>
               </div>
             </li>
@@ -480,13 +478,14 @@ export default function Home() {
               </span>
               <div>
                 <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Silence le reste de la semaine
+                  Anti-érosion relationnelle
                   <span style={{ color: MUTED }}>
                     <IconCalendarX className="h-4 w-4" />
                   </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Une fois le rendez-vous bloqué, l&apos;application se tait. Zéro notification parasite.
+                  Une fois le rendez-vous bloqué, silence total jusqu&apos;à la semaine suivante. Le lien se
+                  maintient sans effort de mémoire.
                 </p>
                 <p className="mt-1 text-sm" style={{ color: MUTED }}>
                   Le droit à la déconnexion, appliqué à vos relations.
