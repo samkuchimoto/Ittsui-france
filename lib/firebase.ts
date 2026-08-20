@@ -35,13 +35,22 @@ export const db = getFirestore(app);
 // Explicit local persistence — already the SDK default in a normal browser
 // tab, but the one place that default isn't guaranteed is the Capacitor
 // Android WebView (see the redirect-sign-in comment below), so this is
-// made explicit rather than assumed. watchAuthState() waits on this before
-// attaching its listener so a cold start can't race an unresolved
-// persistence setting.
-const persistenceReady: Promise<void> =
-  typeof window !== "undefined"
-    ? setPersistence(auth, browserLocalPersistence).catch(() => {})
-    : Promise.resolve();
+// made explicit rather than assumed.
+//
+// Fire-and-forget, NOT awaited by watchAuthState(): an earlier version
+// gated onAuthStateChanged's attachment on this promise resolving first,
+// which caused every page (invite, dashboard, setup/pending) to hang on
+// its loading spinner forever whenever setPersistence() itself hung —
+// which it reliably does with multiple tabs of the same origin open at
+// once (an IndexedDB-locking issue across tabs, not something .catch()
+// protects against — that only handles rejection, not a promise that
+// never settles). onAuthStateChanged already reflects the current
+// persisted session correctly regardless of whether this has finished —
+// it only affects persistence of *future* sign-ins — so there was never a
+// real reason to block on it.
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+}
 
 // --- Auth helpers ---
 
@@ -102,16 +111,7 @@ export async function signOutUser(): Promise<void> {
 
 export function watchAuthState(callback: (user: User | null) => void) {
   consumeRedirectResultOnce();
-  let unsub: (() => void) | null = null;
-  let cancelled = false;
-  persistenceReady.then(() => {
-    if (cancelled) return;
-    unsub = onAuthStateChanged(auth, callback);
-  });
-  return () => {
-    cancelled = true;
-    unsub?.();
-  };
+  return onAuthStateChanged(auth, callback);
 }
 
 // Messaging (push) only works in the browser and only if the browser supports it
