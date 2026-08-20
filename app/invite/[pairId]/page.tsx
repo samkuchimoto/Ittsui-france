@@ -3,16 +3,50 @@
 // What the partner lands on from the invite email. Two paths:
 // - ?decline=1 in the URL -> declines without requiring login (GDPR: an
 //   opt-out shouldn't cost the person an account creation).
-// - otherwise -> Google sign-in, then /api/activate-pending-pair checks the
-//   logged-in email matches the invited email and activates the pair.
+// - otherwise -> a public preview shell (no auth required to view), then
+//   Google sign-in only once "Je viens" is tapped, then
+//   /api/activate-pending-pair checks the logged-in email matches the
+//   invited email and activates the pair.
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const INK = "#1C1917";
+const MUTED = "#78716C";
+const ACCENT = "#A84B38";
+const BORDER = "#E8E2D9";
+
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "error";
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      style={{ color: INK }}
+    >
+      <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
+    </main>
+  );
+}
 
 export default function InvitePage() {
   const router = useRouter();
@@ -101,62 +135,85 @@ export default function InvitePage() {
 
   if (status === "checking" || status === "activating") {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">
+      <Shell>
+        <p className="text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
         {slowConnection && status === "checking" && (
           <div className="mt-6">
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm" style={{ color: MUTED }}>
               Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut
-              qu'il bloque la connexion à Google — essayez avec les données mobiles.
+              qu&apos;il bloque la connexion à Google — essayez avec les données mobiles.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700"
+              className="mt-4 rounded-full border px-4 py-2 text-sm font-medium"
+              style={{ borderColor: BORDER, color: INK }}
             >
               Réessayer
             </button>
           </div>
         )}
-      </main>
+      </Shell>
     );
   }
 
   if (status === "declined") {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Invitation déclinée</h1>
-        <p className="mt-3 text-sm text-neutral-600">Aucune donnée n'a été conservée. Rien d'autre à faire.</p>
-      </main>
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Invitation déclinée
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          Aucune donnée n&apos;a été conservée. Rien d&apos;autre à faire.
+        </p>
+      </Shell>
     );
   }
 
   if (isDecline) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Décliner l'invitation ?</h1>
-        <p className="mt-3 text-sm text-neutral-600">Vous ne serez pas lié(e) et vos informations seront supprimées.</p>
-        {errorMsg && <p className="mt-4 text-sm text-red-600">{errorMsg}</p>}
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Décliner l&apos;invitation ?
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          Vous ne serez pas lié(e) et vos informations seront supprimées.
+        </p>
+        {errorMsg && (
+          <p className="mt-4 text-sm" style={{ color: ACCENT }}>
+            {errorMsg}
+          </p>
+        )}
         <button
           onClick={handleDecline}
-          className="mt-6 w-full rounded-lg border border-neutral-300 py-3 text-sm font-medium text-neutral-700"
+          className="mt-6 w-full rounded-full border py-3 text-sm font-medium"
+          style={{ borderColor: BORDER, color: INK }}
         >
           Décliner
         </button>
-      </main>
+      </Shell>
     );
   }
 
+  // Public preview shell — visible with no auth required. Sign-in is only
+  // triggered by the "Je viens" tap below, not by landing on this page.
   return (
-    <main className="mx-auto max-w-md px-6 py-12 text-center">
-      <h1 className="text-2xl font-semibold text-neutral-900">Vous avez été invité(e) sur Ittsui</h1>
-      <p className="mt-3 text-sm text-neutral-600">
-        Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette invitation,
-        ça suffit à activer le lien.
+    <Shell>
+      <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>Ittsui</span>
+      <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
+        Vous avez été invité(e) sur Ittsui
+      </h1>
+      <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
+        Un rendez-vous protégé, une fois par semaine, avec la personne qui vous a envoyé ce lien — une proposition,
+        validable en un geste, sans agenda à gérer.
+      </p>
+      <p className="mt-3 text-sm" style={{ color: MUTED }}>
+        Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette invitation, ça
+        suffit à activer le lien.
       </p>
       {errorMsg && (
-        <p className="mt-4 text-sm text-red-600">
+        <p className="mt-4 text-sm" style={{ color: ACCENT }}>
           {errorMsg}
           {errorMsg.includes("ne correspond pas") &&
             " Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation."}
@@ -164,13 +221,16 @@ export default function InvitePage() {
       )}
       <button
         onClick={handleSignIn}
-        className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
+        className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+        style={{ backgroundColor: ACCENT }}
       >
         {errorMsg ? "Se connecter avec un autre compte" : "Je viens"}
       </button>
       {!errorMsg && (
-        <p className="mt-3 text-xs text-neutral-400">Via Google, juste pour vérifier que c&apos;est bien vous.</p>
+        <p className="mt-3 text-xs" style={{ color: MUTED }}>
+          Via Google, juste pour vérifier que c&apos;est bien vous.
+        </p>
       )}
-    </main>
+    </Shell>
   );
 }

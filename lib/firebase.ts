@@ -9,6 +9,8 @@ import {
   getRedirectResult,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
   type User,
 } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
@@ -29,6 +31,17 @@ export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Explicit local persistence — already the SDK default in a normal browser
+// tab, but the one place that default isn't guaranteed is the Capacitor
+// Android WebView (see the redirect-sign-in comment below), so this is
+// made explicit rather than assumed. watchAuthState() waits on this before
+// attaching its listener so a cold start can't race an unresolved
+// persistence setting.
+const persistenceReady: Promise<void> =
+  typeof window !== "undefined"
+    ? setPersistence(auth, browserLocalPersistence).catch(() => {})
+    : Promise.resolve();
 
 // --- Auth helpers ---
 
@@ -89,7 +102,16 @@ export async function signOutUser(): Promise<void> {
 
 export function watchAuthState(callback: (user: User | null) => void) {
   consumeRedirectResultOnce();
-  return onAuthStateChanged(auth, callback);
+  let unsub: (() => void) | null = null;
+  let cancelled = false;
+  persistenceReady.then(() => {
+    if (cancelled) return;
+    unsub = onAuthStateChanged(auth, callback);
+  });
+  return () => {
+    cancelled = true;
+    unsub?.();
+  };
 }
 
 // Messaging (push) only works in the browser and only if the browser supports it
