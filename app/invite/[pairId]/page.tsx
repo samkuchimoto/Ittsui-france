@@ -152,7 +152,8 @@ export default function InvitePage() {
     <main className="mx-auto max-w-md px-6 py-12 text-center">
       <h1 className="text-2xl font-semibold text-neutral-900">Vous avez été invité(e) sur Ittsui</h1>
       <p className="mt-3 text-sm text-neutral-600">
-        Connectez-vous avec le même e-mail que celui qui a reçu cette invitation pour activer le lien.
+        Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette invitation,
+        ça suffit à activer le lien.
       </p>
       {errorMsg && (
         <p className="mt-4 text-sm text-red-600">
@@ -165,8 +166,11 @@ export default function InvitePage() {
         onClick={handleSignIn}
         className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
       >
-        {errorMsg ? "Se connecter avec un autre compte" : "Se connecter avec Google"}
+        {errorMsg ? "Se connecter avec un autre compte" : "Je viens"}
       </button>
+      {!errorMsg && (
+        <p className="mt-3 text-xs text-neutral-400">Via Google, juste pour vérifier que c&apos;est bien vous.</p>
+      )}
     </main>
   );
 }
