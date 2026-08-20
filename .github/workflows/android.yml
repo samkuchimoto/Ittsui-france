@@ -47,8 +47,31 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Sync Capacitor Android shell
-        run: npx cap sync android
+      # Informational only — never fails the job. Prints environment/plugin
+      # diagnostics to the visible step log, which is otherwise the only
+      # extra signal available here (job logs for this repo aren't
+      # downloadable without admin access, and an earlier attempt to
+      # capture output to a file instead of letting it print directly
+      # just hid it from this log viewer too — reverted).
+      - name: Capacitor environment diagnostics
+        run: npx cap doctor android
+        continue-on-error: true
+
+      # Split into copy + update (what "sync" is anyway, combined) so a
+      # failure's exact phase is visible from the step list alone, without
+      # needing to parse output. CI=false because some npm CLIs change
+      # behavior (fail instead of proceeding past something that's only a
+      # warning locally) when they detect a CI environment — GitHub Actions
+      # sets CI=true by default; this unsets it for just these two steps.
+      - name: Copy web assets into Android shell
+        run: npx cap copy android
+        env:
+          CI: false
+
+      - name: Update Android native dependencies
+        run: npx cap update android
+        env:
+          CI: false
 
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
