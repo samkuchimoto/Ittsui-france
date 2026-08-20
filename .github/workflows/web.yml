@@ -1,0 +1,36 @@
+name: Web app CI
+
+# Type-checks and builds the Next.js app on every push, so a broken build
+# is visible as a GitHub check instead of only surfacing on Vercel's own
+# dashboard after main already has the bad commit. Also runs on PRs against
+# main for when this repo starts using branches (harmless no-op today,
+# since nothing currently opens PRs here).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
