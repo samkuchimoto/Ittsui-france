@@ -18,6 +18,7 @@ import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week } from "@/lib/types";
+import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
 export default function DashboardClient() {
   const router = useRouter();
@@ -71,12 +72,18 @@ export default function DashboardClient() {
   }, [user]);
 
   // If the matched pair isn't active yet, route to the right place instead
-  // of rendering it as if it were a live dashboard.
+  // of rendering it as if it were a live dashboard. Was previously missing
+  // the "cancelled" status (a pair obsoleted by a newer invite) — since
+  // the render below treats anything non-active as "still loading," a
+  // cancelled pair with no matching redirect branch here meant the page
+  // just showed a spinner forever with no way out. Covering every
+  // non-active, non-pending status the same way (-> /setup) instead of
+  // enumerating each one closes that gap for good.
   useEffect(() => {
     if (!pair) return;
     if (pair.status === "pending") {
       router.push("/setup/pending");
-    } else if (pair.status === "declined" || pair.status === "expired") {
+    } else if (pair.status !== "active") {
       router.push("/setup");
     }
   }, [pair, router]);
@@ -176,7 +183,7 @@ export default function DashboardClient() {
   if (user === null) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
+        <p className="text-sm text-neutral-500"><FriendlyLoading /></p>
       </main>
     );
   }
@@ -191,7 +198,7 @@ export default function DashboardClient() {
   if (!pairChecked || (pair && pair.status !== "active")) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
+        <p className="text-sm text-neutral-500"><FriendlyLoading /></p>
       </main>
     );
   }

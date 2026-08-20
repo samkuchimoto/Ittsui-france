@@ -42,33 +42,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "vous ne pouvez pas vous inviter vous-même" }, { status: 400 });
   }
 
-  // Fetch all prior pairs between this inviter and this email, then filter
-  // in code for a "live" one (pending or active). Declined/expired/cancelled
-  // pairs no longer block a fresh invite. Deliberately no .where("status", ...)
-  // clause here — adding one would require a new Firestore composite index.
-  const existingSnap = await adminDb
-    .collection("pairs")
-    .where("invitedEmail", "==", cleanEmail)
-    .where("userIds", "array-contains", inviterUid)
-    .get();
-  const liveMatch = existingSnap.docs.find((doc) => {
-    const status = doc.data().status;
-    return status === "pending" || status === "active";
-  });
-  if (liveMatch) {
-    // Not a dead end: give the frontend enough to point the user at the
-    // existing invite (cancel it, or just wait) instead of only a red
-    // error string with no way forward.
-    return NextResponse.json(
-      {
-        error: "invitation déjà envoyée à cette personne",
-        code: "DUPLICATE_INVITE",
-        pairId: liveMatch.id,
-        status: liveMatch.data().status,
-      },
-      { status: 409 }
-    );
-  }
+  // No more blocking on a duplicate: an inviter can send a new invite
+  // whenever they want, and it silently obsoletes whichever pending
+  // invite they already had (to this email or any other) — "newest wins"
+  // instead of a dead-end "invitation déjà envoyée" error with no way
+  // forward. Scoped to "pending" only: an already-active pair means a
+  // real relationship exists, which sending a new invite shouldn't be
+  // able to quietly disrupt (setup already routes an inviter with an
+  // active pair to /dashboard before they can reach this form at all).
+  const existingSnap = await adminDb.collection("pairs").where("userIds", "array-contains", inviterUid).get();
+  const obsoletePairs = existingSnap.docs.filter((doc) => doc.data().status === "pending");
+  await Promise.all(obsoletePairs.map((doc) => doc.ref.update({ status: "cancelled" })));
 
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + PENDING_EXPIRY_DAYS);

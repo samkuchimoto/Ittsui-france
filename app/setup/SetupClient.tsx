@@ -41,6 +41,7 @@ import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
+import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -171,7 +172,6 @@ export default function SetupClient() {
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicateInvite, setDuplicateInvite] = useState(false);
   const [invited, setInvited] = useState<{ name: string; email: string } | null>(null);
 
   // Watch auth state on mount
@@ -182,8 +182,16 @@ export default function SetupClient() {
     return unsub;
   }, []);
 
-  // Once we know who's signed in, check if they already have a pair
-  // (pending or active). If so, skip setup entirely.
+  // Once we know who's signed in, check if they already have an ACTIVE
+  // pair — a real relationship in progress, so /setup wouldn't make sense.
+  // Anything else (pending, declined, expired, cancelled) no longer
+  // redirects away: sending a new invite is always allowed and silently
+  // obsoletes whichever pending one existed (see invite-partner/route.ts).
+  // Previously this redirected for ANY pair regardless of status, which
+  // meant a declined/expired pair's own "Nouvelle invitation" button sent
+  // you to /setup only to be immediately bounced right back to
+  // /setup/pending — a dead loop with no way to actually start a new
+  // invite. That's what "invitation déjà envoyée" with no way out was.
   // NOTE: userIds array-contains has no natural order — always take the
   // MOST RECENT pair (createdAt desc), not just docs[0], so a stale
   // declined/expired pair can't shadow a fresh one.
@@ -202,8 +210,10 @@ export default function SetupClient() {
       const snap = await getDocs(q);
       if (!snap.empty) {
         const pair = snap.docs[0].data() as Pair;
-        router.push(pair.status === "active" ? "/dashboard" : "/setup/pending");
-        return;
+        if (pair.status === "active") {
+          router.push("/dashboard");
+          return;
+        }
       }
       setCheckingPair(false);
     })();
@@ -267,7 +277,6 @@ export default function SetupClient() {
     venueTypes: VenueType[];
   }) {
     setError(null);
-    setDuplicateInvite(false);
 
     if (!user) {
       setError("Vous devez être connecté(e).");
@@ -302,10 +311,7 @@ export default function SetupClient() {
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        if (data?.code === "DUPLICATE_INVITE") setDuplicateInvite(true);
-        throw new Error(data?.error ?? "Une erreur est survenue.");
-      }
+      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
       setInvited({ name: partnerName, email: partnerEmail });
     } catch (err) {
@@ -350,7 +356,7 @@ export default function SetupClient() {
     return (
       <Shell>
         <p className="text-center text-sm" style={{ color: MUTED }}>
-          Chargement…
+          <FriendlyLoading />
         </p>
       </Shell>
     );
@@ -399,9 +405,23 @@ export default function SetupClient() {
             Invitation envoyée
           </h1>
           <p className="mt-3 text-sm" style={{ color: MUTED }}>
-            Un e-mail a été envoyé à {invited.name} ({invited.email}). Dès qu&apos;iels se connectent, votre
-            rendez-vous hebdomadaire s&apos;active.
+            Un e-mail a été envoyé à {invited.name} ({invited.email}).
           </p>
+          <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
+            <p className="text-sm font-medium">Et maintenant ?</p>
+            <p className="mt-1 text-sm" style={{ color: MUTED }}>
+              Rien à faire de votre côté. Dès que {invited.name} se connecte, votre rendez-vous hebdomadaire
+              s&apos;active automatiquement — vous recevrez un e-mail à ce moment-là.
+              {postalCode && ` Les propositions seront centrées autour du ${postalCode}.`}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/setup/pending")}
+            className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+            style={{ backgroundColor: ACCENT }}
+          >
+            Voir le statut de l&apos;invitation
+          </button>
         </div>
       </Shell>
     );
@@ -427,6 +447,10 @@ export default function SetupClient() {
       <form onSubmit={handleSubmit}>
         {step === 1 && (
           <section className="space-y-6">
+            <p className="text-sm" style={{ color: MUTED }}>
+              Ittsui protège un moment chaque semaine avec une personne qui compte pour vous. Indiquez qui —
+              ensuite, on s&apos;occupe de tout : proposer, rappeler, organiser.
+            </p>
             <div>
               <label className="block text-sm font-medium">Prénom de votre proche</label>
               <input
@@ -715,21 +739,9 @@ export default function SetupClient() {
             </div>
 
             {error && (
-              <div>
-                <p className="text-sm" style={{ color: ACCENT }}>
-                  {error}
-                </p>
-                {duplicateInvite && (
-                  <button
-                    type="button"
-                    onClick={() => router.push("/setup/pending")}
-                    className="mt-2 text-sm underline underline-offset-4"
-                    style={{ color: ACCENT }}
-                  >
-                    Voir cette invitation
-                  </button>
-                )}
-              </div>
+              <p className="text-sm" style={{ color: ACCENT }}>
+                {error}
+              </p>
             )}
 
             <div className="flex gap-3">

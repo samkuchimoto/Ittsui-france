@@ -19,6 +19,7 @@ import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
+import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
 export default function PendingClient() {
   const router = useRouter();
@@ -106,7 +107,9 @@ export default function PendingClient() {
   if (user === null || user === false || !checked || !pair) {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement...</p>
+        <p className="text-sm text-neutral-500">
+          <FriendlyLoading />
+        </p>
       </main>
     );
   }
@@ -117,6 +120,30 @@ export default function PendingClient() {
         <h1 className="text-2xl font-semibold text-neutral-900">Invitation déclinée</h1>
         <p className="mt-3 text-sm text-neutral-600">
           {pair.partnerName} n'a pas souhaité être lié(e). Vous pouvez inviter quelqu'un d'autre.
+        </p>
+        <button
+          onClick={() => router.push("/setup")}
+          className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
+        >
+          Nouvelle invitation
+        </button>
+        <button
+          onClick={handleSignOut}
+          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
+        >
+          Se déconnecter
+        </button>
+        <InvitationHistory items={pastInvites} />
+      </main>
+    );
+  }
+
+  if (pair.status === "cancelled") {
+    return (
+      <main className="mx-auto max-w-md px-6 py-12 text-center">
+        <h1 className="text-2xl font-semibold text-neutral-900">Invitation annulée</h1>
+        <p className="mt-3 text-sm text-neutral-600">
+          Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.
         </p>
         <button
           onClick={() => router.push("/setup")}

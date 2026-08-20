@@ -5,7 +5,8 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   type User,
@@ -33,28 +34,53 @@ export const db = getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 
-// Signs the user in with Google, then writes/updates their users/{uid} doc
-// with their email. This is what lets /api/invite-partner look up the
-// inviter's own email (for the self-invite check and confirmation email),
-// and what /api/find-user style lookups depend on generally. Without this
-// write, inviterEmail comes back undefined everywhere downstream.
-export async function signInWithGoogle(): Promise<User> {
-  const result = await signInWithPopup(auth, googleProvider);
-  const user = result.user;
+// signInWithPopup used to be here, but popups are unreliable on mobile
+// browsers specifically — they get silently blocked, or lose their
+// connection back to the opener when the OS backgrounds the tab during
+// the Google auth screen, which is exactly the "stuck on chargement,
+// keeps asking me to reconnect" pattern this app was hitting. A full-page
+// redirect doesn't have that failure mode. Note: this still isn't a full
+// fix for the Capacitor-wrapped native app specifically — Google's OAuth
+// policy blocks sign-in inside embedded WebViews entirely regardless of
+// popup vs. redirect, so the native app needs its own native Google
+// Sign-In SDK integration (a real follow-up, not attempted here).
+export async function signInWithGoogle(): Promise<void> {
+  await signInWithRedirect(auth, googleProvider);
+}
 
-  await setDoc(
-    doc(db, "users", user.uid),
-    {
-      email: user.email?.toLowerCase() ?? null,
-      displayName: user.displayName ?? null,
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true }
-  );
+// A redirect sign-in returns to this same page on a fresh load, so there's
+// no function call left to resolve — the result has to be picked up here
+// instead, once, whenever auth state is first watched. onAuthStateChanged
+// fires with the new user regardless, but this is what actually performs
+// the users/{uid} write (email, displayName) that /api/invite-partner and
+// friends depend on, and what registers native push — both used to happen
+// inline in signInWithGoogle, back when it could still see the result.
+let redirectResultHandled = false;
 
-  await registerNativePush(user);
-
-  return user;
+function consumeRedirectResultOnce() {
+  if (redirectResultHandled) return;
+  redirectResultHandled = true;
+  getRedirectResult(auth)
+    .then(async (result) => {
+      if (!result) return;
+      const user = result.user;
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          email: user.email?.toLowerCase() ?? null,
+          displayName: user.displayName ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      await registerNativePush(user);
+    })
+    .catch(() => {
+      // Redirect-specific errors (e.g. account-exists-with-different-
+      // credential) are rare enough here not to special-case — the
+      // caller's existing "not signed in" state already covers it, since
+      // onAuthStateChanged simply won't report a new user in that case.
+    });
 }
 
 export async function signOutUser(): Promise<void> {
@@ -62,6 +88,7 @@ export async function signOutUser(): Promise<void> {
 }
 
 export function watchAuthState(callback: (user: User | null) => void) {
+  consumeRedirectResultOnce();
   return onAuthStateChanged(auth, callback);
 }
 

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
+import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "error";
 
@@ -101,7 +102,9 @@ export default function InvitePage() {
   if (status === "checking" || status === "activating") {
     return (
       <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">Chargement…</p>
+        <p className="text-sm text-neutral-500">
+          <FriendlyLoading />
+        </p>
         {slowConnection && status === "checking" && (
           <div className="mt-6">
             <p className="text-sm text-neutral-600">
