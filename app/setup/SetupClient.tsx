@@ -623,6 +623,21 @@ export default function SetupClient() {
                   ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
                   : "Envoyer en un clic · Dimanche 15h, café ou parc"}
             </button>
+
+            {/* Location detection is silent by design (no permission-prompt
+                surprise), but that also meant nothing on screen showed it was
+                even happening — this makes it visible instead of invisible. */}
+            {(locationStatus === "locating" || locationStatus === "resolving") && (
+              <div className="flex justify-center">
+                <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+              </div>
+            )}
+            {locationStatus === "done" && ctaPreview && (
+              <p className="text-center text-xs" style={{ color: MUTED }}>
+                Basé sur le {ctaPreview.postalCode} (détecté automatiquement).
+              </p>
+            )}
+
             <button
               type="button"
               onClick={goToStep2}

@@ -87,7 +87,15 @@ export function previewVenue(
     const options = catalog[type];
     if (options?.length) {
       const venue = options[0];
-      const code = postalCodeFromAddress(venue.address) ?? postalCode ?? "";
+      // Show the postal code the person actually entered/detected, not
+      // the catalog venue's own address — pairing "[real landmark] (your
+      // postal code)" falsely implied the landmark was AT that postal
+      // code (the catalog only has metro-level, not neighborhood-level,
+      // coverage — see departmentFromPostalCode()'s own comment). Only
+      // fall back to the venue's own postal code when no postal code is
+      // known yet at all, matching the Paris-default behavior used
+      // elsewhere in this flow.
+      const code = postalCode || postalCodeFromAddress(venue.address) || "";
       return { name: venue.name, postalCode: code };
     }
   }
