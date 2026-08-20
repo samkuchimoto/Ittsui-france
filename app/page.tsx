@@ -338,7 +338,7 @@ export default function Home() {
             className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm text-white transition-transform hover:scale-[1.02]"
             style={{ backgroundColor: ACCENT }}
           >
-            Lancer mon duo
+            Commencer
           </Link>
         </div>
       </header>
@@ -398,6 +398,9 @@ export default function Home() {
             <br />
             Pas d&apos;application de rencontre.
           </h2>
+          <p className="mx-auto mt-3 max-w-sm text-sm" style={{ color: MUTED }}>
+            Un outil simple pour les gens qui comptent déjà dans votre vie.
+          </p>
         </Reveal>
 
         <Reveal className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-5 sm:grid-cols-3">
@@ -420,7 +423,7 @@ export default function Home() {
       <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md text-center">
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}>
-            Ce que vous voyez le vendredi.
+            Ce que vous recevez chaque semaine.
             <br />
             Et rien d&apos;autre.
           </h2>
@@ -436,15 +439,24 @@ export default function Home() {
 
       {/* How it works */}
       <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
-        <Reveal className="mx-auto max-w-2xl">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            Comment ça marche.
+          </h2>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-14 max-w-2xl">
           <ol className="space-y-10">
             <li className="flex gap-6">
               <span className="shrink-0" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: ACCENT }}>
                 01
               </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
                   1 proposition par semaine
+                  <span style={{ color: MUTED }}>
+                    <IconSparkles className="h-4 w-4" />
+                  </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Chaque semaine, recevez une proposition unique, prête à être validée en un clic.
@@ -456,8 +468,11 @@ export default function Home() {
                 02
               </span>
               <div>
-                <h3 className="text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
                   Validation en 1 clic
+                  <span style={{ color: MUTED }}>
+                    <IconCheck className="h-4 w-4" />
+                  </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Un lieu, un horaire. Vous dites oui, ou vous changez d&apos;avis en un geste — sans négociation,
@@ -496,13 +511,13 @@ export default function Home() {
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
             style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
           >
-            Anti-érosion relationnelle
+            Le lien, sans effort
           </span>
           <p
             className="mt-5"
             style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}
           >
-            Offrez du temps réel à la personne qui compte.
+            Offrez du temps réel aux personnes qui comptent.
           </p>
           <Link
             href="/setup"
