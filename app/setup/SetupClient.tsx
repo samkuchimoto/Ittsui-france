@@ -42,6 +42,9 @@ import { collection, query, where, orderBy, limit, getDocs } from "firebase/fire
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
+import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
+import { useUserLocation } from "@/app/hooks/useUserLocation";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -82,19 +85,31 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
-// Emoji-tagged "vibe pills" per the brief, in the order requested.
-// Mapped 1:1 onto existing VenueType values — no new type added.
-const VIBE_PILLS: { value: VenueType; label: string; emoji: string }[] = [
-  { value: "cafe", label: "Café", emoji: "☕" },
-  { value: "park", label: "Parc", emoji: "🌳" },
-  { value: "restaurant", label: "Restaurant", emoji: "🍽️" },
-  { value: "museum", label: "Culture", emoji: "🏛️" },
+// Visual tile grid, in the order requested. Mapped 1:1 onto existing
+// VenueType values — no new type added. "restaurant"/"museum" have no
+// matching real photo in /public yet, so they render as a plain tinted
+// block (DiscoveryGrid's own fallback) rather than a mismatched photo.
+const DISCOVERY_TILES: DiscoveryTile[] = [
+  { value: "cafe", label: "Café", image: "/friends-cafe-terrace.jpg" },
+  { value: "park", label: "Parc", image: "/grandmother-granddaughter-park.jpg" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "museum", label: "Culture" },
 ];
 const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
   value: "home",
   label: "Chez vous",
   emoji: "🏠",
 };
+
+const LOCATION_STEPS: StatusStep[] = [
+  { key: "locating", label: "Détection de votre position..." },
+  { key: "resolving", label: "Sélection des pépites..." },
+];
+
+const SENT_STEPS: StatusStep[] = [
+  { key: "sending", label: "Envoi de l'invitation..." },
+  { key: "sent", label: "Invitation transmise !" },
+];
 
 const DIETARY_OPTIONS: DietaryFilter[] = ["casher", "halal", "vegetarien", "bio", "antillais"];
 
@@ -172,7 +187,15 @@ export default function SetupClient() {
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [invited, setInvited] = useState<{ name: string; email: string } | null>(null);
+  const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
+
+  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+
+  // Pre-fills the manual field rather than replacing it — postalCode stays
+  // a normal editable input either way, this just saves a typing step.
+  useEffect(() => {
+    if (detectedPostalCode) setPostalCode(detectedPostalCode);
+  }, [detectedPostalCode]);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -313,7 +336,7 @@ export default function SetupClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
-      setInvited({ name: partnerName, email: partnerEmail });
+      setInvited({ name: partnerName, email: partnerEmail, pairId: data.pairId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -392,6 +415,11 @@ export default function SetupClient() {
 
   // Invitation just sent — confirmation screen
   if (invited) {
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
+    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
+      `${invited.name}, je t'invite sur Ittsui pour qu'on se voie chaque semaine, sans avoir à s'organiser : ${inviteUrl}`
+    )}`;
+
     return (
       <Shell>
         <div className="text-center">
@@ -407,6 +435,24 @@ export default function SetupClient() {
           <p className="mt-3 text-sm" style={{ color: MUTED }}>
             Un e-mail a été envoyé à {invited.name} ({invited.email}).
           </p>
+
+          <div className="mt-4 flex justify-center">
+            <StatusBanner
+              steps={SENT_STEPS}
+              currentKey="sent"
+              doneSlot={
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 font-medium underline underline-offset-4"
+                >
+                  Partager sur WhatsApp
+                </a>
+              }
+            />
+          </div>
+
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
             <p className="text-sm font-medium">Et maintenant ?</p>
             <p className="mt-1 text-sm" style={{ color: MUTED }}>
@@ -663,23 +709,12 @@ export default function SetupClient() {
           <section className="space-y-6">
             <div>
               <label className="block text-sm font-medium">L&apos;ambiance</label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {VIBE_PILLS.map((v) => (
-                  <button
-                    type="button"
-                    key={v.value}
-                    onClick={() => toggle(venueTypes, v.value, setVenueTypes)}
-                    className="flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm transition-colors"
-                    style={
-                      venueTypes.includes(v.value)
-                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
-                        : { borderColor: BORDER, color: INK, backgroundColor: "white" }
-                    }
-                  >
-                    <span>{v.emoji}</span>
-                    {v.label}
-                  </button>
-                ))}
+              <div className="mt-2">
+                <DiscoveryGrid
+                  tiles={DISCOVERY_TILES}
+                  selected={venueTypes}
+                  onToggle={(value) => toggle(venueTypes, value, setVenueTypes)}
+                />
               </div>
               <button
                 type="button"
@@ -710,6 +745,21 @@ export default function SetupClient() {
                 style={{ borderColor: BORDER }}
                 placeholder="75001"
               />
+              {(locationStatus === "locating" || locationStatus === "resolving") && (
+                <div className="mt-2">
+                  <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+                </div>
+              )}
+              {locationStatus === "idle" && (
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="mt-2 text-xs font-medium underline underline-offset-4"
+                  style={{ color: ACCENT }}
+                >
+                  Utiliser ma position actuelle
+                </button>
+              )}
               <p className="mt-2 text-xs" style={{ color: MUTED }}>
                 Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.
               </p>
