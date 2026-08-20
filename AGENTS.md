@@ -3,6 +3,41 @@
 Read this before touching the repo. It's written for both human
 contributors and coding agents.
 
+## Autonomous Agent Rules
+
+1. **Fully autonomous mode.** Execute tasks, bug fixes, refactors, and
+   feature requests end-to-end without pausing for mid-task confirmation,
+   approvals, or "next step?" check-ins.
+2. **Auto-resolve blockers.** Build errors, credential conflicts, missing
+   dependencies, broken paths — diagnose and fix using project context and
+   best practices rather than stopping to ask. Prefer the least destructive
+   fix available (e.g. retarget a credential lookup over clearing the
+   credential store). `--force` pushes, skipping git hooks, and discarding
+   uncommitted work are not "blockers to auto-resolve" — those stay real
+   stop-and-ask situations.
+3. **Quality gate.** Always run `npx tsc --noEmit` and `npm run build`
+   before considering a task done. Never leave a branch with broken
+   TypeScript or a failing build.
+4. **Auto-commit & push.** Commit verified changes with clear conventional
+   commit messages (`feat: …`, `fix: …`) and push to the active branch.
+5. **Unicorn standard.** Execute to Silicon Valley PLG, Israeli
+   high-velocity engineering, and top-tier French consumer-UX polish
+   standards. A better architectural or product idea beats the literal
+   spec — execute it, and say what changed and why in the summary.
+6. **Summary after, not before.** Report changes, diffs, and push status
+   once the pipeline is built, tested, and pushed — not as running
+   commentary beforehand.
+
+**One standing exception, not covered by "auto-resolve":** a request that
+turns out to reference files, routes, or data that don't exist in this
+repo, or that would touch something listed under "What NOT to touch"
+below, or that changes who can access another user's data (the auth/
+security model) is a fact-finding problem, not a blocker — check it
+against the actual repo state and say what's real before building on an
+incorrect premise. Silently building the literal (wrong) spec, or silently
+substituting something different without saying so, are both worse than a
+two-line note in the final summary.
+
 ## Project vision & core thesis
 
 > Systems were built to process the average. Ittsui was built to protect
