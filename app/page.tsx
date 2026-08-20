@@ -88,13 +88,6 @@ function IconSparkles({ className = "", style }: { className?: string; style?: R
     </svg>
   );
 }
-function IconHeart({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
-      <path d="M12 21s-7-4.35-9.5-8.6C.8 8.9 2.4 5 6 5c2 0 3.3 1.1 4 2.2C10.7 6.1 12 5 14 5c3.6 0 5.2 3.9 3.5 7.4C19 16.65 12 21 12 21z" />
-    </svg>
-  );
-}
 function IconCalendarX({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
@@ -499,7 +492,12 @@ export default function Home() {
       {/* Footer CTA */}
       <section className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md">
-          <IconHeart className="mx-auto h-6 w-6" style={{ color: ACCENT }} />
+          <span
+            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
+            style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+          >
+            Anti-érosion relationnelle
+          </span>
           <p
             className="mt-5"
             style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}
@@ -511,7 +509,7 @@ export default function Home() {
             className="mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
             style={{ backgroundColor: ACCENT }}
           >
-            Commencer mon rituel hebdomadaire
+            Protéger mes relations
             <IconArrowRight className="h-4 w-4" />
           </Link>
         </Reveal>

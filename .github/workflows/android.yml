@@ -29,11 +29,17 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      - name: Set up Java 17 (Temurin)
+      # Capacitor 8.5's generated android/app/capacitor.build.gradle sets
+      # sourceCompatibility/targetCompatibility to VERSION_21 — a JDK 17
+      # toolchain can't compile to that target, which is what was failing
+      # the "Build debug APK" step (exit code 1, no further detail visible
+      # without a log-download token) even after cap sync/copy/update
+      # started succeeding on Node 22.
+      - name: Set up Java 21 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3

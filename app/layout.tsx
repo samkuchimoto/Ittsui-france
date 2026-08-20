@@ -14,12 +14,14 @@ export const viewport: Viewport = {
   themeColor: "#171717",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-white antialiased">{children}</body>
+      <body className="min-h-screen bg-[#FBF9F5] antialiased">{children}</body>
     </html>
   );
 }
