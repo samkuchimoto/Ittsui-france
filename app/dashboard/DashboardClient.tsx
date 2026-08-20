@@ -19,14 +19,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/f
 import type { User } from "firebase/auth";
 import type { Pair, Week } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
-
-// No-op on web (this page also renders in a plain browser tab, not just
-// the Capacitor Android shell) — never let a missing native bridge block
-// the actual confirm action.
-function tapHaptic() {
-  Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
-}
+import { tapHaptic } from "@/lib/haptics";
 
 export default function DashboardClient() {
   const router = useRouter();

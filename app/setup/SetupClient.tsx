@@ -42,6 +42,10 @@ import { collection, query, where, orderBy, limit, getDocs } from "firebase/fire
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
+import { useUserLocation } from "@/app/hooks/useUserLocation";
+import { tapHaptic, ImpactStyle } from "@/lib/haptics";
+import { previewVenue } from "@/lib/venueCatalog";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -95,6 +99,16 @@ const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
   label: "Chez vous",
   emoji: "🏠",
 };
+
+const LOCATION_STEPS: StatusStep[] = [
+  { key: "locating", label: "Détection de votre position..." },
+  { key: "resolving", label: "Sélection des pépites..." },
+];
+
+const SENT_STEPS: StatusStep[] = [
+  { key: "sending", label: "Envoi de l'invitation..." },
+  { key: "sent", label: "Invitation transmise !" },
+];
 
 const DIETARY_OPTIONS: DietaryFilter[] = ["casher", "halal", "vegetarien", "bio", "antillais"];
 
@@ -172,7 +186,27 @@ export default function SetupClient() {
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [invited, setInvited] = useState<{ name: string; email: string } | null>(null);
+  const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+
+  // Pre-fills the manual field rather than replacing it — postalCode stays
+  // a normal editable input either way, this just saves a typing step.
+  useEffect(() => {
+    if (detectedPostalCode) setPostalCode(detectedPostalCode);
+  }, [detectedPostalCode]);
+
+  // Fired proactively on mount rather than waiting for Step 3's manual
+  // "Utiliser ma position actuelle" button, so the Step 1 one-tap CTA can
+  // preview a real nearby venue instead of a generic "café ou parc" line.
+  // useUserLocation() already fails completely silently (denial, timeout,
+  // unsupported browser) and its own 5s timeout bounds how long this can
+  // leave postalCode unset — no separate deadline needed here.
+  useEffect(() => {
+    detectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -313,7 +347,7 @@ export default function SetupClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
-      setInvited({ name: partnerName, email: partnerEmail });
+      setInvited({ name: partnerName, email: partnerEmail, pairId: data.pairId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -326,6 +360,49 @@ export default function SetupClient() {
     await submitInvite();
   }
 
+  // Native share sheet first (lets the recipient pick any app, not just
+  // WhatsApp) -> WhatsApp direct link if unsupported or the sheet itself
+  // fails to open -> clipboard + toast as the last resort. Mirrors the
+  // same graceful-degradation shape as weekly-propose/route.ts's venue
+  // pipeline (RAG -> Firestore -> static), just for sharing instead of
+  // venue selection.
+  async function handleShare() {
+    if (!invited) return;
+    tapHaptic(ImpactStyle.Light);
+
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
+    const shareData = {
+      title: "Ittsui - Notre moment",
+      text: "Je t'ai préparé notre moment de la semaine ! Rejoins-moi sur Ittsui :",
+      url: inviteUrl,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        // AbortError = the user closed the share sheet without picking
+        // anything — an expected, non-error outcome, not something to
+        // fall through to a fallback or surface to error tracking for.
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+
+    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${shareData.text} ${shareData.url}`)}`;
+    const opened = typeof window !== "undefined" ? window.open(whatsappHref, "_blank", "noopener,noreferrer") : null;
+    if (opened) return;
+
+    try {
+      await navigator.clipboard.writeText(shareData.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Nothing more to do silently — the link is still visible on screen
+      // for the user to select and copy manually.
+    }
+  }
+
   // The 1-tap path: skips steps 2 and 3 entirely once name + email are in,
   // using the same Sunday 15h-17h default Step 2 already suggests plus a
   // café-or-park default, matching the most common picks rather than
@@ -336,6 +413,14 @@ export default function SetupClient() {
   const ONE_TAP_WINDOW_START = "15:00";
   const ONE_TAP_WINDOW_END = "17:00";
   const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
+
+  // Same curated catalog the real weekly-propose pipeline falls back to
+  // (lib/venueCatalog.ts) — a genuinely real venue that could turn out to
+  // be the first proposal, not an invented one. Preview copy only: the
+  // actual submission below still sends venue TYPE preferences, never a
+  // specific pre-picked venue — the real pick happens server-side, same as
+  // for every other pair, once postal code and preferences are on file.
+  const ctaPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
 
   async function handleOneTap() {
     setError(null);
@@ -407,6 +492,31 @@ export default function SetupClient() {
           <p className="mt-3 text-sm" style={{ color: MUTED }}>
             Un e-mail a été envoyé à {invited.name} ({invited.email}).
           </p>
+
+          <div className="mt-4 flex justify-center">
+            <StatusBanner
+              steps={SENT_STEPS}
+              currentKey="sent"
+              doneSlot={
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="ml-1 font-medium underline underline-offset-4"
+                >
+                  Partager l&apos;invitation
+                </button>
+              }
+            />
+          </div>
+          {copied && (
+            <p
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+            >
+              Lien copié !
+            </p>
+          )}
+
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
             <p className="text-sm font-medium">Et maintenant ?</p>
             <p className="mt-1 text-sm" style={{ color: MUTED }}>
@@ -507,7 +617,11 @@ export default function SetupClient() {
               className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              {submitting ? "Envoi…" : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              {submitting
+                ? "Envoi…"
+                : ctaPreview
+                  ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
+                  : "Envoyer en un clic · Dimanche 15h, café ou parc"}
             </button>
             <button
               type="button"
@@ -710,6 +824,21 @@ export default function SetupClient() {
                 style={{ borderColor: BORDER }}
                 placeholder="75001"
               />
+              {(locationStatus === "locating" || locationStatus === "resolving") && (
+                <div className="mt-2">
+                  <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+                </div>
+              )}
+              {locationStatus === "idle" && (
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="mt-2 text-xs font-medium underline underline-offset-4"
+                  style={{ color: ACCENT }}
+                >
+                  Utiliser ma position actuelle
+                </button>
+              )}
               <p className="mt-2 text-xs" style={{ color: MUTED }}>
                 Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.
               </p>
