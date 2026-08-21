@@ -80,15 +80,39 @@ independent of whether signing is configured yet.
   production signing secrets is something the repo owner should do directly rather than have
   automated, regardless.
 
+## App Links — IMPLEMENTED, PARTIALLY VERIFIABLE
+
+- `public/.well-known/assetlinks.json` lists this keystore's SHA-256 fingerprint
+  (`68:FB:1A:7C:10:DF:A8:ED:69:15:65:D9:E2:D4:6F:28:71:E5:46:B2:C6:BB:CE:FD:F5:D7:C8:8F:CA:43:91:5A`).
+  `android/app/src/main/AndroidManifest.xml` has an `autoVerify` intent-filter for both `ittsui.fr`
+  and `www.ittsui.fr` (no canonical redirect between the two was found in this repo — worth
+  settling which is authoritative and dropping the other host).
+- **Not sufficient on its own for Play-Store-installed copies**: once this app is first uploaded
+  to Play Console, Google's Play App Signing re-signs it with a *different* certificate for
+  distribution. That certificate's fingerprint (Play Console → Setup → App signing, only exists
+  after first upload) must be added as a second entry in `assetlinks.json`'s
+  `sha256_cert_fingerprints` array, or App Links verification will fail for anyone who installed
+  via Play Store rather than the direct APK.
+- Verifiable today at `https://www.ittsui.fr/.well-known/assetlinks.json` once deployed — confirm
+  it actually serves with `Content-Type: application/json` before relying on it; Vercel generally
+  serves `public/` dotfiles correctly but this hasn't been checked against a live deployment.
+
+## Release APK + GitHub Release publishing — IMPLEMENTED, NOT YET VERIFIED
+
+`android.yml` now also runs `assembleRelease` (a real installable APK, unlike the AAB which needs
+bundletool) and, only when signing secrets are present, publishes both the AAB and APK to a
+rolling `android-latest` GitHub Release via `softprops/action-gh-release` — a well-established,
+widely-used action, using the default `GITHUB_TOKEN` (no new secret). This is what
+`lib/config/store.ts`'s `ANDROID_APK_DIRECT_URL` points at, since GitHub Actions *artifacts*
+(unlike Releases) require a GitHub login even on a public repo and expire after 90 days. Not yet
+confirmed against a real run with real signing secrets — needs one to move from "implemented" to
+"verified."
+
 ## Not yet implemented
 
-- Android App Links (`autoVerify` intent-filter + `assetlinks.json`) — needs this keystore's
-  SHA256 fingerprint (`68:FB:1A:7C:10:DF:A8:ED:69:15:65:D9:E2:D4:6F:28:71:E5:46:B2:C6:BB:CE:FD:F5:D7:C8:8F:CA:43:91:5A`)
-  and will also need the **Play App Signing** certificate fingerprint once the app is uploaded to
-  Play Console, since Google re-signs the app for distribution — `assetlinks.json` typically needs
-  to list both.
 - Play Store listing, screenshots, content rating, Data Safety form — all Play Console UI work,
-  not code.
-- The 12-tester / 14-day closed testing track — verify the current requirement in Play Console at
-  submission time rather than trusting this document, Google's policy for this has changed more
-  than once.
+  not code. Draft copy: `docs/play-console-assets/`.
+- The 12-tester / 14-day closed testing track (only relevant for *Production* access, not
+  Internal testing — see `docs/play-console-assets/internal-testing.md`) — verify the current
+  requirement in Play Console at submission time rather than trusting this document, Google's
+  policy for this has changed more than once.

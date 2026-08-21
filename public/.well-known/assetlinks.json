@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.ittsui.app",
+      "sha256_cert_fingerprints": [
+        "68:FB:1A:7C:10:DF:A8:ED:69:15:65:D9:E2:D4:6F:28:71:E5:46:B2:C6:BB:CE:FD:F5:D7:C8:8F:CA:43:91:5A"
+      ]
+    }
+  }
+]

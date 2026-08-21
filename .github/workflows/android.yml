@@ -16,6 +16,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write # needed to publish/update the android-latest GitHub Release
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -129,6 +132,20 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      # APK (not just AAB) specifically for /download's direct-install link —
+      # an AAB isn't installable by itself without bundletool, but an APK is
+      # what someone sideloading from a browser actually needs. Same
+      # signingConfig as bundleRelease above (attached to the `release`
+      # buildType itself), so this reuses the already-decoded keystore.
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ env.HAS_SIGNING == 'true' && format('{0}/ittsui-release.jks', runner.temp) || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
       - name: Remove decoded keystore
         if: always() && env.HAS_SIGNING == 'true'
         run: rm -f "$RUNNER_TEMP/ittsui-release.jks"
@@ -139,3 +156,36 @@ jobs:
           name: ${{ env.HAS_SIGNING == 'true' && 'ittsui-release-aab-signed' || 'ittsui-release-aab-UNSIGNED' }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.HAS_SIGNING == 'true' && 'ittsui-release-apk-signed' || 'ittsui-release-apk-UNSIGNED' }}
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      # A stable, public, unauthenticated download link for lib/config/store.ts's
+      # ANDROID_APK_DIRECT_URL — GitHub Actions *artifacts* (the two steps
+      # above) require a GitHub login even on a public repo and expire after
+      # 90 days, so /download's "direct APK" option points at this Release
+      # asset instead. Only signed builds get published here — an unsigned
+      # APK isn't something to hand a real user, so this step is skipped
+      # entirely until the signing secrets exist. softprops/action-gh-release
+      # updates the existing "android-latest" release in place rather than
+      # creating a new one on every push, using the default GITHUB_TOKEN
+      # (no new secret needed).
+      - name: Publish signed APK/AAB to the android-latest GitHub Release
+        if: env.HAS_SIGNING == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "Ittsui Android — latest build"
+          body: |
+            Automated CI build from commit ${{ github.sha }}. Not a formal
+            versioned release — this tag is overwritten on every push to
+            main that has signing configured. For testing/sideloading only
+            until the app is live on Google Play.
+          prerelease: true
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab

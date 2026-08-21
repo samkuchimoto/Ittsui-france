@@ -22,6 +22,33 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+              App Links — verified against public/.well-known/assetlinks.json
+              (autoVerify triggers Android to check that file at install
+              time). Both apex and www hosts are listed because no
+              canonical redirect between them was found in the Next.js app
+              (capacitor.config.ts's server.url uses the apex domain, but
+              the production URL is otherwise referred to as www) — worth
+              confirming which is actually canonical and dropping the other
+              once that's settled.
+
+              This intent-filter alone only covers installs signed with the
+              upload key in assetlinks.json. Once this app is uploaded to
+              Play Console with Play App Signing (Google's default), Google
+              re-signs it for distribution — that certificate's fingerprint
+              (Play Console → Setup → App signing) must be added to
+              assetlinks.json's sha256_cert_fingerprints array too, or
+              App Links will fail verification for anyone who installed via
+              Play Store specifically.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="ittsui.fr" />
+                <data android:scheme="https" android:host="www.ittsui.fr" />
+            </intent-filter>
+
         </activity>
 
         <provider
