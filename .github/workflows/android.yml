@@ -44,9 +44,23 @@ jobs:
       # a private key — still kept out of the repo for consistency with how
       # this project handles all other Firebase/signing config (see
       # android/.gitignore).
+      #
+      # Tries base64 first (the documented pattern, matching
+      # ANDROID_KEYSTORE_BASE64) but falls back to using the secret's value
+      # directly as raw JSON — a very easy real-world mistake is pasting the
+      # actual google-services.json content into the secret without
+      # base64-encoding it first, and `base64 -d` fails loudly on that
+      # rather than silently doing the right thing.
       - name: Decode google-services.json
         if: env.HAS_GOOGLE_SERVICES == 'true'
-        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+        run: |
+          if echo "$GOOGLE_SERVICES_JSON" | base64 -d > /tmp/gsj.json 2>/dev/null && [ -s /tmp/gsj.json ] && head -c1 /tmp/gsj.json | grep -q '{'; then
+            mv /tmp/gsj.json android/app/google-services.json
+            echo "Decoded GOOGLE_SERVICES_JSON from base64."
+          else
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "GOOGLE_SERVICES_JSON wasn't valid base64 — used its value as raw JSON instead. Re-encoding it as base64 (see docs/android.md) is still recommended for consistency, but this works either way."
+          fi
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
 
