@@ -40,6 +40,12 @@ a signed bundle.
 
 Generated 2026-08-21 with `keytool -genkeypair`, alias `ittsui`, RSA 2048, valid 30 years
 (2026-08-21 → 2056-08-20 — past Google's minimum-validity requirement for new Play Store apps).
+Password rotated 2026-08-22 (`keytool -storepasswd`, same key material, same SHA-256 fingerprint
+below — verified unchanged after the rotation) because the original password contained `% ^ & = +`,
+characters that are genuinely risky to carry through a terminal or shell on Windows (`%` triggers
+variable expansion, `^` is cmd.exe's escape character) — the actual, confirmed cause of two
+consecutive `Build release AAB` CI failures ("keystore password was incorrect"), not a guess. The
+current password is alphanumeric only.
 **This keystore is the only thing that can ever sign an update to `fr.ittsui.app` on Google Play.**
 If it's lost, there is no recovery path — the app would have to be republished under a new
 applicationId, losing all existing installs, reviews, and ratings.

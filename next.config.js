@@ -45,22 +45,21 @@ const nextConfig = {
   },
   async rewrites() {
     // Proxies Firebase Auth's handler/iframe endpoints through this app's
-    // own domain — purely additive (nothing currently serves /__/auth/* on
-    // this domain, so this can't break an existing path) but on its own
-    // does NOT change the redirect-auth storage-partitioning behavior
-    // Chrome's "may soon delete state for intermediate websites" warning
-    // flags: Google's OAuth redirect_uri is built from Firebase's
-    // `authDomain` config value, which today is the *.firebaseapp.com
-    // default — this rewrite only gets hit once authDomain is changed to
-    // this app's own domain too, and that change needs the domain added
-    // to Firebase Console → Authentication → Settings → Authorized
-    // domains first (unverified from here — not flipped in this pass).
-    const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-    if (!authDomain) return [];
+    // own domain. CRITICAL: the destination must be Firebase's real backend
+    // (<project-id>.firebaseapp.com) — NEVER derived from
+    // NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN. That variable is now intentionally
+    // set to this app's own custom domain (ittsui.fr), which is the whole
+    // point of this rewrite existing — computing the destination from it
+    // instead of from the project ID created a real production incident:
+    // /__/auth/handler rewriting to https://ittsui.fr/__/auth/handler,
+    // i.e. this exact same domain, which is a self-referential infinite
+    // redirect (ERR_TOO_MANY_REDIRECTS) on every single sign-in attempt.
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!projectId) return [];
     return [
       {
         source: "/__/auth/:path*",
-        destination: `https://${authDomain}/__/auth/:path*`,
+        destination: `https://${projectId}.firebaseapp.com/__/auth/:path*`,
       },
     ];
   },
