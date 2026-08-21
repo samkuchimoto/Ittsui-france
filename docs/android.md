@@ -6,13 +6,17 @@
 - `minSdkVersion` / `compileSdk` / `targetSdk`: 24 / 36 / 36 (`android/variables.gradle`)
 - `versionCode` / `versionName`: `1` / `"1.0"` (`android/app/build.gradle`) — bump both for every
   Play Store upload; `versionCode` must strictly increase, `versionName` is the human-facing string.
-- No `google-services.json` in the repo — Firebase Cloud Messaging push notifications are
-  configured in code (`lib/nativePush.ts`, `app/api/register-push-token`) but won't actually
-  deliver on Android until that file is added from the Firebase console
-  (Project settings → your Android app → download `google-services.json` → place at
-  `android/app/google-services.json`). It was previously *not* gitignored (the line existed in
-  `android/.gitignore` but was commented out) — fixed in this pass so a future `git add .` won't
-  accidentally commit it.
+- `google-services.json` is now wired through CI the same way as the signing keystore: add a
+  `GOOGLE_SERVICES_JSON` GitHub secret (the file's contents, base64-encoded — same
+  `[Convert]::ToBase64String(...)` / `base64 -i` commands as the keystore, see below) and
+  `android.yml` decodes it to `android/app/google-services.json` before the build steps. The
+  `com.google.gms:google-services` Gradle plugin classpath is already present
+  (`android/build.gradle:11`) and `app/build.gradle`'s existing try/catch applies it automatically
+  once the file exists — no other Gradle change needed. Unlike the signing keystore, this file
+  isn't irreplaceable — it can be re-downloaded from the Firebase console any time (Project
+  settings → your Android app → `google-services.json`) — but it's still kept out of the repo for
+  consistency with how this project handles all Firebase/signing config (`android/.gitignore`; it
+  was previously listed there but commented out — fixed in an earlier pass).
 
 ## Release signing
 

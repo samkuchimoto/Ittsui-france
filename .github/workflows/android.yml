@@ -1,15 +1,16 @@
 name: Android build
 
-# Builds a debug APK on every push to main. This wraps the live deployed
-# site (capacitor.config.ts uses server.url, not a bundled local build —
-# see that file's comment) — `npm run build` here is a compile/type-check
-# gate on the web app, not what actually ships inside the APK, and the
-# workflow doesn't need Firebase secrets configured for that reason.
+# Builds a debug APK, and (when secrets are configured) a signed release
+# AAB + APK, on every push to main. This wraps the live deployed site
+# (capacitor.config.ts uses server.url, not a bundled local build — see
+# that file's comment) — `npm run build` here is a compile/type-check gate
+# on the web app, not what actually ships inside the APK.
 #
-# google-services.json is not present in this repo (see android/app/
-# build.gradle's own try/catch around the google-services plugin) — the
-# build below succeeds without it, but push notifications won't be live
-# on Android until that file is added from the Firebase console.
+# Every secret below is optional and independently gated — this workflow
+# succeeds with none of them configured (debug APK only, no push
+# notifications, unsigned release build) and progressively does more as
+# each is added. See docs/android.md for exactly what each one is and how
+# to set it.
 
 on:
   push:
@@ -31,9 +32,23 @@ jobs:
       # still produces an AAB, just unsigned — see android/app/build.gradle's
       # comment on the same fallback.
       HAS_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # android/app/build.gradle's own try/catch applies the google-services
+      # Gradle plugin (already on the classpath — android/build.gradle:11)
+      # only when this file exists, so decoding it before any build step is
+      # enough; no other Gradle wiring needed. Firebase project config, not
+      # a private key — still kept out of the repo for consistency with how
+      # this project handles all other Firebase/signing config (see
+      # android/.gitignore).
+      - name: Decode google-services.json
+        if: env.HAS_GOOGLE_SERVICES == 'true'
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
 
       - name: Set up Node 22
         uses: actions/setup-node@v4
