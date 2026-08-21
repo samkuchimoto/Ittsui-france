@@ -532,6 +532,10 @@ export default function Home() {
             Protéger mes relations
             <IconArrowRight className="h-4 w-4" />
           </Link>
+          <p className="mt-4 text-xs" style={{ color: MUTED }}>
+            Le rituel reste gratuit, pour toujours. Ittsui Plus (suggestions enrichies, options
+            supplémentaires) arrive bientôt, à partir de 2,99&nbsp;€/mois.
+          </p>
         </Reveal>
       </section>
 

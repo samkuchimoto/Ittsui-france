@@ -45,6 +45,10 @@ export interface Pair {
   preferences: Preferences;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled";
   createdAt: string; // ISO date
+  // Real delivery record for the invite email, not an assumption — set by
+  // invite-partner/route.ts right after actually attempting to send it.
+  partnerEmailSent?: boolean;
+  inviteSentAt?: string; // ISO date
 }
 
 export interface VenueOption {
@@ -76,6 +80,15 @@ export interface Week {
   };
   optionA?: VenueOption; // present when a second real candidate was available
   optionB?: VenueOption; // absent -> falls back to the single-option yes/no flow
+  // Real delivery record, not an assumption — what notifyBothUsers()
+  // actually managed to send at each stage (weekly-propose/route.ts on
+  // "proposed", rsvp/route.ts on "confirmed"), per recipient. Optional:
+  // absent on any week from before this existed.
+  notificationLog?: {
+    event: "proposed" | "confirmed";
+    sentAt: string; // ISO
+    results: { userId: string; status: "push" | "email" | "failed" | "no-recipient" }[];
+  }[];
 }
 
 export interface User {

@@ -11,9 +11,15 @@ import { useCallback, useRef, useState } from "react";
 
 export type LocationStatus = "idle" | "locating" | "resolving" | "done" | "denied" | "unavailable" | "error";
 
+export interface Coords {
+  lat: number;
+  lon: number;
+}
+
 interface UseUserLocationResult {
   status: LocationStatus;
   postalCode: string | null;
+  coords: Coords | null;
   detect: () => void;
 }
 
@@ -34,6 +40,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string | null> 
 export function useUserLocation(): UseUserLocationResult {
   const [status, setStatus] = useState<LocationStatus>("idle");
   const [postalCode, setPostalCode] = useState<string | null>(null);
+  const [coords, setCoords] = useState<Coords | null>(null);
   const requestedRef = useRef(false);
 
   const detect = useCallback(() => {
@@ -49,6 +56,7 @@ export function useUserLocation(): UseUserLocationResult {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setStatus("resolving");
+        setCoords({ lat: position.coords.latitude, lon: position.coords.longitude });
         reverseGeocode(position.coords.latitude, position.coords.longitude)
           .then((code) => {
             if (code) {
@@ -67,5 +75,5 @@ export function useUserLocation(): UseUserLocationResult {
     );
   }, []);
 
-  return { status, postalCode, detect };
+  return { status, postalCode, coords, detect };
 }

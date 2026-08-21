@@ -10,6 +10,7 @@
 // the initial proposal.
 
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { notifyBothUsers } from "@/lib/notify";
 import type { Pair, Week } from "@/lib/types";
@@ -97,7 +98,14 @@ export async function POST(request: Request) {
     if (pairSnap.exists) {
       const pair = { id: pairSnap.id, ...pairSnap.data() } as Pair;
       const venueName = chosenOption?.venueName ?? week.venueName;
-      await notifyBothUsers(pair, `Rendez-vous verrouillé : ${venueName}.`);
+      const notifyResults = await notifyBothUsers(pair, `Rendez-vous verrouillé : ${venueName}.`);
+      await weekRef.update({
+        notificationLog: FieldValue.arrayUnion({
+          event: "confirmed",
+          sentAt: new Date().toISOString(),
+          results: notifyResults,
+        }),
+      });
     }
   }
 

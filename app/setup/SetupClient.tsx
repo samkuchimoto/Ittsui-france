@@ -44,6 +44,7 @@ import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
+import { useNearbyVenue } from "@/app/hooks/useNearbyVenue";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
 import { previewVenue } from "@/lib/venueCatalog";
 
@@ -189,7 +190,12 @@ export default function SetupClient() {
   const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+  const { status: locationStatus, postalCode: detectedPostalCode, coords, detect: detectLocation } = useUserLocation();
+  // Real, live nearby café/park from OpenStreetMap once we have actual
+  // coordinates — a genuinely closer, real place than the static catalog's
+  // metro-wide landmarks can offer, when it's available. Never blocks
+  // anything: falls back to the static catalog below on timeout/no result.
+  const { venue: nearbyVenue } = useNearbyVenue(coords);
 
   // Pre-fills the manual field rather than replacing it — postalCode stays
   // a normal editable input either way, this just saves a typing step.
@@ -414,13 +420,17 @@ export default function SetupClient() {
   const ONE_TAP_WINDOW_END = "17:00";
   const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
 
-  // Same curated catalog the real weekly-propose pipeline falls back to
-  // (lib/venueCatalog.ts) — a genuinely real venue that could turn out to
-  // be the first proposal, not an invented one. Preview copy only: the
-  // actual submission below still sends venue TYPE preferences, never a
-  // specific pre-picked venue — the real pick happens server-side, same as
-  // for every other pair, once postal code and preferences are on file.
-  const ctaPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
+  // Live OpenStreetMap result when we have one (a real, currently-mapped
+  // place actually near this postal code), otherwise the curated static
+  // catalog (lib/venueCatalog.ts) that the real weekly-propose pipeline
+  // also falls back to. Either way this is preview copy only: the actual
+  // submission below still sends venue TYPE preferences, never a specific
+  // pre-picked venue — the real pick happens server-side, same as for
+  // every other pair, once postal code and preferences are on file.
+  const catalogPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
+  const ctaPreview = nearbyVenue
+    ? { name: nearbyVenue.name, postalCode: postalCode || catalogPreview?.postalCode || "" }
+    : catalogPreview;
 
   async function handleOneTap() {
     setError(null);

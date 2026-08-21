@@ -13,7 +13,7 @@ import {
   browserLocalPersistence,
   type User,
 } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 import { registerNativePush } from "@/lib/nativePush";
 
@@ -86,12 +86,21 @@ function consumeRedirectResultOnce() {
     .then(async (result) => {
       if (!result) return;
       const user = result.user;
+      const userRef = doc(db, "users", user.uid);
+      // notificationPrefs only on first creation, never on a repeat
+      // sign-in — this is the one place a real fix belongs (see
+      // lib/notify.ts's defensive default for the read side, which covers
+      // every account that already existed before this write did). Once a
+      // real settings screen exists to let someone turn a channel off,
+      // overwriting this on every login would silently fight it.
+      const existing = await getDoc(userRef);
       await setDoc(
-        doc(db, "users", user.uid),
+        userRef,
         {
           email: user.email?.toLowerCase() ?? null,
           displayName: user.displayName ?? null,
           updatedAt: new Date().toISOString(),
+          ...(existing.exists() ? {} : { notificationPrefs: { pushEnabled: true, emailEnabled: true } }),
         },
         { merge: true }
       );

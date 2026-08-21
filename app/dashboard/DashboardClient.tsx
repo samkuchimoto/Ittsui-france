@@ -353,6 +353,7 @@ export default function DashboardClient() {
           <p className="text-base font-medium">{week.confirmationText}</p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <div className="mt-5 flex gap-3">
@@ -390,6 +391,7 @@ export default function DashboardClient() {
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <TwoOptionPicker week={week} onVote={queueResponse} voting={responding} />
@@ -504,6 +506,33 @@ function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapse
     <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
       {lapsed ? "Expiré" : labels[status]}
     </span>
+  );
+}
+
+// The actual delivery record for the latest notification (proposal or
+// lock confirmation) — real status, not an assumption that firing the
+// send meant it arrived. "X/Y" rather than a bare checkmark on purpose:
+// a push failing over to email still counts as delivered, but a genuine
+// failure (no token, no email, or the Resend call itself failing) is
+// visibly different from success rather than silently the same green tick.
+function NotificationTrail({ log }: { log: Week["notificationLog"] }) {
+  if (!log || log.length === 0) return null;
+  const latest = log[log.length - 1];
+  const delivered = latest.results.filter((r) => r.status === "push" || r.status === "email").length;
+  const total = latest.results.length;
+  const allDelivered = total > 0 && delivered === total;
+  const eventLabel = latest.event === "proposed" ? "Proposition" : "Confirmation";
+  const time = new Date(latest.sentAt).toLocaleString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <p className="mt-2 text-xs" style={{ color: allDelivered ? MUTED : ACCENT }}>
+      {allDelivered ? "✓" : "⚠"} {eventLabel} notifiée {delivered}/{total} · {time}
+    </p>
   );
 }
 

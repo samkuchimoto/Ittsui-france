@@ -116,25 +116,25 @@ export async function GET(request: Request) {
 
     const proposedTime = buildProposedTime(pair.agreedWindowStart);
 
-    await adminDb
-      .collection("pairs")
-      .doc(pair.id)
-      .collection("weeks")
-      .doc(weekOf)
-      .set({
-        pairId: pair.id,
-        weekOf,
-        venueName: proposal.optionA.venueName,
-        venueAddress: proposal.optionA.venueAddress,
-        confirmationText: proposal.confirmationText,
-        proposedTime,
-        status: "proposed",
-        responses: { [pair.userIds[0]]: null, [pair.userIds[1]]: null },
-        optionA: proposal.optionA,
-        ...(proposal.optionB ? { optionB: proposal.optionB } : {}),
-      });
+    const weekRef = adminDb.collection("pairs").doc(pair.id).collection("weeks").doc(weekOf);
 
-    await notifyBothUsers(pair, proposal.confirmationText);
+    await weekRef.set({
+      pairId: pair.id,
+      weekOf,
+      venueName: proposal.optionA.venueName,
+      venueAddress: proposal.optionA.venueAddress,
+      confirmationText: proposal.confirmationText,
+      proposedTime,
+      status: "proposed",
+      responses: { [pair.userIds[0]]: null, [pair.userIds[1]]: null },
+      optionA: proposal.optionA,
+      ...(proposal.optionB ? { optionB: proposal.optionB } : {}),
+    });
+
+    const notifyResults = await notifyBothUsers(pair, proposal.confirmationText);
+    await weekRef.update({
+      notificationLog: [{ event: "proposed", sentAt: new Date().toISOString(), results: notifyResults }],
+    });
     results.push({ pairId: pair.id, status: "proposed", source: proposal.source });
   }
 
