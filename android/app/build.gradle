@@ -28,6 +28,23 @@ def hasEnvSigning = envKeystorePath?.trim() &&
     System.getenv("ANDROID_KEY_PASSWORD")?.trim()
 def hasReleaseSigning = hasKeystoreProperties || hasEnvSigning
 
+// A missing/empty decoded keystore file fails deep inside AGP's signing
+// internals with an unhelpful error otherwise (e.g. "keystore was tampered
+// with, or password was incorrect" even when the real cause is simply "the
+// file doesn't exist") — this only runs when hasEnvSigning is true, i.e.
+// only during the release build steps that actually set these env vars
+// (see .github/workflows/android.yml), never during assembleDebug.
+if (hasEnvSigning) {
+    def ksFile = new File(envKeystorePath)
+    if (!ksFile.exists() || ksFile.length() == 0) {
+        throw new GradleException(
+            "ANDROID_KEYSTORE_PATH ('${envKeystorePath}') does not exist or is empty. " +
+            "Check the 'Decode release keystore' step output and the ANDROID_KEYSTORE_BASE64 " +
+            "secret's value — see docs/android.md."
+        )
+    }
+}
+
 android {
     namespace = "fr.ittsui.app"
     compileSdk = rootProject.ext.compileSdkVersion
