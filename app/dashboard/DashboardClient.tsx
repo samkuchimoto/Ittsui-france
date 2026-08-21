@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
@@ -171,6 +171,23 @@ export default function DashboardClient() {
     return unsub;
   }, [pair]);
 
+  // How many rendez-vous this pair has actually locked in, ever — the
+  // dashboard otherwise only ever shows this single week's proposal, with
+  // no sense of accumulated momentum (unlike friendship-tracker apps,
+  // whose whole premise is showing relationship history). A count query,
+  // not a live listener: this only changes once a week at most, so a
+  // one-time read is enough and cheaper than a standing subscription.
+  // Re-fetched whenever this week's own status changes to "confirmed" so
+  // it doesn't need its own separate write path or day-boundary logic.
+  const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!pair || pair.status !== "active") return;
+    const q = query(collection(db, "pairs", pair.id, "weeks"), where("status", "==", "confirmed"));
+    getCountFromServer(q)
+      .then((snap) => setConfirmedCount(snap.data().count))
+      .catch(() => setConfirmedCount(null));
+  }, [pair, week?.status]);
+
   async function handleSignOut() {
     await signOutUser();
   }
@@ -312,6 +329,17 @@ export default function DashboardClient() {
           </button>
         </div>
       </div>
+
+      {/* Momentum, not just this week's card — silent for a brand-new pair
+          (0 confirmed yet isn't an encouraging thing to announce). */}
+      {!!confirmedCount && (
+        <span
+          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+          style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
+        >
+          {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
+        </span>
+      )}
 
       {!week && (
         <p className="mt-6 text-sm" style={{ color: MUTED }}>
