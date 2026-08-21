@@ -26,6 +26,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/f
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { CockpitStatus } from "@/app/components/CockpitStatus";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -244,6 +245,9 @@ export default function PendingClient() {
         {pair.partnerName} n&apos;a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que
         c&apos;est fait.
       </p>
+      <div className="mt-4 flex justify-center">
+        <CockpitStatus pair={pair} />
+      </div>
       <DeliveryStatus pair={pair} />
       {cancelError && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>

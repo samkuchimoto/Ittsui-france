@@ -33,6 +33,7 @@ import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServe
 import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { tapHaptic } from "@/lib/haptics";
 
 const fraunces = Fraunces({
@@ -340,6 +341,12 @@ export default function DashboardClient() {
         >
           {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
         </span>
+      )}
+
+      {pair && (
+        <div className="mt-3">
+          <CockpitStatus pair={pair} week={week} />
+        </div>
       )}
 
       {/* The only mention of the paid tier used to live solely on the

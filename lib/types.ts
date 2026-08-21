@@ -49,6 +49,10 @@ export interface Pair {
   // invite-partner/route.ts right after actually attempting to send it.
   partnerEmailSent?: boolean;
   inviteSentAt?: string; // ISO date
+  // Set once, the first time the invite link is actually loaded — see
+  // api/mark-invite-opened/route.ts. Absent means "not opened yet", not
+  // "unknown"; every pair created after this field existed can trust that.
+  inviteOpenedAt?: string; // ISO date
 }
 
 export interface VenueOption {

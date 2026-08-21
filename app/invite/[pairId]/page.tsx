@@ -64,6 +64,20 @@ export default function InvitePage() {
     return unsub;
   }, []);
 
+  // Cockpit stage 2 ("Reçu") — fired independently of auth resolving, so
+  // it's recorded the instant the link is opened, not only once someone
+  // decides to sign in. Best-effort: never blocks or shows an error if it
+  // fails, this is a status ping, not something the page's own flow
+  // depends on.
+  useEffect(() => {
+    if (!params.pairId) return;
+    fetch("/api/mark-invite-opened", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pairId: params.pairId }),
+    }).catch(() => {});
+  }, [params.pairId]);
+
   // The initial auth check can hang indefinitely on a network that blocks
   // or intercepts Google's sign-in traffic (seen on some public/institutional
   // wifi) — an infinite spinner gives no way out. Bounded wait, then a
