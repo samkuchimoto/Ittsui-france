@@ -11,15 +11,83 @@
 // the Node build sandbox — harmless when real NEXT_PUBLIC_* env vars are
 // present (Vercel always has them), but a hard build failure anywhere
 // they aren't (a clean CI checkout with no secrets configured).
+//
+// Brought onto the same design system as app/page.tsx and
+// app/setup/SetupClient.tsx (Fraunces/Work Sans, INK/MUTED/ACCENT/BORDER)
+// — this is the screen people actually see every week, and it had never
+// received that treatment, unlike the marketing and setup pages. Every
+// piece of existing logic (auth watcher, Firestore listeners, respond(),
+// the Hitbonenut pause timing, the swipe gesture) is unchanged; only
+// presentation and the new venue photo are new. Status badge colors
+// (amber/emerald/neutral) stay as semantic status coding, not brand
+// chrome, same reasoning as leaving error text on its own color pattern
+// elsewhere in the app.
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import type { Pair, Week } from "@/lib/types";
+import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { tapHaptic } from "@/lib/haptics";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const INK = "#1C1917";
+const MUTED = "#78716C";
+const ACCENT = "#A84B38";
+const BORDER = "#E8E2D9";
+const CREAM = "#FBF9F5";
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      style={{ color: INK }}
+    >
+      <div className="mx-auto max-w-md px-6 py-12">{children}</div>
+    </main>
+  );
+}
+
+// Real photos for venue types with a confident match in /public — same
+// assets already used elsewhere in the app, not new stock. Restaurant and
+// museum (and any week from before venueType existed, or sourced from the
+// RAG tier which doesn't return one) fall back to a plain tinted block
+// rather than a mismatched photo — same honesty rule as DiscoveryTile on
+// the discovery-grid branch.
+const VENUE_PHOTOS: Partial<Record<VenueType, string>> = {
+  cafe: "/friends-cafe-terrace.jpg",
+  park: "/grandmother-granddaughter-park.jpg",
+  home: "/couple-living-room.jpg",
+};
+
+function VenuePhoto({ venueType }: { venueType?: VenueType }) {
+  const src = venueType ? VENUE_PHOTOS[venueType] : undefined;
+  return (
+    <div className="relative mb-4 h-36 w-full overflow-hidden rounded-2xl" style={{ backgroundColor: `${ACCENT}14` }}>
+      {src && <Image src={src} alt="" fill sizes="(max-width: 480px) 100vw, 448px" className="object-cover" />}
+    </div>
+  );
+}
 
 export default function DashboardClient() {
   const router = useRouter();
@@ -105,6 +173,23 @@ export default function DashboardClient() {
     return unsub;
   }, [pair]);
 
+  // How many rendez-vous this pair has actually locked in, ever — the
+  // dashboard otherwise only ever shows this single week's proposal, with
+  // no sense of accumulated momentum (unlike friendship-tracker apps,
+  // whose whole premise is showing relationship history). A count query,
+  // not a live listener: this only changes once a week at most, so a
+  // one-time read is enough and cheaper than a standing subscription.
+  // Re-fetched whenever this week's own status changes to "confirmed" so
+  // it doesn't need its own separate write path or day-boundary logic.
+  const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!pair || pair.status !== "active") return;
+    const q = query(collection(db, "pairs", pair.id, "weeks"), where("status", "==", "confirmed"));
+    getCountFromServer(q)
+      .then((snap) => setConfirmedCount(snap.data().count))
+      .catch(() => setConfirmedCount(null));
+  }, [pair, week?.status]);
+
   async function handleSignOut() {
     await signOutUser();
   }
@@ -184,9 +269,11 @@ export default function DashboardClient() {
   // Still checking auth state
   if (user === null) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500"><FriendlyLoading /></p>
-      </main>
+      <Shell>
+        <p className="text-center text-sm" style={{ color: MUTED }}>
+          <FriendlyLoading />
+        </p>
+      </Shell>
     );
   }
 
@@ -199,31 +286,32 @@ export default function DashboardClient() {
   // pair that's about to redirect away
   if (!pairChecked || (pair && pair.status !== "active")) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500"><FriendlyLoading /></p>
-      </main>
+      <Shell>
+        <p className="text-center text-sm" style={{ color: MUTED }}>
+          <FriendlyLoading />
+        </p>
+      </Shell>
     );
   }
 
   if (!pair) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">
-          Aucune personne liée pour le moment.
-        </p>
-        <button
-          onClick={handleSignOut}
-          className="mt-6 text-xs text-neutral-400 underline underline-offset-4"
-        >
-          Se déconnecter
-        </button>
-        <button
-          onClick={handleDeleteAccount}
-          className="mt-2 block text-xs text-red-400 underline underline-offset-4"
-        >
-          Supprimer mon compte
-        </button>
-      </main>
+      <Shell>
+        <div className="text-center">
+          <p className="text-sm" style={{ color: MUTED }}>
+            Aucune personne liée pour le moment.
+          </p>
+          <button onClick={handleSignOut} className="mt-6 text-xs underline underline-offset-4" style={{ color: MUTED }}>
+            Se déconnecter
+          </button>
+          <button
+            onClick={handleDeleteAccount}
+            className="mt-2 block text-xs text-red-500 underline underline-offset-4"
+          >
+            Supprimer mon compte
+          </button>
+        </div>
+      </Shell>
     );
   }
 
@@ -231,50 +319,76 @@ export default function DashboardClient() {
   const myResponse = week && myId ? week.responses[myId] : null;
 
   return (
-    <main className="mx-auto max-w-md px-6 py-12">
+    <Shell>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-neutral-900">Cette semaine</h1>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>Cette semaine</h1>
         <div className="flex flex-col items-end gap-1">
-          <button
-            onClick={handleSignOut}
-            className="text-xs text-neutral-400 underline underline-offset-4"
-          >
+          <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
             Se déconnecter
           </button>
-          <button
-            onClick={handleDeleteAccount}
-            className="text-xs text-red-400 underline underline-offset-4"
-          >
+          <button onClick={handleDeleteAccount} className="text-xs text-red-500 underline underline-offset-4">
             Supprimer mon compte
           </button>
         </div>
       </div>
 
+      {/* Momentum, not just this week's card — silent for a brand-new pair
+          (0 confirmed yet isn't an encouraging thing to announce). */}
+      {!!confirmedCount && (
+        <span
+          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+          style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
+        >
+          {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
+        </span>
+      )}
+
+      {pair && (
+        <div className="mt-3">
+          <CockpitStatus pair={pair} week={week} />
+        </div>
+      )}
+
+      {/* The only mention of the paid tier used to live solely on the
+          marketing page — someone already using the app had no way to even
+          discover it exists. Links back to the public page's own teaser
+          rather than duplicating the "bientôt, pas encore de paiement"
+          disclosure in a second place. */}
+      <p className="mt-2 text-xs" style={{ color: MUTED }}>
+        <Link href="/#plus" className="underline underline-offset-4">
+          Découvrir Ittsui Plus
+        </Link>
+      </p>
+
       {!week && (
-        <p className="mt-6 text-sm text-neutral-500">
-          Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu.
+        <p className="mt-6 text-sm" style={{ color: MUTED }}>
+          Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu.
         </p>
       )}
 
       {week && !week.optionB && (
-        <div className="mt-6 rounded-xl border border-neutral-200 p-5">
-          <p className="text-base text-neutral-900">{week.confirmationText}</p>
+        <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+          <VenuePhoto venueType={week.optionA?.venueType} />
+          <p className="text-base font-medium">{week.confirmationText}</p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => queueResponse("yes")}
                 disabled={responding}
-                className="min-h-[56px] flex-1 rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-50"
+                className="min-h-[56px] flex-1 rounded-full text-lg font-medium text-white disabled:opacity-50"
+                style={{ backgroundColor: ACCENT }}
               >
                 Oui
               </button>
               <button
                 onClick={() => queueResponse("no")}
                 disabled={responding}
-                className="min-h-[56px] flex-1 rounded-lg border border-neutral-300 text-lg font-medium text-neutral-700 disabled:opacity-50"
+                className="min-h-[56px] flex-1 rounded-full border text-lg font-medium disabled:opacity-50"
+                style={{ borderColor: BORDER, color: INK }}
               >
                 Non
               </button>
@@ -282,28 +396,29 @@ export default function DashboardClient() {
           )}
 
           {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
-            <p className="mt-4 text-sm text-neutral-500">
-              En attente de l'autre personne…
+            <p className="mt-4 text-sm" style={{ color: MUTED }}>
+              En attente de l&apos;autre personne…
             </p>
           )}
         </div>
       )}
 
       {week && week.optionB && (
-        <div className="mt-6 rounded-xl border border-neutral-200 p-5">
-          <p className="text-base text-neutral-900">
+        <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+          <p className="text-base font-medium">
             {week.status === "proposed" ? "Deux propositions pour vous cette semaine :" : week.confirmationText}
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <TwoOptionPicker week={week} onVote={queueResponse} voting={responding} />
           )}
 
           {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
-            <p className="mt-4 text-sm text-neutral-500">
-              En attente de l'autre personne…
+            <p className="mt-4 text-sm" style={{ color: MUTED }}>
+              En attente de l&apos;autre personne…
             </p>
           )}
         </div>
@@ -316,7 +431,7 @@ export default function DashboardClient() {
         onCancel={() => setPendingResponse(null)}
         confirming={responding}
       />
-    </main>
+    </Shell>
   );
 }
 
@@ -371,23 +486,23 @@ function HitbonenutPause({
       `}</style>
       <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center">
         <span
-          className={`breath mx-auto block h-9 w-9 rounded-full border-2 ${ready ? "border-emerald-600" : "border-neutral-300"}`}
+          className={`breath mx-auto block h-9 w-9 rounded-full border-2 ${ready ? "border-emerald-600" : ""}`}
+          style={ready ? {} : { borderColor: BORDER }}
         />
-        <p className="mt-4 text-sm text-neutral-500">Un instant, avant de confirmer.</p>
-        <p className="mt-1 text-base font-medium text-neutral-900">{venueName}</p>
+        <p className="mt-4 text-sm" style={{ color: MUTED }}>
+          Un instant, avant de confirmer.
+        </p>
+        <p className="mt-1 text-base font-medium">{venueName}</p>
         <button
           type="button"
           onClick={onConfirm}
           disabled={!ready || confirming}
-          className="mt-6 min-h-[56px] w-full rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-40"
+          className="mt-6 min-h-[56px] w-full rounded-full text-lg font-medium text-white disabled:opacity-40"
+          style={{ backgroundColor: ACCENT }}
         >
           {ready ? "Confirmer" : "…"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="mt-3 text-xs text-neutral-400 underline underline-offset-4"
-        >
+        <button type="button" onClick={onCancel} className="mt-3 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Annuler
         </button>
       </div>
@@ -410,6 +525,33 @@ function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapse
     <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
       {lapsed ? "Expiré" : labels[status]}
     </span>
+  );
+}
+
+// The actual delivery record for the latest notification (proposal or
+// lock confirmation) — real status, not an assumption that firing the
+// send meant it arrived. "X/Y" rather than a bare checkmark on purpose:
+// a push failing over to email still counts as delivered, but a genuine
+// failure (no token, no email, or the Resend call itself failing) is
+// visibly different from success rather than silently the same green tick.
+function NotificationTrail({ log }: { log: Week["notificationLog"] }) {
+  if (!log || log.length === 0) return null;
+  const latest = log[log.length - 1];
+  const delivered = latest.results.filter((r) => r.status === "push" || r.status === "email").length;
+  const total = latest.results.length;
+  const allDelivered = total > 0 && delivered === total;
+  const eventLabel = latest.event === "proposed" ? "Proposition" : "Confirmation";
+  const time = new Date(latest.sentAt).toLocaleString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <p className="mt-2 text-xs" style={{ color: allDelivered ? MUTED : ACCENT }}>
+      {allDelivered ? "✓" : "⚠"} {eventLabel} notifiée {delivered}/{total} · {time}
+    </p>
   );
 }
 
@@ -459,8 +601,9 @@ function TwoOptionPicker({
   return (
     <div className="mt-5">
       <div
-        className="touch-pan-y select-none rounded-lg border border-neutral-200 p-4"
+        className="touch-pan-y select-none rounded-2xl border p-4"
         style={{
+          borderColor: BORDER,
           transform: `translateX(${dragX}px) rotate(${dragX / 26}deg)`,
           transition: draggingRef.current ? "none" : "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
         }}
@@ -472,25 +615,32 @@ function TwoOptionPicker({
         onPointerUp={endDrag}
         onPointerLeave={() => draggingRef.current && endDrag()}
       >
-        <p className="text-xs text-neutral-400">{viewing === "A" ? "Option 1 sur 2" : "Option 2 sur 2"}</p>
-        <p className="mt-1 text-base font-medium text-neutral-900">{option.venueName}</p>
-        <p className="mt-1 text-sm text-neutral-500">{option.venueAddress}</p>
+        <VenuePhoto venueType={option.venueType} />
+        <p className="text-xs" style={{ color: MUTED }}>
+          {viewing === "A" ? "Option 1 sur 2" : "Option 2 sur 2"}
+        </p>
+        <p className="mt-1 text-base font-medium">{option.venueName}</p>
+        <p className="mt-1 text-sm" style={{ color: MUTED }}>
+          {option.venueAddress}
+        </p>
       </div>
 
       <button
         type="button"
         onClick={() => setViewing((v) => (v === "A" ? "B" : "A"))}
         disabled={voting}
-        className="mt-3 w-full text-sm text-neutral-500 underline underline-offset-4 disabled:opacity-50"
+        className="mt-3 w-full text-sm underline underline-offset-4 disabled:opacity-50"
+        style={{ color: MUTED }}
       >
-        ← Voir l'autre option
+        ← Voir l&apos;autre option
       </button>
 
       <button
         type="button"
         onClick={() => onVote(viewing)}
         disabled={voting}
-        className="mt-3 min-h-[56px] w-full rounded-lg bg-neutral-900 text-lg font-medium text-white disabled:opacity-50"
+        className="mt-3 min-h-[56px] w-full rounded-full text-lg font-medium text-white disabled:opacity-50"
+        style={{ backgroundColor: ACCENT }}
       >
         Choisir cette option →
       </button>

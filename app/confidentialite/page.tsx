@@ -71,9 +71,13 @@ export default function ConfidentialitePage() {
             hebdomadaire. Rien de tout cela n&apos;est utilisé à d&apos;autres fins.
           </Item>
           <Item title="Localisation">
-            Ittsui ne suit jamais votre position. Le seul indice géographique est le code postal que vous
-            tapez vous-même, facultatif, utilisé uniquement pour proposer des lieux plus proches de chez
-            vous.
+            Vous pouvez taper votre code postal vous-même, ou autoriser (facultatif — votre navigateur vous
+            le demande explicitement, et rien ne se passe si vous refusez) Ittsui à le détecter
+            automatiquement. Dans ce cas, votre position n&apos;est utilisée qu&apos;une fois, dans votre
+            navigateur, pour obtenir votre code postal auprès du service officiel de l&apos;État français
+            (api-adresse.data.gouv.fr) — vos coordonnées GPS elles-mêmes ne sont jamais envoyées à Ittsui ni
+            stockées ; seul le code postal qui en résulte l&apos;est, exactement comme si vous l&apos;aviez
+            tapé.
           </Item>
           <Item title="Notifications">
             Si vous les activez, un jeton de notification push (via Firebase Cloud Messaging) ou votre
@@ -85,8 +89,13 @@ export default function ConfidentialitePage() {
             application ne contient aucune intégration de ce type.
           </Item>
           <Item title="Suppression">
-            Décliner ou annuler une invitation retire les informations associées. Pour toute autre demande de
-            suppression, écrivez à{" "}
+            Décliner une invitation retire votre e-mail — la seule donnée que cette invitation contenait
+            vous concernant, puisque vous ne vous étiez jamais connecté(e). Supprimer votre compte (menu du
+            tableau de bord) efface votre compte et vos données immédiatement ; si vous étiez lié(e) à
+            quelqu&apos;un, le lien est annulé et cette personne est prévenue, mais ses propres données à
+            elle ne sont pas effacées par votre demande — l&apos;effacement d&apos;un compte ne donne pas le
+            droit de supprimer les données de quelqu&apos;un d&apos;autre. Pour toute autre demande, écrivez
+            à{" "}
             <a href="mailto:hello@ittsui.fr" style={{ color: ACCENT }}>
               hello@ittsui.fr
             </a>

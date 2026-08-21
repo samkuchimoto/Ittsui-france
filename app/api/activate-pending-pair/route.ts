@@ -5,6 +5,7 @@
 // before doing anything, the pairId alone isn't authorization.
 
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 // TODO: switch to a verified domain address once ittsui.fr (or whichever
@@ -41,6 +42,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "active", pairId });
   }
 
+  // "cancelled" specifically means a newer invite from the same inviter
+  // superseded this one (see invite-partner/route.ts's upsert) — worth its
+  // own message rather than the generic "already processed", since the
+  // person almost certainly has a newer, working invite email to use
+  // instead and would otherwise have no idea why this link stopped working.
+  if (pair.status === "cancelled") {
+    return NextResponse.json(
+      { error: "cette invitation n'est plus valide — une invitation plus récente a peut-être été envoyée" },
+      { status: 409 }
+    );
+  }
+
   if (pair.status !== "pending") {
     return NextResponse.json({ error: "invitation déjà traitée" }, { status: 409 });
   }
@@ -53,7 +66,15 @@ export async function POST(request: Request) {
   const inviterUid = pair.userIds[0];
 
   if (decline) {
-    await pairRef.update({ status: "declined" });
+    // Real data minimization, not just a status flag: the invitee never
+    // signed in (never got a users/{uid} record at all), so their email is
+    // the one piece of directly-identifying, directly-contactable data
+    // this whole pending pair ever held about them — same principle
+    // api/user/delete/route.ts already applies to a deleted account's own
+    // pairs. partnerName stays (the inviter's own note about who they
+    // invited, shown back to them on /setup/pending) so that screen keeps
+    // working; invitedEmail genuinely serves no purpose once declined.
+    await pairRef.update({ status: "declined", invitedEmail: FieldValue.delete() });
     const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "La personne invitée"} a décliné l'invitation.`);
     if (!sent) console.warn(`activate-pending-pair: decline notification failed for inviter ${inviterUid}`);
     return NextResponse.json({ status: "declined" });

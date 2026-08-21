@@ -42,9 +42,10 @@ import { collection, query, where, orderBy, limit, getDocs } from "firebase/fire
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
-import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
+import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
+import { useNearbyVenue } from "@/app/hooks/useNearbyVenue";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
 import { previewVenue } from "@/lib/venueCatalog";
 
@@ -69,6 +70,30 @@ const ACCENT = "#A84B38";
 const BORDER = "#E8E2D9";
 const CREAM = "#FBF9F5";
 
+// Category icons, not photos — the geolocated CTA preview names a real,
+// specific place (either a live OpenStreetMap match or the static
+// catalog), and there's no licensed photo of most of them. A cup or a
+// tree marks "this is a café" / "this is a park" honestly; a stock or
+// AI-generated photo next to a specific real name would imply it depicts
+// that actual place, which it wouldn't.
+function VenueTypeIcon({ type, className = "" }: { type: VenueType; className?: string }) {
+  if (type === "park") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 3l5 8H7l5-8zM12 8l6 9H6l6-9z" />
+        <path d="M12 21v-4" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z" />
+      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+      <path d="M7 3c0 1-1 1-1 2s1 1 1 2M11 3c0 1-1 1-1 2s1 1 1 2" />
+    </svg>
+  );
+}
+
 const DAYS: { value: Pair["agreedDay"]; label: string }[] = [
   { value: "mon", label: "Lundi" },
   { value: "tue", label: "Mardi" },
@@ -87,10 +112,10 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
-// Visual tile grid, in the order requested. Mapped 1:1 onto existing
-// VenueType values — no new type added. "restaurant"/"museum" have no
-// matching real photo in /public yet, so they render as a plain tinted
-// block (DiscoveryGrid's own fallback) rather than a mismatched photo.
+// Visual tile grid — real photography where a confident match exists
+// (already used elsewhere in the app), a plain tinted block otherwise
+// rather than a mismatched photo. Mapped 1:1 onto existing VenueType
+// values, same order as the brief — no new type added.
 const DISCOVERY_TILES: DiscoveryTile[] = [
   { value: "cafe", label: "Café", image: "/friends-cafe-terrace.jpg" },
   { value: "park", label: "Parc", image: "/grandmother-granddaughter-park.jpg" },
@@ -192,7 +217,12 @@ export default function SetupClient() {
   const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+  const { status: locationStatus, postalCode: detectedPostalCode, coords, detect: detectLocation } = useUserLocation();
+  // Real, live nearby café/park from OpenStreetMap once we have actual
+  // coordinates — a genuinely closer, real place than the static catalog's
+  // metro-wide landmarks can offer, when it's available. Never blocks
+  // anything: falls back to the static catalog below on timeout/no result.
+  const { venue: nearbyVenue } = useNearbyVenue(coords);
 
   // Pre-fills the manual field rather than replacing it — postalCode stays
   // a normal editable input either way, this just saves a typing step.
@@ -417,13 +447,17 @@ export default function SetupClient() {
   const ONE_TAP_WINDOW_END = "17:00";
   const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
 
-  // Same curated catalog the real weekly-propose pipeline falls back to
-  // (lib/venueCatalog.ts) — a genuinely real venue that could turn out to
-  // be the first proposal, not an invented one. Preview copy only: the
-  // actual submission below still sends venue TYPE preferences, never a
-  // specific pre-picked venue — the real pick happens server-side, same as
-  // for every other pair, once postal code and preferences are on file.
-  const ctaPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
+  // Live OpenStreetMap result when we have one (a real, currently-mapped
+  // place actually near this postal code), otherwise the curated static
+  // catalog (lib/venueCatalog.ts) that the real weekly-propose pipeline
+  // also falls back to. Either way this is preview copy only: the actual
+  // submission below still sends venue TYPE preferences, never a specific
+  // pre-picked venue — the real pick happens server-side, same as for
+  // every other pair, once postal code and preferences are on file.
+  const catalogPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
+  const ctaPreview = nearbyVenue
+    ? { name: nearbyVenue.name, postalCode: postalCode || catalogPreview?.postalCode || "", type: nearbyVenue.kind }
+    : catalogPreview;
 
   async function handleOneTap() {
     setError(null);
@@ -617,15 +651,33 @@ export default function SetupClient() {
               type="button"
               onClick={handleOneTap}
               disabled={submitting}
-              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              {submitting
-                ? "Envoi…"
-                : ctaPreview
-                  ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
-                  : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              {!submitting && ctaPreview && <VenueTypeIcon type={ctaPreview.type} className="h-4 w-4 shrink-0" />}
+              <span>
+                {submitting
+                  ? "Envoi…"
+                  : ctaPreview
+                    ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
+                    : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              </span>
             </button>
+
+            {/* Location detection is silent by design (no permission-prompt
+                surprise), but that also meant nothing on screen showed it was
+                even happening — this makes it visible instead of invisible. */}
+            {(locationStatus === "locating" || locationStatus === "resolving") && (
+              <div className="flex justify-center">
+                <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+              </div>
+            )}
+            {locationStatus === "done" && ctaPreview && (
+              <p className="text-center text-xs" style={{ color: MUTED }}>
+                Basé sur le {ctaPreview.postalCode} (détecté automatiquement).
+              </p>
+            )}
+
             <button
               type="button"
               onClick={goToStep2}

@@ -12,14 +12,65 @@
 // which let an old stale pair (from earlier testing) surface instead of
 // the current one -- that was the cause of an old partner name reappearing
 // even after starting a fresh invite.
+//
+// Brought onto the same design system as the rest of the app (Fraunces/
+// Work Sans, INK/MUTED/ACCENT/BORDER) and now shows whether the invite
+// email actually sent (pair.partnerEmailSent), not just that it was
+// attempted — the visible delivery record this screen never had before.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { CockpitStatus } from "@/app/components/CockpitStatus";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["300", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const INK = "#1C1917";
+const MUTED = "#78716C";
+const ACCENT = "#A84B38";
+const BORDER = "#E8E2D9";
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      style={{ color: INK }}
+    >
+      <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
+    </main>
+  );
+}
+
+function DeliveryStatus({ pair }: { pair: Pair }) {
+  if (typeof pair.partnerEmailSent !== "boolean") return null;
+  const time = pair.inviteSentAt
+    ? new Date(pair.inviteSentAt).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    : null;
+  return (
+    <p className="mt-3 text-xs" style={{ color: pair.partnerEmailSent ? MUTED : ACCENT }}>
+      {pair.partnerEmailSent ? "✓ E-mail envoyé" : "⚠ Échec d'envoi de l'e-mail"}
+      {time && ` · ${time}`}
+    </p>
+  );
+}
 
 export default function PendingClient() {
   const router = useRouter();
@@ -106,109 +157,116 @@ export default function PendingClient() {
 
   if (user === null || user === false || !checked || !pair) {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500">
+      <Shell>
+        <p className="text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
-      </main>
+      </Shell>
     );
   }
 
   if (pair.status === "declined") {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Invitation déclinée</h1>
-        <p className="mt-3 text-sm text-neutral-600">
-          {pair.partnerName} n'a pas souhaité être lié(e). Vous pouvez inviter quelqu'un d'autre.
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Invitation déclinée
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          {pair.partnerName} n&apos;a pas souhaité être lié(e). Vous pouvez inviter quelqu&apos;un d&apos;autre.
         </p>
         <button
           onClick={() => router.push("/setup")}
-          className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
+          className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: ACCENT }}
         >
           Nouvelle invitation
         </button>
-        <button
-          onClick={handleSignOut}
-          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
-        >
+        <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Se déconnecter
         </button>
         <InvitationHistory items={pastInvites} />
-      </main>
+      </Shell>
     );
   }
 
   if (pair.status === "cancelled") {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Invitation annulée</h1>
-        <p className="mt-3 text-sm text-neutral-600">
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Invitation annulée
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.
         </p>
         <button
           onClick={() => router.push("/setup")}
-          className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
+          className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: ACCENT }}
         >
           Nouvelle invitation
         </button>
-        <button
-          onClick={handleSignOut}
-          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
-        >
+        <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Se déconnecter
         </button>
         <InvitationHistory items={pastInvites} />
-      </main>
+      </Shell>
     );
   }
 
   if (pair.status === "expired") {
     return (
-      <main className="mx-auto max-w-md px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Invitation expirée</h1>
-        <p className="mt-3 text-sm text-neutral-600">
-          {pair.partnerName} n'a pas répondu à temps. Vous pouvez réessayer.
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Invitation expirée
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          {pair.partnerName} n&apos;a pas répondu à temps. Vous pouvez réessayer.
         </p>
         <button
           onClick={() => router.push("/setup")}
-          className="mt-6 w-full rounded-lg bg-neutral-900 py-3 text-sm font-medium text-white"
+          className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: ACCENT }}
         >
           Nouvelle invitation
         </button>
-        <button
-          onClick={handleSignOut}
-          className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
-        >
+        <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Se déconnecter
         </button>
         <InvitationHistory items={pastInvites} />
-      </main>
+      </Shell>
     );
   }
 
   // status === "pending"
   return (
-    <main className="mx-auto max-w-md px-6 py-12 text-center">
-      <h1 className="text-2xl font-semibold text-neutral-900">En attente</h1>
-      <p className="mt-3 text-sm text-neutral-600">
-        {pair.partnerName} n'a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que c'est fait.
+    <Shell>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>En attente</h1>
+      <p className="mt-3 text-sm" style={{ color: MUTED }}>
+        {pair.partnerName} n&apos;a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que
+        c&apos;est fait.
       </p>
-      {cancelError && <p className="mt-4 text-sm text-red-600">{cancelError}</p>}
+      <div className="mt-4 flex justify-center">
+        <CockpitStatus pair={pair} />
+      </div>
+      <DeliveryStatus pair={pair} />
+      {cancelError && (
+        <p className="mt-4 text-sm" style={{ color: ACCENT }}>
+          {cancelError}
+        </p>
+      )}
       <button
         onClick={handleCancel}
         disabled={cancelling}
-        className="mt-8 w-full rounded-lg border border-neutral-300 py-3 text-sm font-medium text-neutral-700 disabled:opacity-50"
+        className="mt-8 w-full rounded-full border py-3 text-sm font-medium disabled:opacity-50"
+        style={{ borderColor: BORDER, color: INK }}
       >
         {cancelling ? "Annulation..." : "Annuler l'invitation"}
       </button>
-      <button
-        onClick={handleSignOut}
-        className="mt-4 text-xs text-neutral-400 underline underline-offset-4"
-      >
+      <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
         Se déconnecter
       </button>
       <InvitationHistory items={pastInvites} />
-    </main>
+    </Shell>
   );
 }
 
@@ -221,13 +279,17 @@ const HISTORY_LABELS: Record<string, string> = {
 function InvitationHistory({ items }: { items: Pair[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="mt-10 border-t border-neutral-200 pt-6 text-left">
-      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Invitations précédentes</p>
+    <div className="mt-10 border-t pt-6 text-left" style={{ borderColor: BORDER }}>
+      <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
+        Invitations précédentes
+      </p>
       <ul className="mt-3 space-y-2">
         {items.map((p) => (
-          <li key={p.id} className="flex items-center justify-between text-sm text-neutral-600">
+          <li key={p.id} className="flex items-center justify-between text-sm" style={{ color: MUTED }}>
             <span>{p.partnerName}</span>
-            <span className="text-xs text-neutral-400">{HISTORY_LABELS[p.status] ?? p.status}</span>
+            <span className="text-xs" style={{ color: `${MUTED}99` }}>
+              {HISTORY_LABELS[p.status] ?? p.status}
+            </span>
           </li>
         ))}
       </ul>

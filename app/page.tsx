@@ -102,6 +102,11 @@ const DUO_CARDS = [
   { src: "/friends-cafe-terrace.jpg", alt: "Deux amis discutent en terrasse, sur une rue pavée.", label: "Vos ami(e)s proches" },
   { src: "/couple-living-room.jpg", alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.", label: "Votre partenaire" },
   { src: "/grandmother-granddaughter-park.jpg", alt: "Une grand-mère et sa petite-fille assises sur un banc, dans un parc.", label: "Votre famille" },
+  {
+    src: "/hero-father-son-vineyard.jpg.jpg",
+    alt: "Un père et son fils adulte marchent côte à côte dans les vignes.",
+    label: "Vos parents",
+  },
 ];
 
 // --- Friday Card state machine -------------------------------------------
@@ -368,7 +373,7 @@ export default function Home() {
             </Link>
             <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
               <IconSparkles className="h-3.5 w-3.5" />
-              Sans calendrier à synchroniser · Configuration en 1 minute
+              Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
             </p>
           </div>
         </Reveal>
@@ -403,17 +408,17 @@ export default function Home() {
           </p>
         </Reveal>
 
-        <Reveal className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-5 sm:grid-cols-3">
+        <Reveal className="mx-auto mt-14 grid max-w-5xl grid-cols-2 gap-5 sm:grid-cols-4">
           {DUO_CARDS.map((card, i) => (
             <div
               key={card.src}
-              className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${i === 1 ? "sm:mt-8" : ""}`}
+              className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${i % 2 === 1 ? "sm:mt-8" : ""}`}
               style={{ borderColor: BORDER }}
             >
-              <div className="relative h-56 w-full">
-                <Image src={card.src} alt={card.alt} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
+              <div className="relative h-40 w-full sm:h-56">
+                <Image src={card.src} alt={card.alt} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
               </div>
-              <p className="px-5 py-4 text-center text-sm font-medium">{card.label}</p>
+              <p className="px-3 py-3 text-center text-xs font-medium sm:px-5 sm:py-4 sm:text-sm">{card.label}</p>
             </div>
           ))}
         </Reveal>
@@ -505,7 +510,7 @@ export default function Home() {
       </section>
 
       {/* Footer CTA */}
-      <section className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
+      <section id="plus" className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
@@ -527,6 +532,10 @@ export default function Home() {
             Protéger mes relations
             <IconArrowRight className="h-4 w-4" />
           </Link>
+          <p className="mt-4 text-xs" style={{ color: MUTED }}>
+            Le rituel reste gratuit, pour toujours. Ittsui Plus (suggestions enrichies, options
+            supplémentaires) arrive bientôt, à partir de 2,99&nbsp;€/mois.
+          </p>
         </Reveal>
       </section>
 

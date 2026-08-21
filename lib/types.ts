@@ -45,12 +45,26 @@ export interface Pair {
   preferences: Preferences;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled";
   createdAt: string; // ISO date
+  // Real delivery record for the invite email, not an assumption — set by
+  // invite-partner/route.ts right after actually attempting to send it.
+  partnerEmailSent?: boolean;
+  inviteSentAt?: string; // ISO date
+  // Set once, the first time the invite link is actually loaded — see
+  // api/mark-invite-opened/route.ts. Absent means "not opened yet", not
+  // "unknown"; every pair created after this field existed can trust that.
+  inviteOpenedAt?: string; // ISO date
 }
 
 export interface VenueOption {
   venueId: string;
   venueName: string;
   venueAddress: string;
+  // Optional, additive — lets the dashboard show a real photo instead of
+  // plain text. Populated by the Firestore and static tiers of the venue
+  // pipeline (weekly-propose/route.ts), which know the type; left unset by
+  // the RAG tier's response shape, and by any week proposed before this
+  // field existed — both read-side as "no confident photo," not an error.
+  venueType?: VenueType;
 }
 
 export interface Week {
@@ -70,6 +84,15 @@ export interface Week {
   };
   optionA?: VenueOption; // present when a second real candidate was available
   optionB?: VenueOption; // absent -> falls back to the single-option yes/no flow
+  // Real delivery record, not an assumption — what notifyBothUsers()
+  // actually managed to send at each stage (weekly-propose/route.ts on
+  // "proposed", rsvp/route.ts on "confirmed"), per recipient. Optional:
+  // absent on any week from before this existed.
+  notificationLog?: {
+    event: "proposed" | "confirmed";
+    sentAt: string; // ISO
+    results: { userId: string; status: "push" | "email" | "failed" | "no-recipient" }[];
+  }[];
 }
 
 export interface User {

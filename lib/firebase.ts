@@ -13,7 +13,7 @@ import {
   browserLocalPersistence,
   type User,
 } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 import { registerNativePush } from "@/lib/nativePush";
 
@@ -35,13 +35,22 @@ export const db = getFirestore(app);
 // Explicit local persistence — already the SDK default in a normal browser
 // tab, but the one place that default isn't guaranteed is the Capacitor
 // Android WebView (see the redirect-sign-in comment below), so this is
-// made explicit rather than assumed. watchAuthState() waits on this before
-// attaching its listener so a cold start can't race an unresolved
-// persistence setting.
-const persistenceReady: Promise<void> =
-  typeof window !== "undefined"
-    ? setPersistence(auth, browserLocalPersistence).catch(() => {})
-    : Promise.resolve();
+// made explicit rather than assumed.
+//
+// Fire-and-forget, NOT awaited by watchAuthState(): an earlier version
+// gated onAuthStateChanged's attachment on this promise resolving first,
+// which caused every page (invite, dashboard, setup/pending) to hang on
+// its loading spinner forever whenever setPersistence() itself hung —
+// which it reliably does with multiple tabs of the same origin open at
+// once (an IndexedDB-locking issue across tabs, not something .catch()
+// protects against — that only handles rejection, not a promise that
+// never settles). onAuthStateChanged already reflects the current
+// persisted session correctly regardless of whether this has finished —
+// it only affects persistence of *future* sign-ins — so there was never a
+// real reason to block on it.
+if (typeof window !== "undefined") {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+}
 
 // --- Auth helpers ---
 
@@ -77,12 +86,21 @@ function consumeRedirectResultOnce() {
     .then(async (result) => {
       if (!result) return;
       const user = result.user;
+      const userRef = doc(db, "users", user.uid);
+      // notificationPrefs only on first creation, never on a repeat
+      // sign-in — this is the one place a real fix belongs (see
+      // lib/notify.ts's defensive default for the read side, which covers
+      // every account that already existed before this write did). Once a
+      // real settings screen exists to let someone turn a channel off,
+      // overwriting this on every login would silently fight it.
+      const existing = await getDoc(userRef);
       await setDoc(
-        doc(db, "users", user.uid),
+        userRef,
         {
           email: user.email?.toLowerCase() ?? null,
           displayName: user.displayName ?? null,
           updatedAt: new Date().toISOString(),
+          ...(existing.exists() ? {} : { notificationPrefs: { pushEnabled: true, emailEnabled: true } }),
         },
         { merge: true }
       );
@@ -102,16 +120,7 @@ export async function signOutUser(): Promise<void> {
 
 export function watchAuthState(callback: (user: User | null) => void) {
   consumeRedirectResultOnce();
-  let unsub: (() => void) | null = null;
-  let cancelled = false;
-  persistenceReady.then(() => {
-    if (cancelled) return;
-    unsub = onAuthStateChanged(auth, callback);
-  });
-  return () => {
-    cancelled = true;
-    unsub?.();
-  };
+  return onAuthStateChanged(auth, callback);
 }
 
 // Messaging (push) only works in the browser and only if the browser supports it

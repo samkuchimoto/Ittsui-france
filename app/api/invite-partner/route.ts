@@ -99,6 +99,11 @@ export async function POST(request: Request) {
     console.warn(`invite-partner: no email on file for inviter ${inviterUid}, skipped confirmation`);
   }
 
+  // Persisted, not just returned in this one response — /setup/pending
+  // needs to be able to show "was this actually delivered" on every later
+  // visit to that screen, not only in the few seconds right after sending.
+  await pairRef.update({ partnerEmailSent, inviteSentAt: new Date().toISOString() });
+
   return NextResponse.json({
     pairId: pairRef.id,
     status: "pending",
