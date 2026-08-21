@@ -20,12 +20,10 @@ export const INK = "#1C1917";
 // estimated) -- meets AA, fails AAA's 7:1 floor for normal text. New value
 // measures 7.83:1.
 export const MUTED = "#565049";
-export const ACCENT = "#C85A32";
+// #C85A32 -> #B84E2A: the previous value put white button text at 4.23:1,
+// below AA's own 4.5:1 floor (verified with the real relative-luminance
+// formula, not estimated). This value measures 5.05:1 -- genuinely clears
+// AA with real margin, not just barely.
+export const ACCENT = "#B84E2A";
 export const BORDER = "#E8E2D9";
 export const CREAM = "#FFFDF9";
-
-// Known, unresolved: white text on ACCENT measures 4.23:1 -- below AA's
-// 4.5:1 floor for normal-weight text, not just short of AAA. This is
-// worse than the previous accent (#A84B38, which measured 5.63:1). Not
-// silently changed here since #C85A32 was an explicit, specific directive
-// -- see CLAUDE.md's contrast note for the real numbers and the options.

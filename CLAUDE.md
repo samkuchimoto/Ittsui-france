@@ -20,23 +20,20 @@ from there rather than redefining locally (every page used to do this
 separately; changing a value meant editing ~10 files by hand until this
 existed).
 
-| Token | Value | Contrast vs. CREAM (verified, real relative-luminance calc) |
+| Token | Value | Contrast (verified, real relative-luminance calc) |
 |---|---|---|
 | `CREAM` | `#FFFDF9` | — |
-| `INK` | `#1C1917` | 17.21:1 — comfortably exceeds AAA |
-| `MUTED` | `#565049` | 7.83:1 — AAA |
-| `ACCENT` | `#C85A32` | terracotta — used as a fill, not text-on-cream |
+| `INK` | `#1C1917` | 17.21:1 vs. CREAM — comfortably exceeds AAA |
+| `MUTED` | `#565049` | 7.83:1 vs. CREAM — AAA |
+| `ACCENT` (official terracotta) | `#B84E2A` | 5.05:1, white text on the fill — AA, real margin |
 
-**Known, unresolved issue:** white text on `ACCENT` (the primary-button
-fill) measures **4.23:1** — below AA's 4.5:1 floor for normal-weight
-text, not just short of AAA. This is worse than the previous accent
-(`#A84B38`, 5.63:1). `#C85A32` was given as an explicit, specific
-directive, so it wasn't silently changed to fix this — real options if
-this is worth resolving: darken the accent slightly, make button labels
-genuinely large/bold text (WCAG's large-text threshold only needs 3:1),
-or use dark text on the accent fill instead of white. Don't claim AAA (or
-even AA) for this specific pairing until one of those actually happens —
-verify with the real formula, not by eye, if the value changes again.
+`ACCENT` history, for context: `#A84B38` (5.63:1) → `#C85A32` (an explicit
+directive that regressed white-on-fill to 4.23:1, below AA's own 4.5:1
+floor) → `#B84E2A` (current, 5.05:1, fixes the regression). If this value
+changes again, verify the new number with the real relative-luminance
+formula before writing a contrast claim anywhere — don't estimate by eye,
+and don't trust a "WCAG AA/AAA" label in a request until you've checked it
+yourself.
 
 24h French time notation (`15h` / `15:00`, never `3 PM`) is enforced via a
 controlled `<select>` pair in `SetupClient.tsx` (`TimeSelect`) — native
@@ -62,3 +59,17 @@ toggle, it's why that component exists at all.
   own comments for why it only ever generates category mood illustrations
   (café/park/restaurant/museum ambiance), never an image implying it
   depicts one specific named real venue.
+- **Autonomous tooling privilege:** `npm install` for well-established,
+  widely-used telemetry/security/utility packages (Zod, Sentry, and
+  similar) without stopping to ask first. Scoped to that category
+  specifically, not a blanket "any package" — a new UI framework, a
+  gesture/animation library (see `AGENTS.md`'s stack constraints), or
+  anything that changes the app's actual behavior/dependencies in a more
+  fundamental way is still worth raising explicitly.
+- **Zero-trust validation:** every `app/api/**` route should validate its
+  request payload with Zod rather than ad-hoc `if (!field)` checks. Not
+  retrofitted across every existing route in one pass as of this writing
+  — `app/api/mark-invite-opened/route.ts` and `app/api/ai-venue-mood/route.ts`
+  use it as the reference pattern; the rest still use the older manual
+  style and are fair game to convert opportunistically when touching them
+  for another reason, not necessarily as a dedicated sweep.

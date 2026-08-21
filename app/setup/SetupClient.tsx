@@ -37,11 +37,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
+import { mostRecentByCreatedAt } from "@/lib/sort";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
@@ -302,19 +303,24 @@ export default function SetupClient() {
       return;
     }
     (async () => {
-      const q = query(
-        collection(db, "pairs"),
-        where("userIds", "array-contains", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const pair = snap.docs[0].data() as Pair;
-        if (pair.status === "active") {
+      try {
+        // array-contains + orderBy on a different field is a composite
+        // query Firestore needs an index for, which this project doesn't
+        // have — sorted client-side (lib/sort.ts) instead, preserving the
+        // exact same "most recent pair wins" behavior AGENTS.md's own
+        // note on this query already explains the reasoning for.
+        const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+        const snap = await getDocs(q);
+        const docs = snap.docs.map((d) => d.data() as Pair);
+        const pair = mostRecentByCreatedAt(docs);
+        if (pair?.status === "active") {
           router.push("/dashboard");
           return;
         }
+      } catch {
+        // A real Firestore error must still resolve checkingPair rather
+        // than leave the loading state spinning forever — falls through
+        // to the normal wizard, same as "no existing pair found".
       }
       setCheckingPair(false);
     })();

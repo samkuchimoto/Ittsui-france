@@ -35,6 +35,7 @@ import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
+import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -130,23 +131,33 @@ export default function DashboardClient() {
   // it as an active pair.
   // NOTE: array-contains has no natural order — always take the MOST
   // RECENT pair (createdAt desc), not just docs[0], so a stale
-  // declined/expired pair can't shadow a fresh one.
+  // declined/expired pair can't shadow a fresh one. Sorted client-side
+  // (mostRecentByCreatedAt) rather than via orderBy() in the query itself
+  // — array-contains + orderBy on a different field is a composite query
+  // Firestore needs an index for, which this project doesn't have; a
+  // plain where() needs no index, and one person only ever has a handful
+  // of pairs, so fetching all of them instead of a single limit(1) is
+  // negligible.
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, "pairs"),
-      where("userIds", "array-contains", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        setPair({ id: snap.docs[0].id, ...snap.docs[0].data() } as Pair);
-      } else {
+    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pair);
+        setPair(mostRecentByCreatedAt(docs));
+        setPairChecked(true);
+      },
+      () => {
+        // A real Firestore error (rules, connectivity, or — the one this
+        // was rewritten to avoid needing — a missing composite index)
+        // must still resolve the loading state rather than leave it
+        // spinning forever; the redirect/error UI below already handles
+        // pair === null correctly.
         setPair(null);
+        setPairChecked(true);
       }
-      setPairChecked(true);
-    });
+    );
     return unsub;
   }, [user]);
 

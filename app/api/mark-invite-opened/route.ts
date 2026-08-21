@@ -10,13 +10,19 @@
 // being publicly viewable.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 
+const bodySchema = z.object({
+  pairId: z.string().min(1),
+});
+
 export async function POST(request: Request) {
-  const { pairId } = await request.json();
-  if (!pairId || typeof pairId !== "string") {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
   }
+  const { pairId } = parsed.data;
 
   const pairRef = adminDb.collection("pairs").doc(pairId);
   const snap = await pairRef.get();

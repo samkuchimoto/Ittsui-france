@@ -16,22 +16,27 @@
 // block pattern, never to a fabricated image pretending to be one.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 const GENERATION_TIMEOUT_MS = 2000;
 
-const CATEGORY_PROMPTS: Record<string, string> = {
+const CATEGORY_PROMPTS = {
   cafe: "warm editorial mood photograph of a cozy French café interior, soft natural light, no people, no text, no logos",
   park: "warm editorial mood photograph of a peaceful French park in golden hour light, no people, no text, no logos",
   restaurant: "warm editorial mood photograph of an intimate French bistro table setting, soft candlelight, no people, no text, no logos",
   museum: "warm editorial mood photograph of a quiet museum gallery space, soft natural light, no people, no text, no logos",
-};
+} as const;
+
+const bodySchema = z.object({
+  category: z.enum(Object.keys(CATEGORY_PROMPTS) as [keyof typeof CATEGORY_PROMPTS]),
+});
 
 export async function POST(request: Request) {
-  const { category } = await request.json();
-  const prompt = typeof category === "string" ? CATEGORY_PROMPTS[category] : undefined;
-  if (!prompt) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "catégorie inconnue" }, { status: 400 });
   }
+  const prompt = CATEGORY_PROMPTS[parsed.data.category];
 
   const falKey = process.env.FAL_API_KEY;
   if (!falKey) {

@@ -22,11 +22,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
+import { mostRecentByCreatedAt } from "@/lib/sort";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -101,24 +102,32 @@ export default function PendingClient() {
     return () => clearTimeout(timer);
   }, [user, checked]);
 
+  // array-contains + orderBy on a different field is a composite query
+  // Firestore needs an index for, which this project doesn't have —
+  // sorted client-side instead (see lib/sort.ts), same fix as
+  // DashboardClient.tsx's identical query shape.
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, "pairs"),
-      where("userIds", "array-contains", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      if (snap.empty) {
+    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pair);
+        const p = mostRecentByCreatedAt(docs);
+        if (!p) {
+          router.push("/setup");
+          return;
+        }
+        setPair(p);
+        setChecked(true);
+        if (p.status === "active") router.push("/dashboard");
+      },
+      () => {
+        // Resolve rather than hang on a real Firestore error — send back
+        // to /setup, the same as "no pair found at all".
         router.push("/setup");
-        return;
       }
-      const p = { id: snap.docs[0].id, ...snap.docs[0].data() } as Pair;
-      setPair(p);
-      setChecked(true);
-      if (p.status === "active") router.push("/dashboard");
-    });
+    );
     return unsub;
   }, [user, router]);
 
@@ -128,19 +137,17 @@ export default function PendingClient() {
   // received invitations — those aren't queryable client-side today (an
   // invitee isn't in userIds, and thus can't read the pending pair doc,
   // until they accept via the emailed link), which is a real gap, not
-  // something faked here.
+  // something faked here. Same composite-index avoidance as above — sorts
+  // and caps client-side instead of orderBy()+limit(10) in the query.
   useEffect(() => {
     if (!user || !pair) return;
-    const q = query(
-      collection(db, "pairs"),
-      where("userIds", "array-contains", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(10)
-    );
+    const q = query(collection(db, "pairs"), where("userIds", "array-contains", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       const others = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }) as Pair)
-        .filter((p) => p.id !== pair.id && (p.status === "declined" || p.status === "expired" || p.status === "cancelled"));
+        .filter((p) => p.id !== pair.id && (p.status === "declined" || p.status === "expired" || p.status === "cancelled"))
+        .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+        .slice(0, 10);
       setPastInvites(others);
     });
     return unsub;
