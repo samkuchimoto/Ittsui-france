@@ -6,3 +6,7 @@ firebase-key.json
 *firebase-adminsdk*.json
 .vercel
 *.zip
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
