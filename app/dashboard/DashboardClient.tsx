@@ -25,6 +25,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
@@ -340,6 +341,17 @@ export default function DashboardClient() {
           {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
         </span>
       )}
+
+      {/* The only mention of the paid tier used to live solely on the
+          marketing page — someone already using the app had no way to even
+          discover it exists. Links back to the public page's own teaser
+          rather than duplicating the "bientôt, pas encore de paiement"
+          disclosure in a second place. */}
+      <p className="mt-2 text-xs" style={{ color: MUTED }}>
+        <Link href="/#plus" className="underline underline-offset-4">
+          Découvrir Ittsui Plus
+        </Link>
+      </p>
 
       {!week && (
         <p className="mt-6 text-sm" style={{ color: MUTED }}>

@@ -43,6 +43,7 @@ import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
+import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { useNearbyVenue } from "@/app/hooks/useNearbyVenue";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
@@ -69,6 +70,30 @@ const ACCENT = "#A84B38";
 const BORDER = "#E8E2D9";
 const CREAM = "#FBF9F5";
 
+// Category icons, not photos — the geolocated CTA preview names a real,
+// specific place (either a live OpenStreetMap match or the static
+// catalog), and there's no licensed photo of most of them. A cup or a
+// tree marks "this is a café" / "this is a park" honestly; a stock or
+// AI-generated photo next to a specific real name would imply it depicts
+// that actual place, which it wouldn't.
+function VenueTypeIcon({ type, className = "" }: { type: VenueType; className?: string }) {
+  if (type === "park") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M12 3l5 8H7l5-8zM12 8l6 9H6l6-9z" />
+        <path d="M12 21v-4" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z" />
+      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+      <path d="M7 3c0 1-1 1-1 2s1 1 1 2M11 3c0 1-1 1-1 2s1 1 1 2" />
+    </svg>
+  );
+}
+
 const DAYS: { value: Pair["agreedDay"]; label: string }[] = [
   { value: "mon", label: "Lundi" },
   { value: "tue", label: "Mardi" },
@@ -87,13 +112,15 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
-// Emoji-tagged "vibe pills" per the brief, in the order requested.
-// Mapped 1:1 onto existing VenueType values — no new type added.
-const VIBE_PILLS: { value: VenueType; label: string; emoji: string }[] = [
-  { value: "cafe", label: "Café", emoji: "☕" },
-  { value: "park", label: "Parc", emoji: "🌳" },
-  { value: "restaurant", label: "Restaurant", emoji: "🍽️" },
-  { value: "museum", label: "Culture", emoji: "🏛️" },
+// Visual tile grid — real photography where a confident match exists
+// (already used elsewhere in the app), a plain tinted block otherwise
+// rather than a mismatched photo. Mapped 1:1 onto existing VenueType
+// values, same order as the brief — no new type added.
+const DISCOVERY_TILES: DiscoveryTile[] = [
+  { value: "cafe", label: "Café", image: "/friends-cafe-terrace.jpg" },
+  { value: "park", label: "Parc", image: "/grandmother-granddaughter-park.jpg" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "museum", label: "Culture" },
 ];
 const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
   value: "home",
@@ -429,7 +456,7 @@ export default function SetupClient() {
   // every other pair, once postal code and preferences are on file.
   const catalogPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
   const ctaPreview = nearbyVenue
-    ? { name: nearbyVenue.name, postalCode: postalCode || catalogPreview?.postalCode || "" }
+    ? { name: nearbyVenue.name, postalCode: postalCode || catalogPreview?.postalCode || "", type: nearbyVenue.kind }
     : catalogPreview;
 
   async function handleOneTap() {
@@ -624,14 +651,17 @@ export default function SetupClient() {
               type="button"
               onClick={handleOneTap}
               disabled={submitting}
-              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              {submitting
-                ? "Envoi…"
-                : ctaPreview
-                  ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
-                  : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              {!submitting && ctaPreview && <VenueTypeIcon type={ctaPreview.type} className="h-4 w-4 shrink-0" />}
+              <span>
+                {submitting
+                  ? "Envoi…"
+                  : ctaPreview
+                    ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
+                    : "Envoyer en un clic · Dimanche 15h, café ou parc"}
+              </span>
             </button>
 
             {/* Location detection is silent by design (no permission-prompt
@@ -802,23 +832,12 @@ export default function SetupClient() {
           <section className="space-y-6">
             <div>
               <label className="block text-sm font-medium">L&apos;ambiance</label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {VIBE_PILLS.map((v) => (
-                  <button
-                    type="button"
-                    key={v.value}
-                    onClick={() => toggle(venueTypes, v.value, setVenueTypes)}
-                    className="flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm transition-colors"
-                    style={
-                      venueTypes.includes(v.value)
-                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
-                        : { borderColor: BORDER, color: INK, backgroundColor: "white" }
-                    }
-                  >
-                    <span>{v.emoji}</span>
-                    {v.label}
-                  </button>
-                ))}
+              <div className="mt-2">
+                <DiscoveryGrid
+                  tiles={DISCOVERY_TILES}
+                  selected={venueTypes}
+                  onToggle={(value) => toggle(venueTypes, value, setVenueTypes)}
+                />
               </div>
               <button
                 type="button"

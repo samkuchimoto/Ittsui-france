@@ -510,7 +510,7 @@ export default function Home() {
       </section>
 
       {/* Footer CTA */}
-      <section className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
+      <section id="plus" className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"

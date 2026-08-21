@@ -80,7 +80,7 @@ export function postalCodeFromAddress(address: string): string | null {
 export function previewVenue(
   postalCode: string | undefined,
   preferredTypes: VenueType[] = ["cafe", "park"]
-): { name: string; postalCode: string } | null {
+): { name: string; postalCode: string; type: VenueType } | null {
   const metro = departmentFromPostalCode(postalCode) ?? "paris";
   const catalog = STATIC_CATALOG[metro];
   for (const type of preferredTypes) {
@@ -96,7 +96,7 @@ export function previewVenue(
       // known yet at all, matching the Paris-default behavior used
       // elsewhere in this flow.
       const code = postalCode || postalCodeFromAddress(venue.address) || "";
-      return { name: venue.name, postalCode: code };
+      return { name: venue.name, postalCode: code, type };
     }
   }
   return null;
