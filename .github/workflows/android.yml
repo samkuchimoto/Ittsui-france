@@ -19,6 +19,15 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      # Secrets can't be referenced directly in `if:` conditions — this
+      # passthrough is the documented safe pattern. When ANDROID_KEYSTORE_BASE64
+      # isn't set (no signing key configured yet, or a fork PR that doesn't
+      # get repo secrets), HAS_SIGNING is the literal string "false" and every
+      # signing-dependent step below is skipped; bundleRelease still runs and
+      # still produces an AAB, just unsigned — see android/app/build.gradle's
+      # comment on the same fallback.
+      HAS_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,4 +108,34 @@ jobs:
         with:
           name: ittsui-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # Decodes the keystore to a runner-local temp file that only exists for
+      # this job run — never written to the repo, never echoed to a log line.
+      # The path itself (not its contents) is passed to build.gradle via
+      # ANDROID_KEYSTORE_PATH.
+      - name: Decode release keystore
+        if: env.HAS_SIGNING == 'true'
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ittsui-release.jks"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Build release AAB
+        working-directory: android
+        run: ./gradlew bundleRelease
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ env.HAS_SIGNING == 'true' && format('{0}/ittsui-release.jks', runner.temp) || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Remove decoded keystore
+        if: always() && env.HAS_SIGNING == 'true'
+        run: rm -f "$RUNNER_TEMP/ittsui-release.jks"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.HAS_SIGNING == 'true' && 'ittsui-release-aab-signed' || 'ittsui-release-aab-UNSIGNED' }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error

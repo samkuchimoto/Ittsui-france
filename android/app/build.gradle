@@ -1,5 +1,33 @@
 apply plugin: 'com.android.application'
 
+// Release signing — two sources, checked in this order, neither ever committed:
+//   1. android/keystore.properties (gitignored) — for a developer who has the
+//      real .jks on their own machine and wants a local signed build.
+//   2. ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / _PASSWORD env
+//      vars — what CI uses: android.yml decodes the ANDROID_KEYSTORE_BASE64
+//      GitHub secret to a runner-local temp file and exports these before
+//      calling bundleRelease.
+// If neither is present (e.g. a PR from a fork, or this file's own env
+// before secrets are configured), buildTypes.release below just has no
+// signingConfig — bundleRelease still produces an unsigned AAB, which is
+// enough to verify the release build itself compiles even before a signing
+// identity exists.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+// GitHub Actions sets an `env:` var to an empty string when the underlying
+// secret doesn't exist rather than omitting it — System.getenv would return
+// "" (non-null) in that case, so this checks for non-blank, not just non-null.
+def envKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def hasEnvSigning = envKeystorePath?.trim() &&
+    System.getenv("ANDROID_KEYSTORE_PASSWORD")?.trim() &&
+    System.getenv("ANDROID_KEY_ALIAS")?.trim() &&
+    System.getenv("ANDROID_KEY_PASSWORD")?.trim()
+def hasReleaseSigning = hasKeystoreProperties || hasEnvSigning
+
 android {
     namespace = "fr.ittsui.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +44,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(hasKeystoreProperties ? keystoreProperties['storeFile'] : envKeystorePath)
+                storePassword hasKeystoreProperties ? keystoreProperties['storePassword'] : System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias hasKeystoreProperties ? keystoreProperties['keyAlias'] : System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword hasKeystoreProperties ? keystoreProperties['keyPassword'] : System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
