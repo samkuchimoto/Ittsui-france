@@ -44,6 +44,41 @@ export function DiscoveryGrid({ tiles, selected, onToggle }: DiscoveryGridProps)
   );
 }
 
+// 2-second hard budget, client-side — belt and suspenders with the
+// server route's own timeout. On timeout, missing credentials, or any
+// error, this resolves to null and the tile falls back to its existing
+// plain tinted block, exactly as before this feature existed — never to
+// a fabricated image standing in silently for a failed generation.
+const AI_MOOD_TIMEOUT_MS = 2000;
+
+function useAIVenueMood(category: VenueType, enabled: boolean): string | null {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AI_MOOD_TIMEOUT_MS);
+    fetch("/api/ai-venue-mood", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category }),
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.imageUrl) setImageUrl(data.imageUrl);
+      })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [category, enabled]);
+
+  return imageUrl;
+}
+
 function DiscoveryTileButton({
   tile,
   active,
@@ -56,6 +91,9 @@ function DiscoveryTileButton({
   const containerRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
+  // Only attempted for tiles with no real photo/video to show instead —
+  // never competing with or replacing an actual licensed photo.
+  const aiMoodUrl = useAIVenueMood(tile.value, !tile.image && !tile.video);
 
   // Only autoplay a video tile once it's actually on screen — keeps
   // memory/battery use down on Android instead of every tile playing at
@@ -106,8 +144,27 @@ function DiscoveryTileButton({
           sizes="(max-width: 640px) 50vw, 220px"
           className="object-cover"
         />
+      ) : aiMoodUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- external,
+        // ungenerated-at-build-time URL from the image-gen API; next/image
+        // would need this remote host allowlisted for a source that only
+        // exists per-request.
+        <img src={aiMoodUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0" style={{ backgroundColor: `${ACCENT}14` }} />
+      )}
+
+      {/* Mandatory, high-contrast, on every AI-generated tile without
+          exception — this is not a small-print watermark, it's the entire
+          reason this feature is honest instead of a fabricated photo
+          claiming to depict something real. */}
+      {aiMoodUrl && !tile.image && !tile.video && (
+        <span
+          className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+          style={{ backgroundColor: "rgba(0,0,0,0.72)" }}
+        >
+          Illustration générée par IA — Ambiance indicative
+        </span>
       )}
 
       <div
