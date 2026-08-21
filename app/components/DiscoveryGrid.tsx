@@ -8,9 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { VenueType } from "@/lib/types";
-
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
+import { ACCENT, BORDER } from "@/lib/theme";
 
 export interface DiscoveryTile {
   value: VenueType;

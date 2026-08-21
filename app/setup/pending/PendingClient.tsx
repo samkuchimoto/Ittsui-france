@@ -27,6 +27,8 @@ import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
+import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -43,15 +45,10 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
-
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
@@ -85,6 +82,24 @@ export default function PendingClient() {
     const unsub = watchAuthState((u) => setUser(u ?? false));
     return unsub;
   }, []);
+
+  // Not signed in — this page previously had no redirect at all for this
+  // case, meaning it would show the loading spinner forever rather than
+  // send someone anywhere. Genuinely found while adding the timeout
+  // fallback below, not something already handled elsewhere in this file.
+  useEffect(() => {
+    if (user === false) {
+      router.push("/setup");
+    }
+  }, [user, router]);
+
+  // 3-second escape hatch — same pattern as /invite, /dashboard, /setup.
+  const [slowLoad, setSlowLoad] = useState(false);
+  useEffect(() => {
+    if (user !== null && checked) return;
+    const timer = setTimeout(() => setSlowLoad(true), 3000);
+    return () => clearTimeout(timer);
+  }, [user, checked]);
 
   useEffect(() => {
     if (!user) return;
@@ -155,12 +170,18 @@ export default function PendingClient() {
     }
   }
 
-  if (user === null || user === false || !checked || !pair) {
+  // Not signed in — the redirect effect above handles navigation
+  if (user === false) {
+    return null;
+  }
+
+  if (user === null || !checked || !pair) {
     return (
       <Shell>
         <p className="text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
+        <SlowLoadFallback show={slowLoad} />
       </Shell>
     );
   }

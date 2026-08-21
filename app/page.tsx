@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -28,11 +29,6 @@ const workSans = Work_Sans({
   variable: "--font-body",
   display: "swap",
 });
-
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
 
 function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -244,7 +240,7 @@ function FridayCard() {
         ) : (
           <>
             <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
-              <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "#FBF9F5", color: MUTED }}>
+              <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "#FFFDF9", color: MUTED }}>
                 Rendez-vous du Samedi · 15:30
               </span>
             </div>
@@ -311,7 +307,7 @@ function FridayCard() {
 export default function Home() {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <style jsx global>{`
@@ -348,51 +344,56 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero — stacked and centered on mobile, side-by-side above the
+          fold on desktop (lg:) so the headline and the interactive visual
+          share the same first screen instead of the image requiring a
+          scroll to reach. */}
       <section className="px-6 pb-8 pt-4 sm:pb-12">
-        <Reveal className="mx-auto max-w-3xl text-center">
-          <h1
-            className="leading-[1.08]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
-          >
-            Protégez vos relations précieuses contre l&apos;érosion du quotidien.
-          </h1>
-          <p className="mx-auto mt-5 max-w-md text-[17px]" style={{ color: MUTED }}>
-            Ittsui est un outil de maintien relationnel conçu pour préserver vos liens existants (proches,
-            partenaire, famille) malgré le travail et la routine. Une proposition unique par semaine, validable en 1
-            clic—sans aucun agenda à gérer.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3">
-            <Link
-              href="/setup"
-              className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
-              style={{ backgroundColor: ACCENT }}
+        <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
+          <Reveal className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+            <h1
+              className="leading-[1.08]"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
             >
-              Protéger mes relations
-              <IconArrowRight className="h-4 w-4" />
-            </Link>
-            <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
-              <IconSparkles className="h-3.5 w-3.5" />
-              Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
+              Protégez vos relations précieuses contre l&apos;érosion du quotidien.
+            </h1>
+            <p className="mx-auto mt-5 max-w-md text-[17px] lg:mx-0" style={{ color: MUTED }}>
+              Ittsui est un outil de maintien relationnel conçu pour préserver vos liens existants (proches,
+              partenaire, famille) malgré le travail et la routine. Une proposition unique par semaine, validable en
+              1 clic—sans aucun agenda à gérer.
             </p>
-          </div>
-        </Reveal>
+            <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
+              <Link
+                href="/setup"
+                className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
+                style={{ backgroundColor: ACCENT }}
+              >
+                Protéger mes relations
+                <IconArrowRight className="h-4 w-4" />
+              </Link>
+              <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
+                <IconSparkles className="h-3.5 w-3.5" />
+                Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
+              </p>
+            </div>
+          </Reveal>
 
-        <Reveal className="mx-auto mt-12 max-w-3xl">
-          <div
-            className="relative h-[50vh] w-full overflow-hidden rounded-3xl border sm:h-[60vh]"
-            style={{ borderColor: BORDER }}
-          >
-            <Image
-              src="/mother-daughter-cafe.jpg"
-              alt="Mère et fille au café"
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="object-cover"
-            />
-          </div>
-        </Reveal>
+          <Reveal className="mx-auto mt-12 max-w-3xl lg:mx-0 lg:mt-0 lg:max-w-none">
+            <div
+              className="relative h-[50vh] w-full overflow-hidden rounded-3xl border sm:h-[60vh] lg:h-[32rem]"
+              style={{ borderColor: BORDER }}
+            >
+              <Image
+                src="/mother-daughter-cafe.jpg"
+                alt="Mère et fille au café"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/* Any duo */}

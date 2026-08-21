@@ -14,6 +14,7 @@
 
 import { Fraunces, Work_Sans } from "next/font/google";
 import Link from "next/link";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -29,11 +30,6 @@ const workSans = Work_Sans({
   variable: "--font-body",
   display: "swap",
 });
-
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
 
 function Item({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -59,7 +55,7 @@ function ToComplete({ children }: { children: React.ReactNode }) {
 export default function MentionsLegalesPage() {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-2xl px-6 py-16">

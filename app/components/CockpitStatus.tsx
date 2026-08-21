@@ -12,10 +12,7 @@
 // — this is a linear progress read, not four independent booleans.
 
 import type { Pair, Week } from "@/lib/types";
-
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
-const MUTED = "#78716C";
+import { ACCENT, BORDER, MUTED } from "@/lib/theme";
 
 interface CockpitStatusProps {
   pair: Pair;

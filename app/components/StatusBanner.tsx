@@ -4,9 +4,7 @@
 // is driven by that operation's own real status, not an internal timer
 // disconnected from what's actually happening.
 
-const ACCENT = "#A84B38";
-const MUTED = "#78716C";
-const BORDER = "#E8E2D9";
+import { ACCENT, MUTED, BORDER } from "@/lib/theme";
 
 export interface StatusStep {
   key: string;

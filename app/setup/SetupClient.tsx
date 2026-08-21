@@ -30,9 +30,8 @@
 //       so the invite-partner payload and Pair type stay exactly as they
 //       were. Wiring it into the backend would need a schema change, which
 //       is out of scope for a restyle.
-//     - Design tokens applied throughout: #FBF9F5 / #A84B38 / #1C1917 /
-//       #78716C / #E8E2D9, Fraunces headlines, Work Sans body — matching
-//       app/page.tsx.
+//     - Design tokens applied throughout (see lib/theme.ts), Fraunces
+//       headlines, Work Sans body — matching app/page.tsx.
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -42,12 +41,12 @@ import { collection, query, where, orderBy, limit, getDocs } from "firebase/fire
 import type { User } from "firebase/auth";
 import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
-import { useNearbyVenue } from "@/app/hooks/useNearbyVenue";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
-import { previewVenue } from "@/lib/venueCatalog";
+import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -63,36 +62,6 @@ const workSans = Work_Sans({
   variable: "--font-body",
   display: "swap",
 });
-
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
-const CREAM = "#FBF9F5";
-
-// Category icons, not photos — the geolocated CTA preview names a real,
-// specific place (either a live OpenStreetMap match or the static
-// catalog), and there's no licensed photo of most of them. A cup or a
-// tree marks "this is a café" / "this is a park" honestly; a stock or
-// AI-generated photo next to a specific real name would imply it depicts
-// that actual place, which it wouldn't.
-function VenueTypeIcon({ type, className = "" }: { type: VenueType; className?: string }) {
-  if (type === "park") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M12 3l5 8H7l5-8zM12 8l6 9H6l6-9z" />
-        <path d="M12 21v-4" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z" />
-      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
-      <path d="M7 3c0 1-1 1-1 2s1 1 1 2M11 3c0 1-1 1-1 2s1 1 1 2" />
-    </svg>
-  );
-}
 
 const DAYS: { value: Pair["agreedDay"]; label: string }[] = [
   { value: "mon", label: "Lundi" },
@@ -112,16 +81,83 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
-// Visual tile grid — real photography where a confident match exists
-// (already used elsewhere in the app), a plain tinted block otherwise
-// rather than a mismatched photo. Mapped 1:1 onto existing VenueType
-// values, same order as the brief — no new type added.
+// Visual tile grid, real photography for all four now. Restaurant/Culture
+// use general-mood Unsplash stock (verified reachable, real JPEGs, before
+// wiring in) rather than the AI mood illustration path — these are
+// licensed real photographs, a strictly better match for "high-resolution
+// photo tile" than a generated illustration would be, and the AI path
+// stays reserved for categories with neither a real photo nor a stock
+// option.
 const DISCOVERY_TILES: DiscoveryTile[] = [
   { value: "cafe", label: "Café", image: "/friends-cafe-terrace.jpg" },
   { value: "park", label: "Parc", image: "/grandmother-granddaughter-park.jpg" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "museum", label: "Culture" },
+  {
+    value: "restaurant",
+    label: "Restaurant",
+    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    value: "museum",
+    label: "Culture",
+    image: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
+  },
 ];
+// "sam" typed into the name field shouldn't render lowercase in CTA copy
+// downstream ("Créer notre rituel avec sam") — capitalizes each name part,
+// splitting on spaces/hyphens so "jean-paul" and "marie claire" both come
+// out right, not just single first names.
+function capitalizeName(name: string): string {
+  return name
+    .trim()
+    .split(/([\s-])/)
+    .map((part) => (part === " " || part === "-" || part === "" ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join("");
+}
+
+// Native <input type="time"> renders in whatever format the OS/browser
+// locale dictates (12h AM/PM on plenty of real devices) regardless of the
+// page's own French UI — the underlying value is always a 24h "HH:MM"
+// string per the HTML spec either way, but that's not what gets *shown*.
+// A controlled pair of <select>s sidesteps that: same "HH:MM" string
+// state as before, but the displayed label is always guaranteed French
+// 24h ("15h", "15h30"), not locale-dependent.
+const HOURS_24H = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
+const MINUTES_15MIN = ["00", "15", "30", "45"];
+
+function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const [hh, mm] = value.split(":");
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        aria-label={`${label} — heure`}
+        value={hh}
+        onChange={(e) => onChange(`${e.target.value}:${mm}`)}
+        className="rounded-lg border bg-white px-2 py-2 text-sm"
+        style={{ borderColor: BORDER }}
+      >
+        {HOURS_24H.map((h) => (
+          <option key={h} value={h}>
+            {h}h
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label={`${label} — minutes`}
+        value={mm}
+        onChange={(e) => onChange(`${hh}:${e.target.value}`)}
+        className="rounded-lg border bg-white px-2 py-2 text-sm"
+        style={{ borderColor: BORDER }}
+      >
+        {MINUTES_15MIN.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
   value: "home",
   label: "Chez vous",
@@ -180,7 +216,7 @@ function StepDots({ step }: { step: 1 | 2 | 3 }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-14">{children}</div>
@@ -194,6 +230,16 @@ export default function SetupClient() {
   // Auth state: null = not checked yet, false = checked and not signed in
   const [user, setUser] = useState<User | null | false>(null);
   const [checkingPair, setCheckingPair] = useState(true);
+  // 3-second escape hatch — same pattern as /invite and /dashboard, so a
+  // load that genuinely runs long has a real way out instead of an
+  // endlessly rotating "Un instant…" with no ceiling.
+  const [slowLoad, setSlowLoad] = useState(false);
+
+  useEffect(() => {
+    if (user !== null && !checkingPair) return;
+    const timer = setTimeout(() => setSlowLoad(true), 3000);
+    return () => clearTimeout(timer);
+  }, [user, checkingPair]);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -217,29 +263,17 @@ export default function SetupClient() {
   const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { status: locationStatus, postalCode: detectedPostalCode, coords, detect: detectLocation } = useUserLocation();
-  // Real, live nearby café/park from OpenStreetMap once we have actual
-  // coordinates — a genuinely closer, real place than the static catalog's
-  // metro-wide landmarks can offer, when it's available. Never blocks
-  // anything: falls back to the static catalog below on timeout/no result.
-  const { venue: nearbyVenue } = useNearbyVenue(coords);
+  // Geolocation is deliberately NOT triggered on mount — it's requested
+  // only from Step 3's own "Utiliser ma position actuelle" button, so a
+  // permission prompt never appears before someone's even entered who
+  // they're inviting.
+  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
 
   // Pre-fills the manual field rather than replacing it — postalCode stays
   // a normal editable input either way, this just saves a typing step.
   useEffect(() => {
     if (detectedPostalCode) setPostalCode(detectedPostalCode);
   }, [detectedPostalCode]);
-
-  // Fired proactively on mount rather than waiting for Step 3's manual
-  // "Utiliser ma position actuelle" button, so the Step 1 one-tap CTA can
-  // preview a real nearby venue instead of a generic "café ou parc" line.
-  // useUserLocation() already fails completely silently (denial, timeout,
-  // unsupported browser) and its own 5s timeout bounds how long this can
-  // leave postalCode unset — no separate deadline needed here.
-  useEffect(() => {
-    detectLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -334,26 +368,14 @@ export default function SetupClient() {
     setStep(3);
   }
 
-  // Core submit, shared by the customizable wizard (handleSubmit) and the
-  // 1-tap path (handleOneTap) below — same request, same validation, same
-  // error handling, just a different source for day/window/venue values.
-  async function submitInvite(overrides?: {
-    day: Pair["agreedDay"];
-    windowStart: string;
-    windowEnd: string;
-    venueTypes: VenueType[];
-  }) {
+  async function submitInvite() {
     setError(null);
 
     if (!user) {
       setError("Vous devez être connecté(e).");
       return;
     }
-    const useDay = overrides?.day ?? day;
-    const useWindowStart = overrides?.windowStart ?? windowStart;
-    const useWindowEnd = overrides?.windowEnd ?? windowEnd;
-    const useVenueTypes = overrides?.venueTypes ?? venueTypes;
-    if (useVenueTypes.length === 0) {
+    if (venueTypes.length === 0) {
       setError("Choisissez au moins un type de lieu.");
       return;
     }
@@ -368,12 +390,12 @@ export default function SetupClient() {
           inviterName: user.displayName ?? "Quelqu'un",
           partnerName,
           partnerEmail,
-          agreedDay: useDay,
-          agreedWindowStart: useWindowStart,
-          agreedWindowEnd: useWindowEnd,
+          agreedDay: day,
+          agreedWindowStart: windowStart,
+          agreedWindowEnd: windowEnd,
           notifyDaysBefore,
           postalCode: postalCode || undefined,
-          preferences: { venueTypes: useVenueTypes, dietaryFilters },
+          preferences: { venueTypes, dietaryFilters },
         }),
       });
 
@@ -436,43 +458,6 @@ export default function SetupClient() {
     }
   }
 
-  // The 1-tap path: skips steps 2 and 3 entirely once name + email are in,
-  // using the same Sunday 15h-17h default Step 2 already suggests plus a
-  // café-or-park default, matching the most common picks rather than
-  // inventing a preference nobody chose. "Personnaliser" (goToStep2) stays
-  // one tap away for anyone who wants control — this doesn't replace that
-  // path, it shortcuts it.
-  const ONE_TAP_DAY: Pair["agreedDay"] = "sun";
-  const ONE_TAP_WINDOW_START = "15:00";
-  const ONE_TAP_WINDOW_END = "17:00";
-  const ONE_TAP_VENUE_TYPES: VenueType[] = ["cafe", "park"];
-
-  // Live OpenStreetMap result when we have one (a real, currently-mapped
-  // place actually near this postal code), otherwise the curated static
-  // catalog (lib/venueCatalog.ts) that the real weekly-propose pipeline
-  // also falls back to. Either way this is preview copy only: the actual
-  // submission below still sends venue TYPE preferences, never a specific
-  // pre-picked venue — the real pick happens server-side, same as for
-  // every other pair, once postal code and preferences are on file.
-  const catalogPreview = previewVenue(postalCode || undefined, ONE_TAP_VENUE_TYPES);
-  const ctaPreview = nearbyVenue
-    ? { name: nearbyVenue.name, postalCode: postalCode || catalogPreview?.postalCode || "", type: nearbyVenue.kind }
-    : catalogPreview;
-
-  async function handleOneTap() {
-    setError(null);
-    if (!partnerName.trim() || !partnerEmail.trim()) {
-      setError("Indiquez un prénom et un e-mail pour continuer.");
-      return;
-    }
-    await submitInvite({
-      day: ONE_TAP_DAY,
-      windowStart: ONE_TAP_WINDOW_START,
-      windowEnd: ONE_TAP_WINDOW_END,
-      venueTypes: ONE_TAP_VENUE_TYPES,
-    });
-  }
-
   // Still checking auth state, or checking for an existing pair
   if (user === null || (user && checkingPair)) {
     return (
@@ -480,6 +465,7 @@ export default function SetupClient() {
         <p className="text-center text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
+        <SlowLoadFallback show={slowLoad} />
       </Shell>
     );
   }
@@ -649,43 +635,12 @@ export default function SetupClient() {
 
             <button
               type="button"
-              onClick={handleOneTap}
-              disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {!submitting && ctaPreview && <VenueTypeIcon type={ctaPreview.type} className="h-4 w-4 shrink-0" />}
-              <span>
-                {submitting
-                  ? "Envoi…"
-                  : ctaPreview
-                    ? `Envoyer en 1 clic — Dimanche 15h @ ${ctaPreview.name} (${ctaPreview.postalCode})`
-                    : "Envoyer en un clic · Dimanche 15h, café ou parc"}
-              </span>
-            </button>
-
-            {/* Location detection is silent by design (no permission-prompt
-                surprise), but that also meant nothing on screen showed it was
-                even happening — this makes it visible instead of invisible. */}
-            {(locationStatus === "locating" || locationStatus === "resolving") && (
-              <div className="flex justify-center">
-                <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
-              </div>
-            )}
-            {locationStatus === "done" && ctaPreview && (
-              <p className="text-center text-xs" style={{ color: MUTED }}>
-                Basé sur le {ctaPreview.postalCode} (détecté automatiquement).
-              </p>
-            )}
-
-            <button
-              type="button"
               onClick={goToStep2}
               disabled={submitting}
-              className="w-full rounded-full border py-3.5 text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ borderColor: BORDER, color: INK }}
+              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
+              style={{ backgroundColor: ACCENT }}
             >
-              Personnaliser le jour et le lieu
+              Continuer vers le moment →
             </button>
           </section>
         )}
@@ -754,21 +709,9 @@ export default function SetupClient() {
                     Créneau
                   </label>
                   <div className="mt-2 flex items-center gap-3">
-                    <input
-                      type="time"
-                      value={windowStart}
-                      onChange={(e) => setWindowStart(e.target.value)}
-                      className="rounded-lg border bg-white px-3 py-2 text-sm"
-                      style={{ borderColor: BORDER }}
-                    />
+                    <TimeSelect value={windowStart} onChange={setWindowStart} label="Début du créneau" />
                     <span style={{ color: MUTED }}>—</span>
-                    <input
-                      type="time"
-                      value={windowEnd}
-                      onChange={(e) => setWindowEnd(e.target.value)}
-                      className="rounded-lg border bg-white px-3 py-2 text-sm"
-                      style={{ borderColor: BORDER }}
-                    />
+                    <TimeSelect value={windowEnd} onChange={setWindowEnd} label="Fin du créneau" />
                   </div>
                 </div>
               </div>
@@ -932,7 +875,7 @@ export default function SetupClient() {
                 className="flex-1 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
                 style={{ backgroundColor: ACCENT }}
               >
-                {submitting ? "Envoi…" : `Créer notre rituel${partnerName ? " " + partnerName : ""}`}
+                {submitting ? "Envoi…" : `Créer notre rituel${partnerName ? " avec " + capitalizeName(partnerName) : ""}`}
               </button>
             </div>
           </section>

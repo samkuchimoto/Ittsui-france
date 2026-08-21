@@ -34,7 +34,9 @@ import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
+import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { tapHaptic } from "@/lib/haptics";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -51,16 +53,10 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
-const CREAM = "#FBF9F5";
-
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-12">{children}</div>
@@ -98,6 +94,11 @@ export default function DashboardClient() {
   const [pairChecked, setPairChecked] = useState(false);
   const [week, setWeek] = useState<Week | null>(null);
   const [responding, setResponding] = useState(false);
+  // 3-second escape hatch, matching /invite's existing "slowConnection"
+  // pattern — this page never had one at all before, meaning any genuinely
+  // stuck load (or just a slow connection) had literally no way out short
+  // of a manual browser refresh.
+  const [slowLoad, setSlowLoad] = useState(false);
 
   // Watch auth state on mount
   useEffect(() => {
@@ -113,6 +114,15 @@ export default function DashboardClient() {
       router.push("/setup");
     }
   }, [user, router]);
+
+  // 3-second ceiling on the loading state — once either check has already
+  // resolved, this is a no-op forever (the timer firing after the fact
+  // does nothing, since the loading branches below stop rendering).
+  useEffect(() => {
+    if (user !== null && pairChecked) return;
+    const timer = setTimeout(() => setSlowLoad(true), 3000);
+    return () => clearTimeout(timer);
+  }, [user, pairChecked]);
 
   // Find the pair this user belongs to. Note: userIds array-contains also
   // matches a pending pair (inviter's uid is in the array before the
@@ -273,6 +283,7 @@ export default function DashboardClient() {
         <p className="text-center text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
+        <SlowLoadFallback show={slowLoad} />
       </Shell>
     );
   }
@@ -290,6 +301,7 @@ export default function DashboardClient() {
         <p className="text-center text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </p>
+        <SlowLoadFallback show={slowLoad} />
       </Shell>
     );
   }

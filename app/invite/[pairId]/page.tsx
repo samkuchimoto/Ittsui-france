@@ -14,6 +14,7 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -30,17 +31,12 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const INK = "#1C1917";
-const MUTED = "#78716C";
-const ACCENT = "#A84B38";
-const BORDER = "#E8E2D9";
-
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "error";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FBF9F5] antialiased`}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
@@ -84,7 +80,7 @@ export default function InvitePage() {
   // visible retry instead of silence.
   useEffect(() => {
     if (user !== null) return; // already resolved, no need for the timer
-    const timer = setTimeout(() => setSlowConnection(true), 8000);
+    const timer = setTimeout(() => setSlowConnection(true), 3000);
     return () => clearTimeout(timer);
   }, [user]);
 
