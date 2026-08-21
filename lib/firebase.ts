@@ -79,6 +79,19 @@ export async function signInWithGoogle(): Promise<void> {
 // inline in signInWithGoogle, back when it could still see the result.
 let redirectResultHandled = false;
 
+// A signInWithRedirect round-trip that fails silently — Chrome treating
+// the firebaseapp.com authDomain's storage as partitioned during the
+// accounts.google.com bounce is a real, observed cause (getRedirectResult
+// then resolves with null / throws instead of returning the completed
+// sign-in) — used to look identical to "never signed in" from the UI's
+// perspective: same button, no error, no explanation, click again, same
+// silent failure. Surfacing the real reason here doesn't fix the
+// underlying storage-partitioning issue (that needs authDomain pointed at
+// this app's own domain — see docs/android.md's App Links section for the
+// analogous cross-domain problem on Android), but it turns an invisible
+// dead end into a visible, reportable one.
+let onRedirectError: ((message: string) => void) | null = null;
+
 function consumeRedirectResultOnce() {
   if (redirectResultHandled) return;
   redirectResultHandled = true;
@@ -106,11 +119,16 @@ function consumeRedirectResultOnce() {
       );
       await registerNativePush(user);
     })
-    .catch(() => {
-      // Redirect-specific errors (e.g. account-exists-with-different-
-      // credential) are rare enough here not to special-case — the
-      // caller's existing "not signed in" state already covers it, since
-      // onAuthStateChanged simply won't report a new user in that case.
+    .catch((err) => {
+      const code = err instanceof Error && "code" in err ? String((err as { code: unknown }).code) : null;
+      // account-exists-with-different-credential is a real, actionable
+      // case (same email, different sign-in provider already on file) —
+      // worth a distinct message rather than the generic fallback.
+      const message =
+        code === "auth/account-exists-with-different-credential"
+          ? "Un compte existe déjà avec cette adresse e-mail via une autre méthode de connexion."
+          : "La connexion a échoué. Réessayez.";
+      onRedirectError?.(message);
     });
 }
 
@@ -118,7 +136,8 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 
-export function watchAuthState(callback: (user: User | null) => void) {
+export function watchAuthState(callback: (user: User | null) => void, onError?: (message: string) => void) {
+  if (onError) onRedirectError = onError;
   consumeRedirectResultOnce();
   return onAuthStateChanged(auth, callback);
 }

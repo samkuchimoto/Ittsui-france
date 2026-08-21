@@ -276,11 +276,17 @@ export default function SetupClient() {
     if (detectedPostalCode) setPostalCode(detectedPostalCode);
   }, [detectedPostalCode]);
 
-  // Watch auth state on mount
+  // Watch auth state on mount. The error callback surfaces a redirect
+  // sign-in that failed silently (see lib/firebase.ts's onRedirectError
+  // comment) instead of just re-showing the same button with no
+  // explanation — the single most common real-world cause is Chrome
+  // treating the Firebase authDomain's storage as partitioned during the
+  // accounts.google.com round-trip.
   useEffect(() => {
-    const unsub = watchAuthState((u) => {
-      setUser(u ?? false);
-    });
+    const unsub = watchAuthState(
+      (u) => setUser(u ?? false),
+      (message) => setError(message)
+    );
     return unsub;
   }, []);
 
