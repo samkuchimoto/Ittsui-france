@@ -6,18 +6,22 @@
 // (Fal.ai, Resend): returns [] when unset, so this is fully inert and
 // changes nothing about current behavior until a key is added.
 //
-// STATUS: IMPLEMENTED, NOT VERIFIED — no real key exists to test this
-// against yet. Get a public (read-only) key at your OpenAgenda account's
-// API settings page (self-serve, no approval needed for read access):
-// https://developers.openagenda.com/authentification/
+// STATUS: VERIFIED 2026-08-22 against the real API with a real key —
+// confirmed 200 OK on both /agendas/{uid} and /agendas/{uid}/events, auth
+// and query params all correct. Real response is currently 0 events
+// because the agenda ("Ittsui France", uid 5862128) was created the same
+// day this was tested and has nothing published to it yet — that's the
+// agenda being empty, not this client being broken. Re-run
+// scripts/test-openagenda.mjs (if kept) or the equivalent fetch once
+// events exist to see real results.
 //
 // Not yet wired into app/api/weekly-propose/route.ts's existing 3-tier
 // chain (RAG service -> Firestore -> static catalog) — that chain is live
-// and tested; plugging in untested code ahead of the RAG tier isn't worth
-// the risk until this can actually be tested against a real key. To
-// activate once OPENAGENDA_API_KEY exists: call searchOpenAgendaEvents()
-// as a new first tier in fetchVenueProposal(), same shape as the existing
-// tiers (return null on empty/failure to fall through).
+// and tested; adding a tier that always returns [] right now wouldn't
+// change production behavior anyway. To activate once the agenda actually
+// has events: call searchOpenAgendaEvents() as a new first tier in
+// fetchVenueProposal(), same shape as the existing tiers (return null on
+// empty/failure to fall through).
 
 interface OpenAgendaTiming {
   begin: string; // ISO datetime
@@ -44,6 +48,11 @@ export interface OpenAgendaEvent {
 const OPENAGENDA_BASE = "https://api.openagenda.com/v2";
 const TIMEOUT_MS = 1500; // matches RAG_TIMEOUT_MS in weekly-propose/route.ts
 
+// The account's own agenda (calendar) — OPENAGENDA_API_KEY is a public
+// (read-only) key scoped to this agenda's owner account, obtained
+// 2026-08-22. Callers can still pass a different agendaUid explicitly.
+export const DEFAULT_AGENDA_UID = "5862128";
+
 // title/description come back as multilingual objects (e.g. { fr: "...",
 // en: "..." }) per OpenAgenda's docs — this app is French-only, so this
 // always prefers "fr" and falls back to whatever key exists rather than
@@ -58,7 +67,7 @@ function pickFrench(value: unknown): string | undefined {
 }
 
 export async function searchOpenAgendaEvents(params: {
-  agendaUid: string; // events live under an "agenda" (a calendar) you own or follow, not a global search across all of OpenAgenda — see the doc comment above for how to obtain one
+  agendaUid?: string; // defaults to DEFAULT_AGENDA_UID; override to query a different agenda
   city?: string; // soft filter, applied client-side below — no confirmed geo/postal-code query param in their docs as of this verification pass
   fromISO?: string;
   toISO?: string;
@@ -68,6 +77,7 @@ export async function searchOpenAgendaEvents(params: {
   const apiKey = process.env.OPENAGENDA_API_KEY;
   if (!apiKey) return [];
 
+  const agendaUid = params.agendaUid ?? DEFAULT_AGENDA_UID;
   const qs = new URLSearchParams();
   if (params.fromISO) qs.set("timings[gte]", params.fromISO);
   if (params.toISO) qs.set("timings[lte]", params.toISO);
@@ -79,7 +89,7 @@ export async function searchOpenAgendaEvents(params: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${OPENAGENDA_BASE}/agendas/${params.agendaUid}/events?${qs}`, {
+    const res = await fetch(`${OPENAGENDA_BASE}/agendas/${agendaUid}/events?${qs}`, {
       headers: { key: apiKey },
       signal: controller.signal,
     });
