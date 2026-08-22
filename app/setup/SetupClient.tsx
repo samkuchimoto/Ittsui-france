@@ -43,6 +43,7 @@ import type { VenueType, DietaryFilter, Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
+import { signInWithPasskey } from "@/lib/passkeyClient";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
@@ -341,6 +342,16 @@ export default function SetupClient() {
     }
   }
 
+  // Additional sign-in method, not a replacement — Google Sign-In above is
+  // completely unchanged. onAuthStateChanged (already wired via
+  // watchAuthState in the effect above) picks up the session the same way
+  // regardless of which method produced it.
+  async function handlePasskeySignIn() {
+    setError(null);
+    const result = await signInWithPasskey();
+    if (!result.ok) setError(result.error);
+  }
+
   // Sunday auto-suggests the 15h-17h quiet window, but stays editable
   function handleDayChange(newDay: Pair["agreedDay"]) {
     setDay(newDay);
@@ -504,6 +515,13 @@ export default function SetupClient() {
             style={{ backgroundColor: ACCENT }}
           >
             Se connecter avec Google
+          </button>
+          <button
+            onClick={handlePasskeySignIn}
+            className="mt-3 w-full rounded-full border py-3.5 text-sm font-medium transition-colors"
+            style={{ borderColor: BORDER, color: INK }}
+          >
+            Se connecter avec une clé d&apos;accès
           </button>
         </div>
       </Shell>

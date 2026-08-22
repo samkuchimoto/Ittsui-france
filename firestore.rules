@@ -29,5 +29,20 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // Passkey (WebAuthn) credentials and their in-flight challenges —
+    // server-only via Admin SDK (app/api/passkeys/**), same reasoning as
+    // /pairs/{pairId}/weeks: the authentication ceremony's whole point is
+    // verifying a cryptographic signature server-side, and the
+    // authenticate flow specifically must look up a credential's public
+    // key *before* anyone is signed in (that's what makes it a login, not
+    // a re-auth) — there is no client-auth condition that could ever
+    // safely permit direct client access here.
+    match /passkeyCredentials/{credentialId} {
+      allow read, write: if false;
+    }
+    match /passkeyChallenges/{challengeKey} {
+      allow read, write: if false;
+    }
   }
 }

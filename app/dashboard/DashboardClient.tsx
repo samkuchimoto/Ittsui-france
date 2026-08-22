@@ -37,6 +37,7 @@ import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
+import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } from "@/lib/passkeyClient";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -454,7 +455,93 @@ export default function DashboardClient() {
         onCancel={() => setPendingResponse(null)}
         confirming={responding}
       />
+
+      <div className="mt-10 border-t pt-6" style={{ borderColor: BORDER }}>
+        <PasskeyManager />
+      </div>
     </Shell>
+  );
+}
+
+// Account-level setting, not tied to any one pair — additional sign-in
+// method alongside Google (lib/firebase.ts's signInWithGoogle, unchanged),
+// so this only ever adds passkeys to an account that's already signed in
+// some other way. "Lost device" handling is exactly listing + removing:
+// there's no other recovery path for a passkey that's gone, by design —
+// the private key never left that device in the first place.
+function PasskeyManager() {
+  const [passkeys, setPasskeys] = useState<PasskeySummary[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function refresh() {
+    setPasskeys(await listPasskeys());
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleAdd() {
+    setBusy(true);
+    setMessage(null);
+    const result = await registerPasskey();
+    setBusy(false);
+    if (result.ok) {
+      setMessage("Clé d'accès ajoutée.");
+      refresh();
+    } else {
+      setMessage(result.error);
+    }
+  }
+
+  async function handleRemove(id: string) {
+    setBusy(true);
+    await removePasskey(id);
+    setBusy(false);
+    refresh();
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
+        Clés d&apos;accès
+      </p>
+      {passkeys && passkeys.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {passkeys.map((pk) => (
+            <li key={pk.id} className="flex items-center justify-between text-sm">
+              <span>{pk.label}</span>
+              <button
+                onClick={() => handleRemove(pk.id)}
+                disabled={busy}
+                className="text-xs text-red-500 underline underline-offset-4 disabled:opacity-50"
+              >
+                Supprimer
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {passkeys && passkeys.length === 0 && (
+        <p className="mt-2 text-sm" style={{ color: MUTED }}>
+          Aucune clé d&apos;accès configurée — connectez-vous plus vite la prochaine fois, sans mot de passe.
+        </p>
+      )}
+      <button
+        onClick={handleAdd}
+        disabled={busy}
+        className="mt-3 text-xs underline underline-offset-4 disabled:opacity-50"
+        style={{ color: ACCENT }}
+      >
+        + Ajouter une clé d&apos;accès sur cet appareil
+      </button>
+      {message && (
+        <p className="mt-2 text-xs" style={{ color: MUTED }}>
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 
