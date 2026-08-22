@@ -9,10 +9,9 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 const PENDING_EXPIRY_DAYS = 14;
 
-// TODO: switch to a verified domain address once ittsui.fr (or whichever
-// domain you buy) is added and verified in Resend. Until then this only
-// delivers to the email address on your own Resend account, not to real
-// partners, so real invites will not arrive.
+// ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
+// call to Resend's /domains API before removing the old TODO here, not
+// assumed) — real invites do deliver to real partners.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 export async function POST(request: Request) {

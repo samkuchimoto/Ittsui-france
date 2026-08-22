@@ -8,10 +8,10 @@ import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 
-// TODO: switch to a verified domain address once ittsui.fr (or whichever
-// domain you buy) is added and verified in Resend. Keep this in sync with
-// the FROM_ADDRESS constant in app/api/invite-partner/route.ts, they are
-// not shared, both need updating together.
+// ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
+// call to Resend's /domains API before removing the old TODO here, not
+// assumed) — this address genuinely delivers. Keep in sync with the same
+// constant in app/api/invite-partner/route.ts; they're not shared.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 export async function POST(request: Request) {
