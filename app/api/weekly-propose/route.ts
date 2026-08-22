@@ -53,8 +53,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import type { Pair, VenueOption, VenueType } from "@/lib/types";
 import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
+import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from "@/lib/timezone";
 
-const DAY_MAP = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const RAG_TIMEOUT_MS = 1500;
 
 interface VenueCandidate {
@@ -80,8 +80,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const today = DAY_MAP[new Date().getDay()];
-  const weekOf = getMondayISO(new Date());
+  // Vercel's serverless functions run with TZ=UTC — new Date().getDay() and
+  // a bare getMondayISO(new Date()) would compute the wrong weekday/week
+  // whenever it's already tomorrow in Paris but not yet in UTC (or vice
+  // versa). Safe by coincidence under this route's current fixed 06:00 UTC
+  // cron schedule (vercel.json) since that's mid-morning in Paris either
+  // way, but this is also a bearer-token-gated GET endpoint that could be
+  // triggered manually at any real-world moment, so it shouldn't depend on
+  // the schedule staying exactly as-is to stay correct.
+  const today = parisNow().weekday;
+  const weekOf = parisMondayISO();
 
   const pairsSnap = await adminDb
     .collection("pairs")
@@ -145,11 +153,11 @@ export async function GET(request: Request) {
 // exactly notifyDaysBefore days ahead of agreedDay. notifyDaysBefore
 // defaults to 0 (same day) — every pair created before this field existed
 // keeps its exact current behavior unchanged.
-function isDueToday(pair: Pair, today: (typeof DAY_MAP)[number]): boolean {
+function isDueToday(pair: Pair, today: (typeof WEEKDAYS)[number]): boolean {
   const leadDays = pair.notifyDaysBefore ?? 0;
-  const meetingIndex = DAY_MAP.indexOf(pair.agreedDay);
-  const notifyIndex = (meetingIndex - leadDays + DAY_MAP.length) % DAY_MAP.length;
-  return DAY_MAP[notifyIndex] === today;
+  const meetingIndex = WEEKDAYS.indexOf(pair.agreedDay);
+  const notifyIndex = (meetingIndex - leadDays + WEEKDAYS.length) % WEEKDAYS.length;
+  return WEEKDAYS[notifyIndex] === today;
 }
 
 // --- API Independence Pattern: RAG service primary, deterministic fallback chain ---
@@ -337,19 +345,14 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
 }
 
 // --- helpers ---
-function getMondayISO(d: Date): string {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
-  return date.toISOString().split("T")[0];
-}
 
+// Was: new Date() + setHours(h, m) — sets the SERVER's local hour (UTC on
+// Vercel), not Paris's. A pair configured for "15:00" (meant as 15h Paris
+// time) was being stored as if the meeting happened at 17:00 Paris time in
+// summer (CEST, UTC+2) — verified concretely, not assumed: this exact
+// input/output pair was reproduced under TZ=UTC before this fix.
 function buildProposedTime(windowStart: string): string {
-  const [h, m] = windowStart.split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
+  return parisWallClockToUTCISOString(windowStart);
 }
 
 // Small deterministic string hash -> bounded index. Not cryptographic,
