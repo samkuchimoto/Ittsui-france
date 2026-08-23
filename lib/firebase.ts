@@ -106,21 +106,24 @@ function isMobileWebBrowser(): boolean {
 
 // Desktop uses signInWithPopup: the whole exchange happens inside the
 // popup and resolves this promise directly, with no getRedirectResult()
-// round-trip afterward. That round-trip is exactly what broke sign-in
-// twice in production on desktop Chrome — once via storage partitioning
-// under the firebaseapp.com authDomain, and again after moving authDomain
-// to this app's own domain (ittsui.fr) specifically to fix that: the
-// custom-domain rewrite in next.config.js fixed the redirect_uri Google
-// receives, but getRedirectResult() back on this page still failed to pick
-// up the completed sign-in. Popup sidesteps the whole class of bug by
-// never relying on cross-request storage read-back — mobile web is
-// unaffected by any of this since it keeps using redirect below.
+// round-trip afterward. That round-trip is what broke sign-in under
+// signInWithRedirect specifically — Chrome treats the firebaseapp.com
+// authDomain's storage as partitioned during the accounts.google.com
+// bounce, so getRedirectResult() came back empty even after a real,
+// completed sign-in (see NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN's history in
+// next.config.js for the full account of what moving authDomain around
+// to chase that cost). Popup never calls getRedirectResult() at all, so
+// it was never exposed to that failure mode regardless of which domain
+// authDomain points at — mobile web is unaffected either way since it
+// keeps using redirect below.
 //
 // Note: this still isn't a fix for the Capacitor-wrapped native app
 // specifically — Google's OAuth policy blocks sign-in inside embedded
 // WebViews entirely regardless of popup vs. redirect, so the native app
 // needs its own native Google Sign-In SDK integration (a real follow-up,
 // not attempted here).
+const POPUP_TIMEOUT_MS = 45000; // generous — a real phone 2FA/confirm step can take a while
+
 export async function signInWithGoogle(): Promise<void> {
   if (isMobileWebBrowser()) {
     await signInWithRedirect(auth, googleProvider);
@@ -128,7 +131,21 @@ export async function signInWithGoogle(): Promise<void> {
   }
 
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    // signInWithPopup's own promise has no built-in timeout — if the
+    // popup ever gets into a state where it neither completes nor
+    // reports an error (e.g. it hangs on a blank page mid-navigation),
+    // the caller would otherwise await forever with no feedback, which
+    // is indistinguishable from the app just being broken. Racing it
+    // against a real timeout guarantees this always resolves or throws.
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error("La fenêtre de connexion Google met trop de temps à répondre. Fermez-la et réessayez.")),
+        POPUP_TIMEOUT_MS
+      );
+    });
+    const result = await Promise.race([signInWithPopup(auth, googleProvider), timeout]);
+    clearTimeout(timeoutId!);
     await finishSignIn(result.user);
   } catch (err) {
     const code = err instanceof Error && "code" in err ? String((err as { code: unknown }).code) : null;
@@ -138,6 +155,7 @@ export async function signInWithGoogle(): Promise<void> {
     if (code === "auth/popup-blocked") {
       throw new Error("Le navigateur a bloqué la fenêtre de connexion. Autorisez les popups pour ittsui.fr et réessayez.");
     }
+    if (err instanceof Error && !code) throw err; // our own timeout message above, already in French
     throw new Error(authFailureMessage(err));
   }
 }

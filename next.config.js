@@ -18,19 +18,30 @@
 //     ... script-src" blocked every popup sign-in outright. That gapi
 //     script also opens its own relay iframe against apis.google.com for
 //     the popup<->opener postMessage handshake, hence it's listed in
-//     frame-src too, not just script-src — fixing only the script-src
-//     violation would just trade it for the next one gapi hits.
-//   - frame-src ALSO needs 'self' and *.firebaseapp.com: Firebase Auth's
-//     SDK separately loads a hidden helper iframe at
-//     {authDomain}/__/auth/iframe for both popup and redirect sign-in
-//     (session/storage bookkeeping), and authDomain is this app's own
-//     domain (ittsui.fr, see next.config.js's rewrites() below for why) —
-//     so that iframe's src is same-origin, not firebaseapp.com. CSP does
-//     NOT fall back to allowing 'self' once frame-src is explicitly set;
-//     missing 'self' here silently blocked that iframe and broke every
-//     sign-in with a generic "connexion a échoué", a real production
-//     incident, not a theoretical gap. *.firebaseapp.com stays listed too
-//     in case authDomain is ever pointed back at Firebase's own domain.
+//     frame-src too, not just script-src.
+//   - frame-src also carries 'self': NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN went
+//     through a custom-domain phase (ittsui.fr) that needed this for
+//     Firebase's own same-origin session iframe. authDomain is back to
+//     Firebase's default (ittsui-france.firebaseapp.com — see the removed
+//     rewrites() below for why), so that iframe is firebaseapp.com again
+//     and 'self' isn't load-bearing anymore, but it's harmless to leave
+//     and removing it buys nothing.
+//
+//   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN history, for context: default
+//   (ittsui-france.firebaseapp.com) -> custom domain (ittsui.fr), to work
+//   around Chrome treating firebaseapp.com's storage as partitioned during
+//   signInWithRedirect's round-trip -> back to the default, once sign-in
+//   moved to signInWithPopup (lib/firebase.ts), which never calls
+//   getRedirectResult() and so was never exposed to that partitioning
+//   issue in the first place. The custom-domain phase cost three separate
+//   production incidents on its own (a self-referential redirect loop, a
+//   redirect_uri_mismatch from the apex->www platform redirect changing
+//   the effective host mid-flow, and the same-origin iframe CSP gap
+//   above) — none of which are possible once authDomain is Firebase's own
+//   domain again, since nothing in this app's own routing sits in front
+//   of it. If a real reason to move off the default domain comes up
+//   again, treat this history as the reason to think hard before doing it,
+//   not as something already solved.
 const CSP = [
   "default-src 'self'",
   // 'unsafe-inline' here is a pragmatic choice, not the strictest
@@ -61,26 +72,6 @@ const nextConfig = {
         hostname: "images.unsplash.com",
       },
     ],
-  },
-  async rewrites() {
-    // Proxies Firebase Auth's handler/iframe endpoints through this app's
-    // own domain. CRITICAL: the destination must be Firebase's real backend
-    // (<project-id>.firebaseapp.com) — NEVER derived from
-    // NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN. That variable is now intentionally
-    // set to this app's own custom domain (ittsui.fr), which is the whole
-    // point of this rewrite existing — computing the destination from it
-    // instead of from the project ID created a real production incident:
-    // /__/auth/handler rewriting to https://ittsui.fr/__/auth/handler,
-    // i.e. this exact same domain, which is a self-referential infinite
-    // redirect (ERR_TOO_MANY_REDIRECTS) on every single sign-in attempt.
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    if (!projectId) return [];
-    return [
-      {
-        source: "/__/auth/:path*",
-        destination: `https://${projectId}.firebaseapp.com/__/auth/:path*`,
-      },
-    ];
   },
   async headers() {
     return [
