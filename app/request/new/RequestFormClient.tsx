@@ -16,6 +16,7 @@ import { auth, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
+import { fetchNearbyVenueSuggestions } from "@/lib/geoVenueSuggestions";
 import type { Contact, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -74,11 +75,12 @@ function emptyDraft(): Draft {
   };
 }
 
-// Flattens the same curated real-venue catalog SetupClient.tsx's one-tap
-// preview already reads, keyed off a postal code instead of a Pair's
-// stored preference — same data, same trust bar (see venueCatalog.ts),
-// just triggered a different way.
-function suggestionsForPostalCode(postalCode: string): { name: string; address: string }[] {
+// Last-resort fallback only, when the real geo lookup (below) times out,
+// fails, or genuinely has nothing nearby — same curated catalog
+// SetupClient.tsx's one-tap preview reads. No per-item venueType here
+// (STATIC_CATALOG is keyed BY type but this flattens across all of
+// them), unlike the real geo suggestions, which do carry one.
+function staticSuggestionsForPostalCode(postalCode: string): { name: string; address: string }[] {
   const metro = departmentFromPostalCode(postalCode);
   if (!metro) return [];
   const byType = STATIC_CATALOG[metro];
@@ -95,6 +97,8 @@ export default function RequestFormClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(DRAFT_KEY);
@@ -128,6 +132,32 @@ export default function RequestFormClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Debounced so this fires once someone's actually done typing a 5-digit
+  // code, not on every keystroke — real network calls (geocode, then
+  // Overpass), not the instant static lookup this replaces. Falls back to
+  // the static catalog only when the real lookup comes back empty (a
+  // genuine failure or nothing OSM has mapped nearby), never overwriting
+  // a set of real results with the static ones.
+  useEffect(() => {
+    if (!/^\d{5}$/.test(draft.postalCode)) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setSuggestionsLoading(true);
+      fetchNearbyVenueSuggestions(draft.postalCode).then((results) => {
+        if (cancelled) return;
+        setSuggestionsLoading(false);
+        setSuggestions(results.length > 0 ? results : staticSuggestionsForPostalCode(draft.postalCode));
+      });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [draft.postalCode]);
+
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
@@ -137,8 +167,13 @@ export default function RequestFormClient() {
     update("recipientEmail", contact.email);
   }
 
-  function pickVenue(v: { name: string; address: string }) {
-    setDraft((d) => ({ ...d, venueName: v.name, venueAddress: v.address }));
+  function pickVenue(v: { name: string; address: string; venueType?: VenueType | null }) {
+    setDraft((d) => ({
+      ...d,
+      venueName: v.name,
+      venueAddress: v.address,
+      venueType: v.venueType ?? d.venueType,
+    }));
   }
 
   async function handleConnect() {
@@ -205,8 +240,6 @@ export default function RequestFormClient() {
       setSubmitting(false);
     }
   }
-
-  const suggestions = suggestionsForPostalCode(draft.postalCode);
 
   return (
     <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
@@ -283,6 +316,11 @@ export default function RequestFormClient() {
                 className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
                 style={{ borderColor: BORDER }}
               />
+              {suggestionsLoading && (
+                <p className="mt-2 text-xs" style={{ color: MUTED }}>
+                  Recherche de lieux près de {draft.postalCode}...
+                </p>
+              )}
               {suggestions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {suggestions.map((v) => (
