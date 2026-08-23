@@ -57,6 +57,15 @@ if (typeof window !== "undefined") {
 // --- Auth helpers ---
 
 const googleProvider = new GoogleAuthProvider();
+// Without this, Google can skip the account chooser entirely and reuse
+// whichever account is already cached (a real, reported "wrong account"
+// pattern specifically on mobile, where a single OS-level Google account
+// makes this the default) — someone opening an invite/request meant for
+// a different email than their usual one would get silently signed in
+// as the wrong person instead of being asked. This forces an explicit
+// account confirmation on every sign-in, redirect or popup, mobile or
+// desktop, regardless of how many accounts are cached.
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 // Completes sign-in for BOTH paths below: writes the users/{uid} doc
 // (email, displayName) that /api/invite-partner and friends depend on, and
