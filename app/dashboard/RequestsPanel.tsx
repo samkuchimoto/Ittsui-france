@@ -11,6 +11,16 @@ import Link from "next/link";
 import { auth } from "@/lib/firebase";
 import type { MeetingRequest, MeetingRequestStatus } from "@/lib/types";
 import { MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
+import { googleCalendarLink } from "@/lib/googleCalendarLink";
+
+const VENUE_TYPE_LABEL: Record<string, string> = {
+  cafe: "Café",
+  restaurant: "Restaurant",
+  park: "Parc",
+  museum: "Musée",
+  home: "Chez vous",
+};
 
 const STATUS_LABEL: Record<MeetingRequestStatus, string> = {
   pending: "En attente",
@@ -43,14 +53,44 @@ function StatusPill({ status }: { status: MeetingRequestStatus }) {
 function RequestRow({ request, perspective }: { request: MeetingRequest; perspective: "sent" | "received" }) {
   const otherParty = perspective === "sent" ? request.recipientName : request.senderName;
   return (
-    <li className="flex items-center justify-between gap-3 py-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{otherParty}</p>
-        <p className="truncate text-xs" style={{ color: MUTED }}>
-          {request.venueName} · {request.date} à {request.time}
-        </p>
+    <li className="py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {request.venueType && (
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+              <DiscoveryTileButton
+                tile={{ value: request.venueType, label: VENUE_TYPE_LABEL[request.venueType] ?? "" }}
+                active={false}
+                onClick={() => {}}
+              />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{otherParty}</p>
+            <p className="truncate text-xs" style={{ color: MUTED }}>
+              {request.venueName} · {request.date} à {request.time}
+            </p>
+          </div>
+        </div>
+        <StatusPill status={request.status} />
       </div>
-      <StatusPill status={request.status} />
+      {request.status === "accepted" && (
+        <a
+          href={googleCalendarLink({
+            title: `${request.venueName} — Ittsui`,
+            details: "Rendez-vous confirmé via Ittsui.",
+            venueAddress: request.venueAddress,
+            date: request.date,
+            time: request.time,
+          })}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1.5 inline-block text-xs underline underline-offset-4"
+          style={{ color: ACCENT }}
+        >
+          Ajouter à Google Agenda
+        </a>
+      )}
     </li>
   );
 }

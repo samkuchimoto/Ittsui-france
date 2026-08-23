@@ -132,6 +132,14 @@ export interface MeetingRequest {
   recipientId?: string; // set once the recipient signs in and accepts
   venueName: string;
   venueAddress: string;
+  // Optional — lets both the sender's and recipient's views show the same
+  // AI mood illustration (with its mandatory disclosure badge) DiscoveryGrid
+  // already uses for venue-type preferences elsewhere in the app, rather
+  // than inventing a second image mechanism. Never a photo of the specific
+  // address itself (this app has no real per-address photo source) — see
+  // app/api/ai-venue-mood/route.ts's own reasoning for why that distinction
+  // is what makes the feature honest.
+  venueType?: VenueType;
   date: string; // "YYYY-MM-DD", Europe/Paris calendar date
   time: string; // "HH:MM", Europe/Paris wall-clock
   status: MeetingRequestStatus;

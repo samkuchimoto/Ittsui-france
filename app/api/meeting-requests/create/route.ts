@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
+import { googleCalendarLink } from "@/lib/googleCalendarLink";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -16,11 +17,14 @@ const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 // not shared on purpose, each route owns its own copy.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
+const VENUE_TYPES = ["cafe", "restaurant", "home", "park", "museum"] as const;
+
 const createSchema = z.object({
   recipientName: z.string().trim().min(1).max(200),
   recipientEmail: z.string().trim().email().max(320),
   venueName: z.string().trim().min(1).max(200),
   venueAddress: z.string().trim().min(1).max(300),
+  venueType: z.enum(VENUE_TYPES).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date invalide"),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure invalide"),
 });
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
 
-  const { recipientName, venueName, venueAddress, date, time } = parsed.data;
+  const { recipientName, venueName, venueAddress, venueType, date, time } = parsed.data;
   const recipientEmail = parsed.data.recipientEmail.toLowerCase();
 
   const senderSnap = await adminDb.collection("users").doc(uid).get();
@@ -57,6 +61,7 @@ export async function POST(request: Request) {
     recipientEmail,
     venueName,
     venueAddress,
+    ...(venueType ? { venueType } : {}),
     date,
     time,
     status: "pending",
@@ -65,6 +70,14 @@ export async function POST(request: Request) {
   });
 
   const requestUrl = `${process.env.NEXT_PUBLIC_APP_URL}/request/${ref.id}`;
+  const calendarUrl = googleCalendarLink({
+    title: `${venueName} avec ${senderName} — Ittsui`,
+    details: `Proposition de rendez-vous via Ittsui. Répondre ici : ${requestUrl}`,
+    venueAddress,
+    date,
+    time,
+  });
+
   const recipientEmailSent = await sendEmail({
     to: recipientEmail,
     subject: `${senderName} vous propose un rendez-vous sur Ittsui`,
@@ -73,7 +86,15 @@ export async function POST(request: Request) {
       `Lieu : ${venueName} (${venueAddress})\n` +
       `Date : ${date} à ${time}\n\n` +
       `Pour accepter ou décliner, connectez-vous ici : ${requestUrl}\n` +
+      `Ajouter à Google Agenda (dès maintenant, avant même de répondre) : ${calendarUrl}\n\n` +
       `Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.`,
+    html:
+      `<p>${escapeHtml(senderName)} vous propose de vous retrouver :</p>` +
+      `<p><strong>Lieu :</strong> ${escapeHtml(venueName)} (${escapeHtml(venueAddress)})<br>` +
+      `<strong>Date :</strong> ${escapeHtml(date)} à ${escapeHtml(time)}</p>` +
+      `<p><a href="${requestUrl}">Accepter ou décliner</a></p>` +
+      `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)</p>` +
+      `<p style="color:#8A8378;font-size:12px">Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.</p>`,
   });
 
   // Persisted, not just returned in this one response — same reasoning as
@@ -84,14 +105,33 @@ export async function POST(request: Request) {
   return NextResponse.json({ id: ref.id, status: "pending", recipientEmailSent });
 }
 
-async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }): Promise<boolean> {
+// Only ever interpolates this app's own data (names, addresses, ittsui.fr
+// URLs) into hand-built HTML strings above — not user-supplied markup
+// rendered as-is, but the values themselves ARE user-supplied text (a
+// venue name, a contact's name), so this is the actual XSS boundary, not
+// a formality.
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+async function sendEmail({
+  to,
+  subject,
+  text,
+  html,
+}: {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}): Promise<boolean> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text, ...(html ? { html } : {}) }),
   });
 
   if (!res.ok) {

@@ -77,7 +77,11 @@ function useAIVenueMood(category: VenueType, enabled: boolean): string | null {
   return imageUrl;
 }
 
-function DiscoveryTileButton({
+// Exported (not just used internally by DiscoveryGrid's grid layout) so a
+// single-item display — e.g. one venue thumbnail in a list row, which a
+// hardcoded grid-cols-2 grid can't do cleanly — can reuse the exact same
+// AI-mood-illustration-with-badge behavior instead of duplicating it.
+export function DiscoveryTileButton({
   tile,
   active,
   onClick,

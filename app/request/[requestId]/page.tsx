@@ -13,7 +13,26 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
+import { googleCalendarLink } from "@/lib/googleCalendarLink";
+import type { VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+
+const VENUE_TYPE_LABEL: Record<string, string> = {
+  cafe: "Café",
+  restaurant: "Restaurant",
+  park: "Parc",
+  museum: "Musée",
+  home: "Chez vous",
+};
+
+interface AcceptedDetails {
+  venueName: string;
+  venueAddress: string;
+  venueType: VenueType | null;
+  date: string;
+  time: string;
+}
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -48,6 +67,7 @@ export default function RequestResponsePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<User | false | null>(null);
   const [slowConnection, setSlowConnection] = useState(false);
+  const [accepted, setAccepted] = useState<AcceptedDetails | null>(null);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -89,6 +109,13 @@ export default function RequestResponsePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      setAccepted({
+        venueName: data.venueName,
+        venueAddress: data.venueAddress,
+        venueType: data.venueType ?? null,
+        date: data.date,
+        time: data.time,
+      });
       setStatus("accepted");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Une erreur est survenue.");
@@ -155,12 +182,43 @@ export default function RequestResponsePage() {
   if (status === "accepted") {
     return (
       <Shell>
+        {accepted?.venueType && (
+          <div className="mx-auto mb-5 h-32 w-32 overflow-hidden rounded-2xl">
+            <DiscoveryTileButton
+              tile={{ value: accepted.venueType, label: VENUE_TYPE_LABEL[accepted.venueType] ?? "" }}
+              active={false}
+              onClick={() => {}}
+            />
+          </div>
+        )}
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
           Rendez-vous confirmé
         </h1>
+        {accepted && (
+          <p className="mt-2 text-sm font-medium">
+            {accepted.venueName} · {accepted.date} à {accepted.time}
+          </p>
+        )}
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Vous recevrez un e-mail de confirmation. L&apos;autre personne a été notifiée.
         </p>
+        {accepted && (
+          <a
+            href={googleCalendarLink({
+              title: `${accepted.venueName} — Ittsui`,
+              details: "Rendez-vous confirmé via Ittsui.",
+              venueAddress: accepted.venueAddress,
+              date: accepted.date,
+              time: accepted.time,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 block text-sm underline underline-offset-4"
+            style={{ color: ACCENT }}
+          >
+            Ajouter à Google Agenda
+          </a>
+        )}
         <button
           onClick={() => router.push("/dashboard")}
           className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"

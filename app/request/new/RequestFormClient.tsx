@@ -9,14 +9,28 @@
 // action rather than at page load.
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
 import type { User } from "firebase/auth";
 import { auth, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { TimeSelect } from "@/app/components/TimeSelect";
+import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
-import type { Contact } from "@/lib/types";
+import type { Contact, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+
+// Same tile set SetupClient.tsx's discovery grid uses for venue-type
+// preferences — no per-tile photo here (this form isn't tied to any
+// user's onboarding preferences), so every tile falls back to
+// DiscoveryGrid's own AI-mood-illustration-or-tinted-block behavior,
+// badge included, exactly as already proven there.
+const VENUE_TYPE_TILES: DiscoveryTile[] = [
+  { value: "cafe", label: "Café" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "park", label: "Parc" },
+  { value: "museum", label: "Musée" },
+  { value: "home", label: "Chez vous" },
+];
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -40,6 +54,7 @@ interface Draft {
   recipientEmail: string;
   venueName: string;
   venueAddress: string;
+  venueType: VenueType | null;
   postalCode: string;
   date: string;
   time: string;
@@ -52,6 +67,7 @@ function emptyDraft(): Draft {
     recipientEmail: "",
     venueName: "",
     venueAddress: "",
+    venueType: null,
     postalCode: "",
     date: today.toISOString().slice(0, 10),
     time: "15:00",
@@ -71,6 +87,8 @@ function suggestionsForPostalCode(postalCode: string): { name: string; address: 
 
 export default function RequestFormClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const contactId = searchParams.get("contactId");
   const [user, setUser] = useState<User | false | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
@@ -97,9 +115,17 @@ export default function RequestFormClient() {
       const res = await fetch("/api/contacts", { headers: { Authorization: `Bearer ${idToken}` } });
       if (res.ok) {
         const data = await res.json();
-        setContacts(data.contacts ?? []);
+        const loaded: Contact[] = data.contacts ?? [];
+        setContacts(loaded);
+        // Arriving from /contacts' "Proposer un RDV" link — pre-fill that
+        // contact rather than making someone re-pick it from the chip row.
+        if (contactId) {
+          const match = loaded.find((c) => c.id === contactId);
+          if (match) pickContact(match);
+        }
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -163,6 +189,7 @@ export default function RequestFormClient() {
           recipientEmail: draft.recipientEmail,
           venueName: draft.venueName,
           venueAddress: draft.venueAddress,
+          ...(draft.venueType ? { venueType: draft.venueType } : {}),
           date: draft.date,
           time: draft.time,
         }),
@@ -290,6 +317,17 @@ export default function RequestFormClient() {
                 className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
                 style={{ borderColor: BORDER }}
               />
+
+              <p className="mt-4 text-xs" style={{ color: MUTED }}>
+                Type de lieu (optionnel, ajoute une illustration à l&apos;invitation)
+              </p>
+              <div className="mt-2">
+                <DiscoveryGrid
+                  tiles={VENUE_TYPE_TILES}
+                  selected={draft.venueType ? [draft.venueType] : []}
+                  onToggle={(v) => update("venueType", draft.venueType === v ? null : v)}
+                />
+              </div>
             </section>
 
             <section>

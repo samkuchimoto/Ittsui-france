@@ -8,6 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { googleCalendarLink } from "@/lib/googleCalendarLink";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -30,7 +31,15 @@ export async function POST(request: Request) {
   // should land back on the dashboard, not throw "déjà traitée" — same
   // idempotency activate-pending-pair applies to its own accept path.
   if (data.status === "accepted" && !decline && userId && data.recipientId === userId) {
-    return NextResponse.json({ status: "accepted", requestId });
+    return NextResponse.json({
+      status: "accepted",
+      requestId,
+      venueName: data.venueName,
+      venueAddress: data.venueAddress,
+      venueType: data.venueType ?? null,
+      date: data.date,
+      time: data.time,
+    });
   }
 
   if (data.status !== "pending") {
@@ -67,33 +76,80 @@ export async function POST(request: Request) {
 
   // Both parties notified by email, as required — the sender gets
   // confirmation, and the recipient gets a copy back as their own record
-  // of what they just confirmed.
-  const confirmationText = `Rendez-vous confirmé : ${data.venueName} (${data.venueAddress}), le ${data.date} à ${data.time}.`;
+  // of what they just confirmed. Both also get the Google Calendar link
+  // now that it's an actual confirmed commitment, not just a proposal.
+  const calendarUrl = googleCalendarLink({
+    title: `${data.venueName} — Ittsui`,
+    details: `Rendez-vous confirmé via Ittsui.`,
+    venueAddress: data.venueAddress,
+    date: data.date,
+    time: data.time,
+  });
+  const confirmationText =
+    `Rendez-vous confirmé : ${data.venueName} (${data.venueAddress}), le ${data.date} à ${data.time}.\n` +
+    `Ajouter à Google Agenda : ${calendarUrl}`;
+  const confirmationHtml =
+    `<p><strong>Rendez-vous confirmé :</strong> ${escapeHtml(data.venueName)} (${escapeHtml(data.venueAddress)}), le ${escapeHtml(data.date)} à ${escapeHtml(data.time)}.</p>` +
+    `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a></p>`;
   const [senderSent, recipientSent] = await Promise.all([
     data.senderEmail
       ? sendEmail({
           to: data.senderEmail,
           subject: "Votre demande de rendez-vous a été acceptée",
           text: `${data.recipientName} a accepté. ${confirmationText}`,
+          html: `<p>${escapeHtml(data.recipientName ?? "")} a accepté.</p>${confirmationHtml}`,
         })
       : Promise.resolve(false),
-    sendEmail({ to: data.recipientEmail, subject: "Rendez-vous confirmé sur Ittsui", text: confirmationText }),
+    sendEmail({
+      to: data.recipientEmail,
+      subject: "Rendez-vous confirmé sur Ittsui",
+      text: confirmationText,
+      html: confirmationHtml,
+    }),
   ]);
   if (!senderSent || !recipientSent) {
     console.warn(`meeting-requests/respond: accept notification incomplete for request ${requestId}`);
   }
 
-  return NextResponse.json({ status: "accepted", requestId });
+  // Returned so the confirmation screen can show the venue and build its
+  // own "add to calendar" link without a separate, unauthenticated GET
+  // endpoint for request details that doesn't otherwise need to exist.
+  return NextResponse.json({
+    status: "accepted",
+    requestId,
+    venueName: data.venueName,
+    venueAddress: data.venueAddress,
+    venueType: data.venueType ?? null,
+    date: data.date,
+    time: data.time,
+  });
 }
 
-async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }): Promise<boolean> {
+// Only ever interpolates this app's own data (names, addresses) into
+// hand-built HTML strings above — the values themselves are user-supplied
+// text (a venue name, a contact's name), so this is the real XSS boundary.
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+async function sendEmail({
+  to,
+  subject,
+  text,
+  html,
+}: {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}): Promise<boolean> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text, ...(html ? { html } : {}) }),
   });
 
   if (!res.ok) {
