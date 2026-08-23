@@ -251,12 +251,24 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
   const metro = departmentFromPostalCode(pair.postalCode) ?? "paris";
   const catalog = STATIC_CATALOG[metro];
   const preferences = pair.preferences.venueTypes.length ? pair.preferences.venueTypes : (["cafe"] as VenueType[]);
+  const hasDietaryFilter = pair.preferences.dietaryFilters.length > 0;
 
   // Walk the pair's preferences in order and take the first one that
   // actually has real coverage in their metro. "home" always resolves. If
   // nothing in their metro matches any preference, "home" is the honest
   // last resort — everywhere in France — rather than quietly substituting
   // a Paris address for someone in Lyon, or fabricating a venue.
+  //
+  // Cafe/restaurant are skipped entirely when a dietary filter is set:
+  // STATIC_CATALOG has no dietaryTags (unlike Tier 2's Firestore venues,
+  // see getShortlist() above), so there's no honest way to know whether
+  // "Café de Flore" is actually casher/halal/etc. — recommending it
+  // anyway would silently ignore the filter someone deliberately set,
+  // exactly the bug this fixes. Park/museum stay eligible even with a
+  // filter active, same exemption getShortlist() already applies ("park
+  // has no menu"). This was a real, confirmed gap: whenever a proposal
+  // fell through to this tier (no RAG service, no matching seeded
+  // Firestore venue), a dietary filter was silently doing nothing.
   let options: { name: string; address: string }[] = [HOME_FALLBACK];
   let resolvedType: VenueType = "home";
   for (const type of preferences) {
@@ -265,6 +277,7 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
       resolvedType = "home";
       break;
     }
+    if (hasDietaryFilter && (type === "cafe" || type === "restaurant")) continue;
     const forType = catalog[type];
     if (forType?.length) {
       options = forType;
