@@ -33,9 +33,23 @@ export async function POST(request: Request) {
 
   const { name } = parsed.data;
   const email = parsed.data.email.toLowerCase();
-  const createdAt = new Date().toISOString();
+  const contactsRef = adminDb.collection("users").doc(uid).collection("contacts");
 
-  const ref = await adminDb.collection("users").doc(uid).collection("contacts").add({ name, email, createdAt });
+  // Server-side dedup, not just RequestFormClient.tsx's client-side check
+  // against its own already-loaded list — that one can go stale (two
+  // tabs, a second "add to contacts" a while later) and would otherwise
+  // silently create a second entry for the same email. Existing name is
+  // refreshed rather than left stale, since a re-add usually means the
+  // sender typed a more current name for the same person.
+  const existing = await contactsRef.where("email", "==", email).limit(1).get();
+  if (!existing.empty) {
+    const doc = existing.docs[0];
+    await doc.ref.update({ name });
+    return NextResponse.json({ id: doc.id, name, email, createdAt: doc.data().createdAt });
+  }
+
+  const createdAt = new Date().toISOString();
+  const ref = await contactsRef.add({ name, email, createdAt });
 
   return NextResponse.json({ id: ref.id, name, email, createdAt });
 }
