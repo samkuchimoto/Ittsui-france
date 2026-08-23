@@ -5,8 +5,13 @@
 // by guessing a credential id.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import type { StoredPasskeyCredential } from "@/lib/passkeys";
+
+const bodySchema = z.object({
+  credentialId: z.string().min(1),
+});
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -14,12 +19,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body?.credentialId) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "identifiant manquant" }, { status: 400 });
   }
+  const { credentialId } = parsed.data;
 
-  const ref = adminDb.collection("passkeyCredentials").doc(body.credentialId);
+  const ref = adminDb.collection("passkeyCredentials").doc(credentialId);
   const snap = await ref.get();
   if (!snap.exists) {
     return NextResponse.json({ status: "ok" }); // already gone — not an error

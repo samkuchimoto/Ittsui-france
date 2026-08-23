@@ -8,16 +8,26 @@
 // listeners as Google Sign-In pick it up unchanged from there.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { RP_ID, EXPECTED_ORIGINS, consumeChallenge } from "@/lib/passkeys";
 import type { StoredPasskeyCredential } from "@/lib/passkeys";
 
+// Shallow on purpose — see register-verify/route.ts's identical reasoning:
+// verifyAuthenticationResponse below already does the real (structural +
+// cryptographic) validation of the browser's WebAuthn response shape.
+const bodySchema = z.object({
+  response: z.object({ id: z.string(), rawId: z.string(), type: z.string() }).passthrough(),
+  challengeKey: z.string().min(1),
+});
+
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  if (!body?.response || !body?.challengeKey) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "requête invalide" }, { status: 400 });
   }
+  const body = parsed.data;
 
   const expectedChallenge = await consumeChallenge(body.challengeKey);
   if (!expectedChallenge) {
@@ -42,7 +52,12 @@ export async function POST(request: Request) {
   let verification;
   try {
     verification = await verifyAuthenticationResponse({
-      response: body.response,
+      // Zod only checked the shallow shape (id/rawId/type) above — the
+      // full WebAuthn AuthenticationResponseJSON type is asserted here
+      // because verifyAuthenticationResponse itself is the real
+      // structural and cryptographic validator; it throws below on
+      // anything invalid.
+      response: body.response as unknown as Parameters<typeof verifyAuthenticationResponse>[0]["response"],
       expectedChallenge,
       expectedOrigin: EXPECTED_ORIGINS,
       expectedRPID: RP_ID,

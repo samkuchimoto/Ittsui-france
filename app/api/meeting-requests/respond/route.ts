@@ -7,17 +7,34 @@
 // requirement for this flow.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
-export async function POST(request: Request) {
-  const { requestId, userId, userEmail, decline } = await request.json();
+// Same shape as activate-pending-pair/route.ts's identical accept/decline
+// split: decline only needs requestId (a bearer-style link mailed to one
+// address; requiring login to opt out would be exactly the wrong kind of
+// friction), accept needs the signed-in uid/email too.
+const bodySchema = z
+  .object({
+    requestId: z.string().min(1),
+    userId: z.string().min(1).optional(),
+    userEmail: z.string().min(1).optional(),
+    decline: z.boolean().optional(),
+  })
+  .refine((data) => data.decline || (data.userId && data.userEmail), { message: "champs manquants" });
 
-  if (!requestId || (!decline && (!userId || !userEmail))) {
+export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
   }
+  const { requestId, decline } = parsed.data;
+  // Guaranteed present by the refine above whenever !decline.
+  const userId = parsed.data.userId!;
+  const userEmail = parsed.data.userEmail!;
 
   const ref = adminDb.collection("meetingRequests").doc(requestId);
   const snap = await ref.get();

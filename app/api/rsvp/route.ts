@@ -10,6 +10,7 @@
 // the initial proposal.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { notifyBothUsers } from "@/lib/notify";
@@ -18,12 +19,19 @@ import type { Pair, Week } from "@/lib/types";
 const VALID_RESPONSES = ["yes", "no", "A", "B"] as const;
 type ResponseValue = (typeof VALID_RESPONSES)[number];
 
-export async function POST(request: Request) {
-  const { pairId, weekId, userId, response } = await request.json();
+const bodySchema = z.object({
+  pairId: z.string().min(1),
+  weekId: z.string().min(1),
+  userId: z.string().min(1),
+  response: z.enum(VALID_RESPONSES),
+});
 
-  if (!pairId || !weekId || !userId || !VALID_RESPONSES.includes(response)) {
+export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
+  const { pairId, weekId, userId, response } = parsed.data;
 
   const weekRef = adminDb
     .collection("pairs")

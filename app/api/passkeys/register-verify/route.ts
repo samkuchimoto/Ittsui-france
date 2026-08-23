@@ -4,10 +4,23 @@
 // write path for passkeyCredentials — see firestore.rules.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { RP_ID, EXPECTED_ORIGINS, consumeChallenge } from "@/lib/passkeys";
 import type { StoredPasskeyCredential } from "@/lib/passkeys";
+
+// Shallow on purpose: the browser's WebAuthn RegistrationResponseJSON is a
+// deeply nested, spec-defined shape that verifyRegistrationResponse below
+// already validates thoroughly (structurally and cryptographically) —
+// replicating that in Zod would be redundant and risks rejecting valid
+// variations the library itself accepts. This just guards against a
+// grossly malformed body before bothering to consume the one-time
+// challenge for it.
+const bodySchema = z.object({
+  response: z.object({ id: z.string(), rawId: z.string(), type: z.string() }).passthrough(),
+  label: z.string().trim().max(100).optional(),
+});
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -15,10 +28,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body?.response) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "réponse manquante" }, { status: 400 });
   }
+  const body = parsed.data;
 
   const expectedChallenge = await consumeChallenge(uid);
   if (!expectedChallenge) {
@@ -28,7 +42,11 @@ export async function POST(request: Request) {
   let verification;
   try {
     verification = await verifyRegistrationResponse({
-      response: body.response,
+      // Zod only checked the shallow shape (id/rawId/type) above — the
+      // full WebAuthn RegistrationResponseJSON type is asserted here
+      // because verifyRegistrationResponse itself is the real structural
+      // and cryptographic validator; it throws below on anything invalid.
+      response: body.response as unknown as Parameters<typeof verifyRegistrationResponse>[0]["response"],
       expectedChallenge,
       expectedOrigin: EXPECTED_ORIGINS,
       expectedRPID: RP_ID,

@@ -5,14 +5,20 @@
 // pair via a guessed pairId. Only pending pairs can be cancelled.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 
-export async function POST(request: Request) {
-  const { pairId, userId } = await request.json();
+const bodySchema = z.object({
+  pairId: z.string().min(1),
+  userId: z.string().min(1),
+});
 
-  if (!pairId || !userId) {
+export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
   }
+  const { pairId, userId } = parsed.data;
 
   const pairRef = adminDb.collection("pairs").doc(pairId);
   const pairSnap = await pairRef.get();

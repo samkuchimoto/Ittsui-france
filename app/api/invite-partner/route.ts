@@ -5,6 +5,7 @@
 // in /api/activate-pending-pair, once the partner logs in with Google.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const PENDING_EXPIRY_DAYS = 14;
@@ -14,25 +15,45 @@ const PENDING_EXPIRY_DAYS = 14;
 // assumed) — real invites do deliver to real partners.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
+// notifyDaysBefore/postalCode stay optional and postalCode stays
+// loosely-typed here — the existing regex check right before use below
+// silently drops an invalid postal code rather than rejecting the whole
+// request, and that lenient behavior is intentional, not something this
+// validation pass should change.
+const bodySchema = z.object({
+  inviterUid: z.string().min(1),
+  inviterName: z.string().trim().min(1).max(200),
+  partnerName: z.string().trim().min(1).max(200),
+  partnerEmail: z.string().trim().email().max(320),
+  agreedDay: z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]),
+  agreedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  agreedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  notifyDaysBefore: z.number().int().min(0).optional(),
+  postalCode: z.string().optional(),
+  preferences: z.object({
+    venueTypes: z.array(z.enum(["cafe", "restaurant", "home", "park", "museum"])),
+    dietaryFilters: z.array(z.string()), // open list — user can add custom tags, see lib/types.ts
+  }),
+});
+
 export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "champs manquants" }, { status: 400 });
+  }
   const {
     inviterUid,
     inviterName,
     partnerName,
-    partnerEmail,
     agreedDay,
     agreedWindowStart,
     agreedWindowEnd,
     notifyDaysBefore,
     postalCode,
     preferences,
-  } = await request.json();
+  } = parsed.data;
 
-  if (!inviterUid || !partnerName || !partnerEmail) {
-    return NextResponse.json({ error: "champs manquants" }, { status: 400 });
-  }
-
-  const cleanEmail = String(partnerEmail).trim().toLowerCase();
+  const cleanEmail = parsed.data.partnerEmail.trim().toLowerCase();
 
   const inviterSnap = await adminDb.collection("users").doc(inviterUid).get();
   const inviterEmail = inviterSnap.data()?.email;

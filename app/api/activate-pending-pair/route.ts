@@ -5,6 +5,7 @@
 // before doing anything, the pairId alone isn't authorization.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 
@@ -14,15 +15,27 @@ import { adminDb } from "@/lib/firebaseAdmin";
 // constant in app/api/invite-partner/route.ts; they're not shared.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
-export async function POST(request: Request) {
-  const { pairId, userId, userEmail, decline } = await request.json();
+// Decline only needs the pairId, it's a bearer-style link mailed to one
+// address, and requiring login just to opt out would be exactly the kind
+// of friction a consent withdrawal shouldn't cost someone.
+const bodySchema = z
+  .object({
+    pairId: z.string().min(1),
+    userId: z.string().min(1).optional(),
+    userEmail: z.string().min(1).optional(),
+    decline: z.boolean().optional(),
+  })
+  .refine((data) => data.decline || (data.userId && data.userEmail), { message: "champs manquants" });
 
-  // Decline only needs the pairId, it's a bearer-style link mailed to one
-  // address, and requiring login just to opt out would be exactly the kind
-  // of friction a consent withdrawal shouldn't cost someone.
-  if (!pairId || (!decline && (!userId || !userEmail))) {
+export async function POST(request: Request) {
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
   }
+  const { pairId, decline } = parsed.data;
+  // Guaranteed present by the refine above whenever !decline.
+  const userId = parsed.data.userId!;
+  const userEmail = parsed.data.userEmail!;
 
   const pairRef = adminDb.collection("pairs").doc(pairId);
   const pairSnap = await pairRef.get();
