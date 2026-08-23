@@ -90,22 +90,28 @@ independent of whether signing is configured yet.
   production signing secrets is something the repo owner should do directly rather than have
   automated, regardless.
 
-## App Links — IMPLEMENTED, PARTIALLY VERIFIABLE
+## App Links — IMPLEMENTED, MOSTLY VERIFIED
 
 - `public/.well-known/assetlinks.json` lists this keystore's SHA-256 fingerprint
   (`68:FB:1A:7C:10:DF:A8:ED:69:15:65:D9:E2:D4:6F:28:71:E5:46:B2:C6:BB:CE:FD:F5:D7:C8:8F:CA:43:91:5A`).
   `android/app/src/main/AndroidManifest.xml` has an `autoVerify` intent-filter for both `ittsui.fr`
-  and `www.ittsui.fr` (no canonical redirect between the two was found in this repo — worth
-  settling which is authoritative and dropping the other host).
+  and `www.ittsui.fr`. The "no canonical redirect found in this repo" note that used to be here was
+  about the *app's own code* — there genuinely isn't one in `next.config.js`. There IS one at the
+  Vercel platform/domain level, outside the repo: confirmed via a real `curl` trace that
+  `https://ittsui.fr/<any path>` 308-redirects to `https://www.ittsui.fr/<same path>` uniformly, so
+  `www.ittsui.fr` is the actual canonical/terminal host in production today. Both hosts staying in
+  the intent-filter is still fine (a raw `ittsui.fr` link — an old email, a bookmark — should still
+  open the app rather than bounce through a browser redirect first), just noting this answers the
+  "which is authoritative" question this file used to leave open.
 - **Not sufficient on its own for Play-Store-installed copies**: once this app is first uploaded
   to Play Console, Google's Play App Signing re-signs it with a *different* certificate for
   distribution. That certificate's fingerprint (Play Console → Setup → App signing, only exists
   after first upload) must be added as a second entry in `assetlinks.json`'s
   `sha256_cert_fingerprints` array, or App Links verification will fail for anyone who installed
   via Play Store rather than the direct APK.
-- Verifiable today at `https://www.ittsui.fr/.well-known/assetlinks.json` once deployed — confirm
-  it actually serves with `Content-Type: application/json` before relying on it; Vercel generally
-  serves `public/` dotfiles correctly but this hasn't been checked against a live deployment.
+- Verified for real against the live deployment (not just assumed): `curl -I
+  https://www.ittsui.fr/.well-known/assetlinks.json` returns `Content-Type: application/json;
+  charset=utf-8` and the expected JSON body — Vercel does serve this `public/` dotfile correctly.
 
 ## Release APK + GitHub Release publishing — IMPLEMENTED, NOT YET VERIFIED
 
