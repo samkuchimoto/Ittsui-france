@@ -5,6 +5,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -16,6 +17,7 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 import { registerNativePush } from "@/lib/nativePush";
+import { Capacitor } from "@capacitor/core";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -56,40 +58,97 @@ if (typeof window !== "undefined") {
 
 const googleProvider = new GoogleAuthProvider();
 
-// signInWithPopup used to be here, but popups are unreliable on mobile
-// browsers specifically — they get silently blocked, or lose their
-// connection back to the opener when the OS backgrounds the tab during
-// the Google auth screen, which is exactly the "stuck on chargement,
-// keeps asking me to reconnect" pattern this app was hitting. A full-page
-// redirect doesn't have that failure mode. Note: this still isn't a full
-// fix for the Capacitor-wrapped native app specifically — Google's OAuth
-// policy blocks sign-in inside embedded WebViews entirely regardless of
-// popup vs. redirect, so the native app needs its own native Google
-// Sign-In SDK integration (a real follow-up, not attempted here).
-export async function signInWithGoogle(): Promise<void> {
-  await signInWithRedirect(auth, googleProvider);
+// Completes sign-in for BOTH paths below: writes the users/{uid} doc
+// (email, displayName) that /api/invite-partner and friends depend on, and
+// registers native push. notificationPrefs only on first creation, never
+// on a repeat sign-in — this is the one place a real fix belongs (see
+// lib/notify.ts's defensive default for the read side, which covers every
+// account that already existed before this write did). Once a real
+// settings screen exists to let someone turn a channel off, overwriting
+// this on every login would silently fight it.
+async function finishSignIn(user: User): Promise<void> {
+  const userRef = doc(db, "users", user.uid);
+  const existing = await getDoc(userRef);
+  await setDoc(
+    userRef,
+    {
+      email: user.email?.toLowerCase() ?? null,
+      displayName: user.displayName ?? null,
+      updatedAt: new Date().toISOString(),
+      ...(existing.exists() ? {} : { notificationPrefs: { pushEnabled: true, emailEnabled: true } }),
+    },
+    { merge: true }
+  );
+  await registerNativePush(user);
 }
 
-// A redirect sign-in returns to this same page on a fresh load, so there's
-// no function call left to resolve — the result has to be picked up here
-// instead, once, whenever auth state is first watched. onAuthStateChanged
-// fires with the new user regardless, but this is what actually performs
-// the users/{uid} write (email, displayName) that /api/invite-partner and
-// friends depend on, and what registers native push — both used to happen
-// inline in signInWithGoogle, back when it could still see the result.
-let redirectResultHandled = false;
+// account-exists-with-different-credential is a real, actionable case
+// (same email, different sign-in provider already on file) — worth a
+// distinct message rather than the generic fallback, for either sign-in
+// path below.
+function authFailureMessage(err: unknown): string {
+  const code = err instanceof Error && "code" in err ? String((err as { code: unknown }).code) : null;
+  return code === "auth/account-exists-with-different-credential"
+    ? "Un compte existe déjà avec cette adresse e-mail via une autre méthode de connexion."
+    : "La connexion a échoué. Réessayez.";
+}
 
-// A signInWithRedirect round-trip that fails silently — Chrome treating
-// the firebaseapp.com authDomain's storage as partitioned during the
-// accounts.google.com bounce is a real, observed cause (getRedirectResult
-// then resolves with null / throws instead of returning the completed
-// sign-in) — used to look identical to "never signed in" from the UI's
-// perspective: same button, no error, no explanation, click again, same
-// silent failure. Surfacing the real reason here doesn't fix the
-// underlying storage-partitioning issue (that needs authDomain pointed at
-// this app's own domain — see docs/android.md's App Links section for the
-// analogous cross-domain problem on Android), but it turns an invisible
-// dead end into a visible, reportable one.
+// Mobile *browsers* (not the Capacitor-wrapped native app, checked
+// separately) are where signInWithPopup demonstrably fails: the popup gets
+// silently blocked, or loses its connection back to the opener when the OS
+// backgrounds the tab during the Google auth screen — the real, observed
+// "stuck on chargement, keeps asking me to reconnect" report. Redirect
+// doesn't have that failure mode, so it stays the mobile-web path.
+function isMobileWebBrowser(): boolean {
+  if (typeof navigator === "undefined" || Capacitor.isNativePlatform()) return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// Desktop uses signInWithPopup: the whole exchange happens inside the
+// popup and resolves this promise directly, with no getRedirectResult()
+// round-trip afterward. That round-trip is exactly what broke sign-in
+// twice in production on desktop Chrome — once via storage partitioning
+// under the firebaseapp.com authDomain, and again after moving authDomain
+// to this app's own domain (ittsui.fr) specifically to fix that: the
+// custom-domain rewrite in next.config.js fixed the redirect_uri Google
+// receives, but getRedirectResult() back on this page still failed to pick
+// up the completed sign-in. Popup sidesteps the whole class of bug by
+// never relying on cross-request storage read-back — mobile web is
+// unaffected by any of this since it keeps using redirect below.
+//
+// Note: this still isn't a fix for the Capacitor-wrapped native app
+// specifically — Google's OAuth policy blocks sign-in inside embedded
+// WebViews entirely regardless of popup vs. redirect, so the native app
+// needs its own native Google Sign-In SDK integration (a real follow-up,
+// not attempted here).
+export async function signInWithGoogle(): Promise<void> {
+  if (isMobileWebBrowser()) {
+    await signInWithRedirect(auth, googleProvider);
+    return;
+  }
+
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    await finishSignIn(result.user);
+  } catch (err) {
+    const code = err instanceof Error && "code" in err ? String((err as { code: unknown }).code) : null;
+    // User closed the popup or double-clicked the button — not a real
+    // error, nothing to surface.
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+    if (code === "auth/popup-blocked") {
+      throw new Error("Le navigateur a bloqué la fenêtre de connexion. Autorisez les popups pour ittsui.fr et réessayez.");
+    }
+    throw new Error(authFailureMessage(err));
+  }
+}
+
+// The mobile-web redirect path returns to this same page on a fresh load,
+// so there's no function call left to resolve — the result has to be
+// picked up here instead, once, whenever auth state is first watched.
+// onAuthStateChanged fires with the new user regardless, but this is what
+// actually runs finishSignIn for that path (the popup path above already
+// ran it inline, before this ever gets a chance to fire for it).
+let redirectResultHandled = false;
 let onRedirectError: ((message: string) => void) | null = null;
 
 function consumeRedirectResultOnce() {
@@ -98,37 +157,10 @@ function consumeRedirectResultOnce() {
   getRedirectResult(auth)
     .then(async (result) => {
       if (!result) return;
-      const user = result.user;
-      const userRef = doc(db, "users", user.uid);
-      // notificationPrefs only on first creation, never on a repeat
-      // sign-in — this is the one place a real fix belongs (see
-      // lib/notify.ts's defensive default for the read side, which covers
-      // every account that already existed before this write did). Once a
-      // real settings screen exists to let someone turn a channel off,
-      // overwriting this on every login would silently fight it.
-      const existing = await getDoc(userRef);
-      await setDoc(
-        userRef,
-        {
-          email: user.email?.toLowerCase() ?? null,
-          displayName: user.displayName ?? null,
-          updatedAt: new Date().toISOString(),
-          ...(existing.exists() ? {} : { notificationPrefs: { pushEnabled: true, emailEnabled: true } }),
-        },
-        { merge: true }
-      );
-      await registerNativePush(user);
+      await finishSignIn(result.user);
     })
     .catch((err) => {
-      const code = err instanceof Error && "code" in err ? String((err as { code: unknown }).code) : null;
-      // account-exists-with-different-credential is a real, actionable
-      // case (same email, different sign-in provider already on file) —
-      // worth a distinct message rather than the generic fallback.
-      const message =
-        code === "auth/account-exists-with-different-credential"
-          ? "Un compte existe déjà avec cette adresse e-mail via une autre méthode de connexion."
-          : "La connexion a échoué. Réessayez.";
-      onRedirectError?.(message);
+      onRedirectError?.(authFailureMessage(err));
     });
 }
 

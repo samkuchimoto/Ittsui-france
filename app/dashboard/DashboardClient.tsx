@@ -38,6 +38,7 @@ import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
 import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } from "@/lib/passkeyClient";
+import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -457,6 +458,10 @@ export default function DashboardClient() {
       />
 
       <div className="mt-10 border-t pt-6" style={{ borderColor: BORDER }}>
+        <RequestsPanel />
+      </div>
+
+      <div className="mt-8 border-t pt-6" style={{ borderColor: BORDER }}>
         <PasskeyManager />
       </div>
     </Shell>

@@ -44,6 +44,7 @@ import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { signInWithPasskey } from "@/lib/passkeyClient";
+import { TimeSelect } from "@/app/components/TimeSelect";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
@@ -118,47 +119,8 @@ function capitalizeName(name: string): string {
 
 // Native <input type="time"> renders in whatever format the OS/browser
 // locale dictates (12h AM/PM on plenty of real devices) regardless of the
-// page's own French UI — the underlying value is always a 24h "HH:MM"
-// string per the HTML spec either way, but that's not what gets *shown*.
-// A controlled pair of <select>s sidesteps that: same "HH:MM" string
-// state as before, but the displayed label is always guaranteed French
-// 24h ("15h", "15h30"), not locale-dependent.
-const HOURS_24H = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
-const MINUTES_15MIN = ["00", "15", "30", "45"];
-
-function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-  const [hh, mm] = value.split(":");
-  return (
-    <div className="flex items-center gap-1">
-      <select
-        aria-label={`${label} — heure`}
-        value={hh}
-        onChange={(e) => onChange(`${e.target.value}:${mm}`)}
-        className="rounded-lg border bg-white px-2 py-2 text-sm"
-        style={{ borderColor: BORDER }}
-      >
-        {HOURS_24H.map((h) => (
-          <option key={h} value={h}>
-            {h}h
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label={`${label} — minutes`}
-        value={mm}
-        onChange={(e) => onChange(`${hh}:${e.target.value}`)}
-        className="rounded-lg border bg-white px-2 py-2 text-sm"
-        style={{ borderColor: BORDER }}
-      >
-        {MINUTES_15MIN.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
+// page's own French UI — see app/components/TimeSelect.tsx (extracted
+// there once the meeting-request form needed the same control).
 
 const SECONDARY_VENUE: { value: VenueType; label: string; emoji: string } = {
   value: "home",

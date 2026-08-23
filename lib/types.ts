@@ -104,3 +104,39 @@ export interface User {
     emailEnabled: boolean;
   };
 }
+
+// A user's own address-book-style contact list (name + email) — not a
+// messaging system, just enough to pick a recipient for a MeetingRequest
+// without retyping their details every time.
+export interface Contact {
+  id: string;
+  name: string;
+  email: string; // lowercased
+  createdAt: string; // ISO date
+}
+
+export type MeetingRequestStatus = "pending" | "accepted" | "declined" | "expired";
+
+// A one-off rendezvous proposal sent to a contact by email — the ad-hoc
+// counterpart to Pair's permanent, recurring weekly bond. Same
+// invite-by-email/accept-in-app shape as Pair (see /api/invite-partner,
+// /api/activate-pending-pair), generalized to any contact and a single
+// specific venue/date/time instead of a standing weekly agreement.
+export interface MeetingRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderEmail: string | null;
+  recipientName: string; // name the sender gave for the recipient
+  recipientEmail: string; // lowercased
+  recipientId?: string; // set once the recipient signs in and accepts
+  venueName: string;
+  venueAddress: string;
+  date: string; // "YYYY-MM-DD", Europe/Paris calendar date
+  time: string; // "HH:MM", Europe/Paris wall-clock
+  status: MeetingRequestStatus;
+  createdAt: string; // ISO date
+  expiresAt: string; // ISO date — same 14-day window as a Pair invite
+  respondedAt?: string; // ISO date
+  recipientEmailSent?: boolean; // real delivery record, not an assumption
+}

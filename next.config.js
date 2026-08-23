@@ -10,8 +10,17 @@
 //     (their own try/catch would just make it look like "no location
 //     found" rather than a CSP violation) without being allowlisted here.
 //   - *.googleapis.com covers Firebase Auth/Firestore/Cloud Messaging's
-//     own client SDK calls; *.firebaseapp.com is the authDomain Firebase
-//     Auth can use an iframe against for certain flows.
+//     own client SDK calls. frame-src needs BOTH 'self' and
+//     *.firebaseapp.com: Firebase Auth's SDK loads a hidden helper iframe
+//     at {authDomain}/__/auth/iframe for both popup and redirect sign-in
+//     (session/storage bookkeeping), and authDomain is this app's own
+//     domain (ittsui.fr, see next.config.js's rewrites() below for why) —
+//     so that iframe's src is same-origin, not firebaseapp.com. CSP does
+//     NOT fall back to allowing 'self' once frame-src is explicitly set;
+//     missing 'self' here silently blocked that iframe and broke every
+//     sign-in with a generic "connexion a échoué", a real production
+//     incident, not a theoretical gap. *.firebaseapp.com stays listed too
+//     in case authDomain is ever pointed back at Firebase's own domain.
 const CSP = [
   "default-src 'self'",
   // 'unsafe-inline' here is a pragmatic choice, not the strictest
@@ -24,7 +33,7 @@ const CSP = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de",
-  "frame-src https://*.firebaseapp.com",
+  "frame-src 'self' https://*.firebaseapp.com",
   "object-src 'none'",
   "base-uri 'self'",
 ].join("; ");
