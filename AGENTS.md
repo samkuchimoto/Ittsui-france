@@ -286,12 +286,13 @@ confirmed via `grep` across every `.ts`/`.tsx`/`.js`/`.json` file that
 nothing referenced them (Next.js only ever serves from `/public`, never
 the bare repo root), then a full `npm run build` after deleting them.
 
-**Still open, deliberately not done autonomously:** `/public/*.jpg` (what
-the live site actually serves, via `app/page.tsx`'s `<Image>` tags) are
-2+MB originals, despite `/images/*` already holding what look like
-properly-compressed versions of the exact same photos at ~250-290KB
-each — except `/images/` isn't referenced anywhere in the code either,
-so right now neither directory is "the optimized one in use." Swapping
-`/public`'s files for `/images`'s would cut real page weight, but it
-changes what a live marketing page visually renders, which deserves a
-human actually looking at the result — not something to do blind.
+**Resolved**: the `/public` vs `/images` question above is done. Used
+the Read tool's actual image-viewing capability to visually confirm each
+pair (couple-living-room, couple-parisian-cafe, friends-cafe-terrace,
+grandmother-granddaughter-park, hero-father-son-vineyard) was really the
+same photo, not just similarly-named — only then swapped `/public`'s
+2+MB originals for `/images`'s ~250-290KB versions (same filenames, so
+no code changes needed) and deleted the now-fully-redundant `/images/`
+directory. `public/mother-daughter-kitchen.jpg` (2.3MB) was deleted
+outright rather than swapped — confirmed via grep it was referenced
+nowhere in the app at all, pure dead weight, nothing to swap it into.
