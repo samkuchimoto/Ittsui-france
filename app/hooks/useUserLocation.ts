@@ -41,13 +41,22 @@ export function useUserLocation(): UseUserLocationResult {
   const [status, setStatus] = useState<LocationStatus>("idle");
   const [postalCode, setPostalCode] = useState<string | null>(null);
   const [coords, setCoords] = useState<Coords | null>(null);
-  const requestedRef = useRef(false);
+  // Guards against overlapping requests (e.g. a double-click) while one is
+  // actually in flight — NOT a permanent one-shot latch. It used to block
+  // every later call unconditionally, so a real, common failure (denied
+  // permission, a timeout, a flaky reverse-geocode response) permanently
+  // killed the feature for the rest of that page load with no way to
+  // retry — indistinguishable from "GPS doesn't work" from the outside,
+  // since the caller's retry button (SetupClient.tsx) had nothing to call
+  // that would ever do anything again.
+  const inFlightRef = useRef(false);
 
   const detect = useCallback(() => {
-    if (requestedRef.current) return; // one attempt per mount is enough
-    requestedRef.current = true;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
 
     if (typeof navigator === "undefined" || !navigator.geolocation) {
+      inFlightRef.current = false;
       setStatus("unavailable");
       return;
     }
@@ -59,6 +68,7 @@ export function useUserLocation(): UseUserLocationResult {
         setCoords({ lat: position.coords.latitude, lon: position.coords.longitude });
         reverseGeocode(position.coords.latitude, position.coords.longitude)
           .then((code) => {
+            inFlightRef.current = false;
             if (code) {
               setPostalCode(code);
               setStatus("done");
@@ -66,9 +76,13 @@ export function useUserLocation(): UseUserLocationResult {
               setStatus("error");
             }
           })
-          .catch(() => setStatus("error"));
+          .catch(() => {
+            inFlightRef.current = false;
+            setStatus("error");
+          });
       },
       (err) => {
+        inFlightRef.current = false;
         setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
       },
       { timeout: GEO_TIMEOUT_MS, maximumAge: 5 * 60 * 1000 }

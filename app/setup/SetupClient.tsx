@@ -818,6 +818,35 @@ export default function SetupClient() {
                   Utiliser ma position actuelle
                 </button>
               )}
+              {/* denied/unavailable/error used to render nothing at all —
+                  the "Utiliser ma position actuelle" link (idle-only, above)
+                  just vanished with no explanation and no way to retry,
+                  which is indistinguishable from "GPS doesn't work" from
+                  the outside. useUserLocation.ts's retry lockout is fixed
+                  too; this is the other half. */}
+              {locationStatus === "denied" && (
+                <p className="mt-2 text-xs" style={{ color: ACCENT }}>
+                  Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec le
+                  code postal.{" "}
+                  <button type="button" onClick={detectLocation} className="underline underline-offset-4">
+                    Réessayer
+                  </button>
+                </p>
+              )}
+              {locationStatus === "unavailable" && (
+                <p className="mt-2 text-xs" style={{ color: MUTED }}>
+                  Localisation indisponible sur cet appareil — continuez avec le code postal.
+                </p>
+              )}
+              {locationStatus === "error" && (
+                <p className="mt-2 text-xs" style={{ color: ACCENT }}>
+                  Impossible de déterminer votre position.{" "}
+                  <button type="button" onClick={detectLocation} className="underline underline-offset-4">
+                    Réessayer
+                  </button>{" "}
+                  ou continuez avec le code postal.
+                </p>
+              )}
               <p className="mt-2 text-xs" style={{ color: MUTED }}>
                 Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.
               </p>
