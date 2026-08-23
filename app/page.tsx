@@ -331,6 +331,9 @@ export default function Home() {
           <span className="text-sm" style={{ color: MUTED }}>一対</span>
         </div>
         <div className="flex items-center gap-6">
+          <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: MUTED }}>
+            App mobile
+          </Link>
           <Link href="/setup" className="text-sm transition-colors" style={{ color: MUTED }}>
             Connexion
           </Link>
@@ -537,6 +540,13 @@ export default function Home() {
             Le rituel reste gratuit, pour toujours. Ittsui Plus (suggestions enrichies, options
             supplémentaires) arrive bientôt, à partir de 2,99&nbsp;€/mois.
           </p>
+          <Link
+            href="/download"
+            className="mt-6 inline-flex items-center gap-1.5 text-sm underline underline-offset-4"
+            style={{ color: INK }}
+          >
+            Ittsui sur mobile →
+          </Link>
         </Reveal>
       </section>
 
