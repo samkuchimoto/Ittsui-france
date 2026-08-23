@@ -280,9 +280,18 @@ not a replacement for it.
 
 ## Repo hygiene
 
-Several full-resolution PNG/JPG duplicates of the images now used from
-`/public` and `/images` are checked into the repo root
-(`couple-living-room.png`, `hero-father-son-vineyard.jpg.png`, etc. —
-~15MB of duplicates). Worth a cleanup pass, not done here since it's
-unrelated to this task and touching it risked breaking an image path
-referenced somewhere not covered by this audit.
+Root-level image duplicates (`couple-living-room.png`,
+`hero-father-son-vineyard.jpg.png`, etc. — ~15MB) have been removed;
+confirmed via `grep` across every `.ts`/`.tsx`/`.js`/`.json` file that
+nothing referenced them (Next.js only ever serves from `/public`, never
+the bare repo root), then a full `npm run build` after deleting them.
+
+**Still open, deliberately not done autonomously:** `/public/*.jpg` (what
+the live site actually serves, via `app/page.tsx`'s `<Image>` tags) are
+2+MB originals, despite `/images/*` already holding what look like
+properly-compressed versions of the exact same photos at ~250-290KB
+each — except `/images/` isn't referenced anywhere in the code either,
+so right now neither directory is "the optimized one in use." Swapping
+`/public`'s files for `/images`'s would cut real page weight, but it
+changes what a live marketing page visually renders, which deserves a
+human actually looking at the result — not something to do blind.
