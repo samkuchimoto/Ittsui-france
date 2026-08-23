@@ -60,13 +60,23 @@ reason to exist.
 
 ## Design system
 
+Single source of truth is `lib/theme.ts` (`INK`/`MUTED`/`ACCENT`/`BORDER`/
+`CREAM`) — import from there, don't hardcode hex values here or in a
+component. The table below is a reference, not the authority; if it ever
+drifts from `lib/theme.ts`, the code file wins.
+
 | Token | Value | Use |
 |---|---|---|
-| Background | `#FBF9F5` (warm cream) | page background |
-| Accent | `#A84B38` (terracotta) | primary actions, active states, checkmarks |
-| Ink | `#1C1917` (charcoal) | body text |
-| Muted | `#78716C` | secondary text, helper copy |
-| Border | `#E8E2D9` | card borders, dividers |
+| Background (`CREAM`) | `#FFFDF9` | page background |
+| Accent (`ACCENT`) | `#B84E2A` (terracotta) | primary actions, active states, checkmarks |
+| Ink (`INK`) | `#1C1917` (charcoal) | body text |
+| Muted (`MUTED`) | `#565049` | secondary text, helper copy |
+| Border (`BORDER`) | `#E8E2D9` | card borders, dividers |
+
+`ACCENT` and `MUTED` both moved since this table was first written (see
+`lib/theme.ts`'s own comments for the exact contrast-ratio math) —
+verify against real relative-luminance numbers before changing either
+again, don't estimate by eye.
 
 Typography: **Fraunces** for headlines/display (serif, warm, editorial —
 loaded per-page via `next/font/google` with weights 300/500/600, both
@@ -131,6 +141,22 @@ which happens to keep everyone on the free path only because no billing
 exists yet to move them off it. Don't treat that as accidental slack to
 close without a deliberate pricing decision first.
 
+**`Contact` and `MeetingRequest`** (added alongside the ad-hoc request
+feature): a `Contact` is purely the owning user's own address-book entry
+(`users/{uid}/contacts/{id}`, name + email) — no messaging, no shared
+state with the other person. A `MeetingRequest` is the one-off
+counterpart to `Pair`'s permanent weekly bond: a single proposed
+venue/address/date/time sent by email to a contact, accepted or declined
+the same way a `Pair` invite is (see `/api/meeting-requests/*`, which
+deliberately mirror `/api/invite-partner` and
+`/api/activate-pending-pair`'s exact accept/decline/email-verification
+pattern rather than inventing a new one). Note: `firestore.rules` also
+has a pre-existing `communities/{communityId}` block (N-member groups,
+distinct from a 2-person `Pair`) with no corresponding type in this file
+yet — that gap predates this section and wasn't introduced or resolved
+here; don't assume a `Community` type exists in `lib/types.ts` just
+because the Firestore rule does.
+
 ## Firestore rules
 
 `firestore.rules` restricts `pairs/{pairId}` reads/writes to the two
@@ -138,7 +164,51 @@ linked `userIds`, and makes `pairs/{pairId}/weeks/{weekId}` writes
 server-only (`allow write: if false` — the Admin SDK bypasses rules, so
 all week-doc writes must go through an `app/api/**` route, never a direct
 client `setDoc`). Keep it that way; a client-writable `weeks` collection
-would let a user fabricate their own confirmed proposal.
+would let a user fabricate their own confirmed proposal. The same
+server-only-write reasoning is why `meetingRequests/{requestId}` also has
+`allow update, delete: if false` — accept/decline has to verify the
+caller's email and send emails to both parties, which only a server
+route can do.
+
+## Auth: `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` must stay Firebase's own domain
+
+**Do not change this without reading this section fully and having a very
+concrete reason.** It's currently `ittsui-france.firebaseapp.com` — the
+Firebase-managed default, not a custom domain. This was tried the other
+way (`ittsui.fr`, this app's own domain) and caused three separate
+production sign-in outages before being reverted:
+
+1. A rewrite proxying `/__/auth/*` to Firebase's real backend computed its
+   destination from `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` itself — once that
+   var became `ittsui.fr`, the rewrite became self-referential
+   (`ERR_TOO_MANY_REDIRECTS` on every sign-in). Fixed by deriving the
+   destination from `NEXT_PUBLIC_FIREBASE_PROJECT_ID` instead, but the
+   underlying decision (custom domain) is what created the trap.
+2. This app's own apex-to-www platform redirect changed the effective
+   host mid-flow, so the `redirect_uri` Firebase's popup/redirect helper
+   sent to Google didn't match what was authorized — `redirect_uri_mismatch`
+   for every account, intermittently, depending on which host a given
+   sign-in attempt happened to touch.
+3. Once `authDomain` equals this app's own origin, Firebase's session
+   helper iframe (`{authDomain}/__/auth/iframe`) becomes same-origin, and
+   `signInWithPopup`'s gapi relay script needs `apis.google.com` in CSP —
+   neither is needed at all when `authDomain` is Firebase's own domain,
+   since the iframe and script both live in a completely separate
+   browsing context the app's own CSP never governs.
+
+The original reason for moving off the default domain — Chrome treating
+`firebaseapp.com`'s storage as partitioned during `signInWithRedirect`'s
+round-trip, so `getRedirectResult()` silently came back empty after a
+real, completed sign-in — no longer applies, because `lib/firebase.ts`'s
+`signInWithGoogle()` now uses `signInWithPopup` on desktop specifically
+because it never calls `getRedirectResult()` at all. Redirect stays the
+mobile-web path only (popups get killed by OS backgrounding there), and
+is unaffected either way. If mobile-web sign-in ever needs the same fix
+popup already gives desktop, treat that as its own decision — don't
+reach for a custom `authDomain` again to solve it; that's the exact
+change that cost three outages last time. Full account of each incident
+is in `next.config.js`'s CSP comment and the git history around commits
+`c6ddba4`, `7afa92e`, `21e6ecd`, `a475ee8`.
 
 ## The venue-recommendation pipeline
 
@@ -195,7 +265,18 @@ not a replacement for it.
 - The self-invite check and the "existing live pair" dedupe logic in
   `app/api/invite-partner/route.ts` (deliberately queries without a
   `status` filter to avoid needing a new Firestore composite index — see
-  the inline comment there before "optimizing" it).
+  the inline comment there before "optimizing" it). The same
+  no-`orderBy`-with-a-filter pattern is why `/api/meeting-requests/list`
+  sorts in memory instead of in the query — see `lib/sort.ts`'s comment.
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` — see the dedicated section above.
+  Not a "just try it" experiment; changing it away from Firebase's own
+  domain has a specific, documented cost.
+- `lib/firebase.ts`'s desktop-vs-mobile-web split in `signInWithGoogle()`
+  (`isMobileWebBrowser()` picks `signInWithPopup` vs `signInWithRedirect`)
+  and the CSP entries in `next.config.js` that popup sign-in depends on
+  (`script-src`/`connect-src`/`frame-src` all needing `apis.google.com`).
+  Removing either independently of the other reintroduces one of the
+  outages described above.
 
 ## Repo hygiene
 
