@@ -7,13 +7,14 @@ Documented so the process is a checklist, not a research task, when you get to i
 
 Play Console has four release tracks: Internal testing → Closed testing → Open testing →
 Production. Internal testing is the only one that's near-instant (no review wait, typically
-available within minutes) and doesn't require the closed-testing prerequisites (the "12 testers
-for 14 days" rule some documentation references applies to *Closed* testing as a gate before
-*Production* access on newer developer accounts — verify this against Play Console's current
-policy at setup time, Google has changed these requirements more than once, most recently
-tightening them for accounts created after late 2023). Internal testing supports up to 100
-testers and is the right track for "install it on my own phone / a few people's phones right
-now" — which is what this task actually needs, not a public production release.
+available within minutes) and doesn't require the closed-testing prerequisites. The "12 testers
+for 14 consecutive days" rule is real and confirmed (verified 2026-08-24 directly against
+[Play Console's own current page](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
+— full detail in `docs/google-play-launch.md`, including a review-period nuance after the 14 days
+that's easy to miss when planning a launch date backward) and applies to *Closed* testing as a
+gate before *Production* access on new personal developer accounts. Internal testing supports up
+to 100 testers and is the right track for "install it on my own phone / a few people's phones
+right now" — which is what this task actually needs, not a public production release.
 
 ## Steps
 

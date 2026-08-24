@@ -66,7 +66,15 @@ export default function ConfidentialitePage() {
             et, si vous le renseignez, votre code postal sont stockés pour générer la proposition
             hebdomadaire. Rien de tout cela n&apos;est utilisé à d&apos;autres fins.
           </Item>
-          <Item title="Localisation">
+          <Item title="Vos contacts et vos demandes de rendez-vous">
+            Vous pouvez enregistrer une liste de contacts (nom et e-mail) pour leur envoyer une demande de
+            rendez-vous ponctuelle — un lieu, une adresse, une date et une heure — indépendante du rituel
+            hebdomadaire. Ce n&apos;est pas une messagerie : Ittsui ne stocke aucun échange entre vous, juste
+            le contact que vous avez choisi d&apos;ajouter et le contenu de la demande elle-même (lieu,
+            date, heure, statut accepté/décliné). Un contact reçoit un e-mail uniquement quand vous lui
+            envoyez une demande.
+          </Item>
+          <Item title="Localisation et suggestions de lieux">
             Vous pouvez taper votre code postal vous-même, ou autoriser (facultatif — votre navigateur vous
             le demande explicitement, et rien ne se passe si vous refusez) Ittsui à le détecter
             automatiquement. Dans ce cas, votre position n&apos;est utilisée qu&apos;une fois, dans votre
@@ -74,6 +82,14 @@ export default function ConfidentialitePage() {
             (api-adresse.data.gouv.fr) — vos coordonnées GPS elles-mêmes ne sont jamais envoyées à Ittsui ni
             stockées ; seul le code postal qui en résulte l&apos;est, exactement comme si vous l&apos;aviez
             tapé.
+            <br />
+            <br />
+            Pour proposer un lieu réel près d&apos;un code postal (dans le formulaire de demande de
+            rendez-vous), votre navigateur convertit ce code postal en coordonnées approximatives via ce
+            même service de l&apos;État français, puis interroge OpenStreetMap (overpass-api.de, un service
+            cartographique libre et public) pour trouver des cafés, restaurants, parcs ou musées à
+            proximité. Ni le code postal ni ces coordonnées ne sont envoyés à Ittsui ni stockés par
+            Ittsui — l&apos;échange se fait uniquement entre votre navigateur et ces deux services publics.
           </Item>
           <Item title="Notifications">
             Si vous les activez, un jeton de notification push (via Firebase Cloud Messaging) ou votre

@@ -31,19 +31,32 @@ but the actual questionnaire answers are the real determination, not this docume
 ## Target audience & Data Safety form
 
 - **Target audience**: general audience, not directed at children — this app requires a Google
-  sign-in and handles another real person's contact info (invitation flow), which is not
-  appropriate for Play's "designed for children" track.
+  sign-in and handles other real people's contact info (invitation flow, contacts list), which is
+  not appropriate for Play's "designed for children" track.
 - **Data Safety form** (Play Console → App content → Data safety) — what's actually collected,
   per `app/confidentialite/page.tsx` (the real, current privacy page, not a draft):
-  - **Personal info**: email, name (via Google Sign-In)
-  - **App activity**: relationship/invitation data, venue preferences
+  - **Personal info**: email, name (via Google Sign-In); also another person's name + email when
+    the user adds a contact or invites/proposes a meeting to them (`lib/types.ts`'s `Contact` and
+    `MeetingRequest`, added 2026-08-23) — not a chat, just enough to send that one invitation.
+  - **App activity**: relationship/invitation data, venue preferences, ad-hoc meeting-request
+    status (pending/accepted/declined).
   - **Approximate location**: postal code only if the user opts in — precise GPS is never sent or
     stored (verify this claim still holds against `app/hooks/useUserLocation.ts` before
     submitting the form, since the form is a legal representation to Google, not just a
-    convenience checklist)
+    convenience checklist).
+  - **Third-party data sharing, both client-side only (never through Ittsui's own servers)**:
+    a typed or detected postal code is sent to `api-adresse.data.gouv.fr` (French government,
+    address/geocoding) for both reverse geocoding (GPS → postal code) and, since 2026-08-23,
+    forward geocoding (postal code → coordinates) to power real venue suggestions on
+    `/request/new`; those coordinates are then sent to `overpass-api.de` (OpenStreetMap) to find
+    nearby venues. Neither the postal code nor the coordinates are sent to or stored by Ittsui
+    itself in this flow — see `lib/geoVenueSuggestions.ts`.
   - Declared: no data sold, no third-party advertising trackers (per `confidentialite`'s own
-    "ce qu'Ittsui ne fait pas" section)
-  - Push token stored for notifications (`app/api/register-push-token/route.ts`)
+    "ce qu'Ittsui ne fait pas" section).
+  - Push token stored for notifications (`app/api/register-push-token/route.ts`).
+  - **Security**: WebAuthn passkey public keys, if a user opts into passkey sign-in
+    (`passkeyCredentials` collection) — not personally identifying on its own, but worth listing
+    under Play's "security practices" data type for completeness.
 
 Fill the actual form fields in Play Console directly from `app/confidentialite/page.tsx`'s current
 content at submission time — it may have changed since this document was written; this file is
