@@ -116,6 +116,10 @@ export default function MentionsLegalesPage() {
               <Link href="/confidentialite" style={{ color: ACCENT }}>
                 Confidentialité
               </Link>
+              . Les règles d&apos;utilisation du service sont décrites sur la page{" "}
+              <Link href="/conditions-utilisation" style={{ color: ACCENT }}>
+                Conditions d&apos;utilisation
+              </Link>
               .
             </p>
           </Item>

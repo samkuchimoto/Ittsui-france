@@ -556,6 +556,9 @@ export default function Home() {
           <Link href="/confidentialite" className="underline underline-offset-4">
             Confidentialité
           </Link>
+          <Link href="/conditions-utilisation" className="underline underline-offset-4">
+            Conditions d&apos;utilisation
+          </Link>
           <Link href="/mentions-legales" className="underline underline-offset-4">
             Mentions légales
           </Link>

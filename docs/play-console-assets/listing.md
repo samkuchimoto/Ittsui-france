@@ -58,6 +58,13 @@ Confirm this against Play Console's current category list at submission time, no
 
 relations, couple, famille, amis, rituel, temps de qualité, rendez-vous
 
+## Terms of Service URL
+
+`https://www.ittsui.fr/conditions-utilisation` — added 2026-08-24. Google's Unwanted Software
+Policy explicitly requires an EULA/Terms of Service link (confirmed by reading that policy
+directly, not assumed); this app had none anywhere until this page. Play Console's app content
+section may ask for this URL alongside the privacy policy one.
+
 ## Contact email / support URL
 
 **Corrected 2026-08-24 — this was stale.** A real, working contact address already exists:
