@@ -124,11 +124,47 @@ widely-used action, using the default `GITHUB_TOKEN` (no new secret). This is wh
 confirmed against a real run with real signing secrets — needs one to move from "implemented" to
 "verified."
 
+## GPS location detection almost certainly doesn't work inside the native app — UNVERIFIED, NEEDS A REAL DEVICE
+
+Found 2026-08-24 while auditing for the Play launch, via static analysis only — no physical
+Android device or emulator was available to actually confirm this, so treat it as a strong,
+reasoned hypothesis to test before/during closed testing, not a fixed bug.
+
+`app/hooks/useUserLocation.ts` (the "Utiliser ma position actuelle" button on `/setup`, and the
+postal-code auto-fill on `/request/new`) calls the plain browser `navigator.geolocation` Web API.
+That works fine in a real mobile/desktop browser, which handles its own OS-level permission
+prompt independent of any app. Inside this app's native Android shell, though:
+
+- `capacitor.config.ts` wraps a plain remote WebView (`server.url: "https://ittsui.fr"`) — no
+  `@capacitor/geolocation` plugin is installed (`package.json` only has `@capacitor/haptics` and
+  `@capacitor/push-notifications` as native plugins beyond core/android/ios).
+- `AndroidManifest.xml` declares only `android.permission.INTERNET` — no
+  `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` at all.
+- Android's system WebView needs both that manifest permission AND an explicit
+  `WebChromeClient.onGeolocationPermissionsShowPrompt()` override to ever grant a page's
+  `navigator.geolocation` call anything — Capacitor's default remote-URL WebView setup does not
+  wire this up on its own. Without it, `getCurrentPosition()` most likely just errors out
+  immediately inside the native app specifically.
+
+If true, this fails gracefully rather than crashing — `useUserLocation.ts`'s error handling
+(fixed 2026-08-23 to actually show a message and allow retry, see AGENTS.md) would show "Impossible
+de déterminer votre position" and the manual postal-code input still works — so this is a degraded
+feature, not a broken app. Still worth fixing properly before real users hit it, given it's one of
+the app's actual value propositions ("lieux près de chez vous").
+
+**Real fix, not attempted here** (needs a device to verify, which is why this wasn't just done):
+add the `@capacitor/geolocation` plugin, add `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` to
+`AndroidManifest.xml`, and branch `useUserLocation.ts` to call the Capacitor plugin when
+`Capacitor.isNativePlatform()` is true (same pattern `lib/nativePush.ts` already uses for push
+tokens) instead of the raw Web API. Test on a real device or emulator before trusting it —
+this exact class of "looks right in the diff, unverified on a real device" mistake is precisely
+what this project's own rules warn against.
+
 ## Not yet implemented
 
 - Play Store listing, screenshots, content rating, Data Safety form — all Play Console UI work,
   not code. Draft copy: `docs/play-console-assets/`.
 - The 12-tester / 14-day closed testing track (only relevant for *Production* access, not
-  Internal testing — see `docs/play-console-assets/internal-testing.md`) — verify the current
-  requirement in Play Console at submission time rather than trusting this document, Google's
-  policy for this has changed more than once.
+  Internal testing — see `docs/play-console-assets/internal-testing.md` and
+  `docs/google-play-launch.md`, the latter verified directly against Google's current support
+  page on 2026-08-24, including a review-period nuance the original launch-date plan missed).
