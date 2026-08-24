@@ -102,9 +102,11 @@ export default function DownloadClient({ qrSvg }: { qrSvg: string }) {
           ci-dessus.
           <br />
           <br />
-          Google Play Protect peut aussi afficher &laquo;&nbsp;Application bloquée&nbsp;&raquo; — normal
-          pour toute app installée hors Play Store la première fois. Appuyez sur
-          &laquo;&nbsp;Plus de détails&nbsp;&raquo; puis &laquo;&nbsp;Installer quand même&nbsp;&raquo;.
+          Google Play Protect peut afficher &laquo;&nbsp;Application bloquée&nbsp;&raquo; sans option
+          pour continuer — normal pour toute app installée hors Play Store avant que Google ne la
+          reconnaisse. Dans l&apos;app Play Store : icône de profil (en haut à droite) → Play Protect →
+          Paramètres → désactivez &laquo;&nbsp;Analyser les applications avec Play Protect&nbsp;&raquo;,
+          installez, puis réactivez si vous le souhaitez.
         </p>
       )}
 
