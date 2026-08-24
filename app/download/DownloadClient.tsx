@@ -100,6 +100,11 @@ export default function DownloadClient({ qrSvg }: { qrSvg: string }) {
           demandera d&apos;autoriser &laquo;&nbsp;sources inconnues&nbsp;&raquo; pour ce fichier. Une
           fois publiée sur le Play Store, cette option disparaîtra au profit du bouton
           ci-dessus.
+          <br />
+          <br />
+          Google Play Protect peut aussi afficher &laquo;&nbsp;Application bloquée&nbsp;&raquo; — normal
+          pour toute app installée hors Play Store la première fois. Appuyez sur
+          &laquo;&nbsp;Plus de détails&nbsp;&raquo; puis &laquo;&nbsp;Installer quand même&nbsp;&raquo;.
         </p>
       )}
 
