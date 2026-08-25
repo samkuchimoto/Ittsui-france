@@ -42,6 +42,17 @@ export interface Pair {
   // a live venues data source; this only unlocks the handful of major
   // metros that are honestly hardcoded today.
   postalCode?: string;
+  // Orthogonal to `status`: a paused pair is still "active" (both people
+  // stay connected, the schedule/preferences are kept exactly as set) —
+  // it just stops generating new weekly proposals until resumed. A
+  // separate boolean rather than a new PairStatus value on purpose: status
+  // drives real relationship bookkeeping elsewhere (SetupClient's "does
+  // this person already have an active pair" redirect, invite-partner's
+  // dedupe query) that shouldn't have to also reason about "paused" as a
+  // distinct relationship state — it isn't one, it's a toggle on an
+  // otherwise-unchanged active pair. Optional/absent === not paused, so
+  // every pair created before this field existed reads correctly.
+  paused?: boolean;
   preferences: Preferences;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled";
   createdAt: string; // ISO date

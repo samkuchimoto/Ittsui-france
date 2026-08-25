@@ -131,6 +131,11 @@ export async function GET(request: Request) {
   for (const pairDoc of pairsSnap.docs) {
     const pair = { id: pairDoc.id, ...pairDoc.data() } as Pair;
 
+    if (pair.paused) {
+      results.push({ pairId: pair.id, status: "paused" });
+      continue;
+    }
+
     if (!isDueToday(pair, today)) continue;
 
     // Skip if this week's proposal already exists (idempotent re-runs)

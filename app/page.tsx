@@ -520,6 +520,52 @@ export default function Home() {
         </Reveal>
       </section>
 
+      {/* Trust/transparency — the RGPD disclosures already exist on
+          /confidentialite, but a legal page nobody reads doesn't function
+          as a trust signal. Surfacing the substance of it here, in plain
+          language, before the footer CTA, is what makes it actually count
+          as one — French e-commerce trust research is explicit that a
+          badge alone isn't proof of anything and is itself viewed with
+          suspicion; what reads as credible is a specific, checkable claim
+          plus a link to where it's spelled out in full. */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            Ce que nous ne ferons jamais.
+          </h2>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-12 grid max-w-3xl gap-8 sm:grid-cols-3">
+          <div className="text-center">
+            <h3 className="text-base font-medium">Pas de publicité</h3>
+            <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              Aucune bannière, aucun sponsoring de lieu. Ce que vous voyez, c&apos;est ce que la personne en
+              face a proposé — rien d&apos;autre.
+            </p>
+          </div>
+          <div className="text-center">
+            <h3 className="text-base font-medium">Pas de revente de données</h3>
+            <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              Vos informations servent à faire fonctionner Ittsui pour vous — jamais à être vendues ou
+              partagées avec un tiers.
+            </p>
+          </div>
+          <div className="text-center">
+            <h3 className="text-base font-medium">Rien de cru sur parole</h3>
+            <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              Ce qui est conservé, pourquoi, et pour combien de temps : c&apos;est écrit noir sur blanc, pas
+              résumé en un badge.
+            </p>
+          </div>
+        </Reveal>
+
+        <Reveal className="mt-8 text-center">
+          <Link href="/confidentialite" className="text-sm underline underline-offset-4" style={{ color: ACCENT }}>
+            Lire l&apos;engagement complet
+          </Link>
+        </Reveal>
+      </section>
+
       {/* Footer CTA */}
       <section id="plus" className="border-t px-6 py-24 text-center sm:py-32" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-md">

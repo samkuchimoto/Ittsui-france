@@ -232,6 +232,18 @@ export default function RequestResponsePage() {
         >
           Aller au tableau de bord
         </button>
+        {/* Right after confirming is the one moment this person has just
+            felt Ittsui's actual value from the receiving side — the
+            natural next step is trying the sending side themselves, not a
+            cold invite to install something. Soft and optional: no
+            reward, no pressure copy, just the door left open. */}
+        <Link
+          href="/request/new"
+          className="mt-4 block text-sm underline underline-offset-4"
+          style={{ color: MUTED }}
+        >
+          Proposer un rendez-vous à quelqu&apos;un d&apos;autre
+        </Link>
       </Shell>
     );
   }

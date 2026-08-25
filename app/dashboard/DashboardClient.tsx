@@ -29,7 +29,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, doc, updateDoc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
@@ -95,6 +95,7 @@ export default function DashboardClient() {
   const [user, setUser] = useState<User | null | false>(null);
   const [pair, setPair] = useState<Pair | null>(null);
   const [pairChecked, setPairChecked] = useState(false);
+  const [pauseUpdating, setPauseUpdating] = useState(false);
   const [week, setWeek] = useState<Week | null>(null);
   const [responding, setResponding] = useState(false);
   // 3-second escape hatch, matching /invite's existing "slowConnection"
@@ -215,6 +216,27 @@ export default function DashboardClient() {
 
   async function handleSignOut() {
     await signOutUser();
+  }
+
+  // Reversible, distinct from account deletion below: stops new weekly
+  // proposals (weekly-propose/route.ts skips any pair with paused === true)
+  // without touching the pair itself, its schedule, or its history — the
+  // relationship picks back up exactly where it left off on "Reprendre".
+  // Firestore rules already let either member of a pair update any field
+  // on it (firestore.rules' pairs match), so this writes directly rather
+  // than needing a dedicated API route. The onSnapshot listener above is
+  // the source of truth for `pair` either way, so this doesn't set it
+  // locally — just waits for that listener to reflect the write.
+  async function handleTogglePause() {
+    if (!pair || pauseUpdating) return;
+    setPauseUpdating(true);
+    try {
+      await updateDoc(doc(db, "pairs", pair.id), { paused: !pair.paused });
+    } catch {
+      // best-effort — pair state above stays whatever it last was
+    } finally {
+      setPauseUpdating(false);
+    }
   }
 
   // GDPR Article 17 (droit à l'effacement) — see api/user/delete/route.ts
@@ -379,9 +401,24 @@ export default function DashboardClient() {
         </Link>
       </p>
 
+      {pair && (
+        <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: MUTED }}>
+          {pair.paused && (
+            <span className="rounded-full px-2 py-0.5 font-medium" style={{ backgroundColor: `${MUTED}1A`, color: MUTED }}>
+              En pause
+            </span>
+          )}
+          <button onClick={handleTogglePause} disabled={pauseUpdating} className="underline underline-offset-4 disabled:opacity-60">
+            {pauseUpdating ? "..." : pair.paused ? "Reprendre les propositions" : "Mettre en pause"}
+          </button>
+        </div>
+      )}
+
       {!week && (
         <p className="mt-6 text-sm" style={{ color: MUTED }}>
-          Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu.
+          {pair?.paused
+            ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
+            : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
         </p>
       )}
 
