@@ -21,7 +21,8 @@ import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGri
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 import { fetchNearbyVenueSuggestions } from "@/lib/geoVenueSuggestions";
 import { isValidEmail } from "@/lib/validation";
-import { pickNativeContact, listNativeContacts, type PickedContact } from "@/lib/nativeContacts";
+import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
+import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { listenOnce } from "@/lib/nativeSpeech";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber, normalizePhoneForShare } from "@/lib/phoneShareLinks";
@@ -188,9 +189,7 @@ export default function RequestFormClient() {
   // rather than one-at-a-time through the OS's own picker dialog, per a
   // real request: "like I can WhatsApp people directly [from my phone
   // contacts], I want to Ittsui people directly."
-  const [phoneContacts, setPhoneContacts] = useState<PickedContact[] | null>(null);
-  const [loadingPhoneContacts, setLoadingPhoneContacts] = useState(false);
-  const [phoneContactSearch, setPhoneContactSearch] = useState("");
+  const [browsingPhoneContacts, setBrowsingPhoneContacts] = useState(false);
 
   // Checked post-mount, not during render: Capacitor's platform check only
   // resolves correctly in the browser, so seeding it into render directly
@@ -430,25 +429,12 @@ export default function RequestFormClient() {
 
   // "Like I can WhatsApp people directly [from my phone contacts], I want
   // to Ittsui people directly" — pickNativeContact() above always hands
-  // control to the OS's own one-at-a-time picker dialog; this instead
-  // loads the whole address book once into an in-app, searchable list, so
-  // picking someone feels the same as opening a chat app and tapping a
-  // name — no dialog round-trip in between.
-  async function handleBrowsePhoneContacts() {
-    setError(null);
-    setVoiceCandidate(null);
-    setLoadingPhoneContacts(true);
-    try {
-      const list = await listNativeContacts();
-      setPhoneContacts(list);
-    } finally {
-      setLoadingPhoneContacts(false);
-    }
-  }
-
+  // control to the OS's own one-at-a-time picker dialog; PhoneContactPicker
+  // (shared with /contacts and /setup) instead loads the whole address
+  // book once into an in-app, searchable list, so picking someone feels
+  // the same as opening a chat app and tapping a name.
   async function handlePickPhoneContact(picked: PickedContact) {
-    setPhoneContacts(null); // close the list immediately — tap, then go, not tap-then-still-browsing
-    setPhoneContactSearch("");
+    setError(null);
     await applyPickedContact(picked);
     // Matches the directness of the ask: picking straight from the phone's
     // own contact list is exactly simple mode's target scenario (minimal
@@ -853,7 +839,7 @@ export default function RequestFormClient() {
                   </div>
                 </div>
               )}
-              {isNative && !voiceCandidate && !phoneContacts && (
+              {isNative && !voiceCandidate && !browsingPhoneContacts && (
                 <button
                   type="button"
                   onClick={handleImportContact}
@@ -868,76 +854,19 @@ export default function RequestFormClient() {
                   {importingContact ? "Import..." : "Importer depuis mes contacts"}
                 </button>
               )}
-              {/* "Like I can WhatsApp people directly [from my phone
-                  contacts], I want to Ittsui people directly" — browses the
-                  whole address book in-app instead of the OS's one-at-a-
-                  time picker dialog above, so picking someone feels like
-                  opening a chat app and tapping a name. */}
-              {isNative && !voiceCandidate && !phoneContacts && (
-                <button
-                  type="button"
-                  onClick={handleBrowsePhoneContacts}
-                  disabled={loadingPhoneContacts}
-                  className={
+              {isNative && !voiceCandidate && (
+                <PhoneContactPicker
+                  onPick={handlePickPhoneContact}
+                  onOpenChange={setBrowsingPhoneContacts}
+                  triggerClassName={
                     simpleMode
                       ? "mt-2 min-h-[56px] w-full rounded-2xl border text-lg font-medium disabled:opacity-60"
                       : "mt-2 w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-60"
                   }
-                  style={{ borderColor: BORDER, color: INK }}
-                >
-                  {loadingPhoneContacts ? "Chargement..." : "Voir tous mes contacts"}
-                </button>
+                  triggerStyle={{ borderColor: BORDER, color: INK }}
+                />
               )}
-              {phoneContacts && (
-                <div className="mt-2 rounded-2xl border p-3" style={{ borderColor: BORDER }}>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Rechercher un nom..."
-                      value={phoneContactSearch}
-                      onChange={(e) => setPhoneContactSearch(e.target.value)}
-                      autoFocus
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
-                      style={{ borderColor: BORDER }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPhoneContacts(null);
-                        setPhoneContactSearch("");
-                      }}
-                      className="shrink-0 text-xs underline underline-offset-4"
-                      style={{ color: MUTED }}
-                    >
-                      Fermer
-                    </button>
-                  </div>
-                  {phoneContacts.length === 0 ? (
-                    <p className="mt-3 text-sm" style={{ color: MUTED }}>
-                      Aucun contact trouvé sur ce téléphone.
-                    </p>
-                  ) : (
-                    <div className="mt-2 max-h-72 divide-y overflow-y-auto" style={{ borderColor: BORDER }}>
-                      {phoneContacts
-                        .filter((c) => (c.name ?? "").toLowerCase().includes(phoneContactSearch.trim().toLowerCase()))
-                        .map((c, i) => (
-                          <button
-                            key={`${c.name}-${c.phone ?? c.email}-${i}`}
-                            type="button"
-                            onClick={() => handlePickPhoneContact(c)}
-                            className="block w-full py-3 text-left"
-                          >
-                            <span className="block truncate text-sm font-medium">{c.name}</span>
-                            <span className="block truncate text-xs" style={{ color: MUTED }}>
-                              {c.phone || c.email}
-                            </span>
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {!phoneContacts && contacts.length > 0 && (
+              {!browsingPhoneContacts && contacts.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
                   {contacts.map((c) => {
                     // A contact has either an email or a phone (never
@@ -963,7 +892,7 @@ export default function RequestFormClient() {
                   })}
                 </div>
               )}
-              {phoneContacts ? null : simpleMode ? (
+              {browsingPhoneContacts ? null : simpleMode ? (
                 <>
                   {contacts.length === 0 && (
                     <p className="mt-2 text-sm" style={{ color: MUTED }}>

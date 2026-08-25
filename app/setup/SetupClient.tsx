@@ -37,6 +37,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
+import { Capacitor } from "@capacitor/core";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -51,6 +52,8 @@ import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGri
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
+import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
+import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -208,6 +211,13 @@ export default function SetupClient() {
     return () => clearTimeout(timer);
   }, [user, checkingPair]);
 
+  // Checked post-mount, not during render: Capacitor's platform check only
+  // resolves correctly in the browser, so seeding it into render directly
+  // would render "web" on the server and "native" on the client's first
+  // paint — the same SSR/client mismatch already worked around in
+  // /request/new and /contacts (see lib/nativeContacts.ts).
+  useEffect(() => setIsNative(Capacitor.isNativePlatform()), []);
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [partnerName, setPartnerName] = useState("");
@@ -217,6 +227,8 @@ export default function SetupClient() {
   const [partnerPhone, setPartnerPhone] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
   const [duoType, setDuoType] = useState<DuoType | null>(null); // local UI only, not sent to API
+  const [isNative, setIsNative] = useState(false);
+  const [importingPartner, setImportingPartner] = useState(false);
 
   const [day, setDay] = useState<Pair["agreedDay"]>("sun");
   const [windowStart, setWindowStart] = useState("15:00");
@@ -345,6 +357,40 @@ export default function SetupClient() {
 
   function toggle<T>(list: T[], value: T, setter: (v: T[]) => void) {
     setter(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  // Shared by handleImportPartner (OS single-pick dialog) and
+  // PhoneContactPicker below (in-app browsable list, same one /request/new
+  // and /contacts use) — "like I can WhatsApp people directly from my
+  // phone contacts, I want to Ittsui people directly" applies here too,
+  // this being the one recipient-picking screen in the app that had no
+  // import option of any kind before.
+  function applyPickedPartner(picked: PickedContact) {
+    if (picked.name) setPartnerName(picked.name);
+    const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+    if (hasValidEmail) {
+      setPartnerEmail(picked.email!);
+      setPartnerPhone("");
+    } else if (picked.phone) {
+      setPartnerPhone(picked.phone);
+      setPartnerEmail("");
+    } else {
+      setPartnerEmail("");
+      setPartnerPhone("");
+      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+    }
+  }
+
+  async function handleImportPartner() {
+    setError(null);
+    setImportingPartner(true);
+    try {
+      const picked = await pickNativeContact();
+      if (!picked) return;
+      applyPickedPartner(picked);
+    } finally {
+      setImportingPartner(false);
+    }
   }
 
   // Field-specific messages, not a combined "fill everything in" — and a
@@ -639,6 +685,24 @@ export default function SetupClient() {
               Ittsui protège un moment chaque semaine avec une personne qui compte pour vous. Indiquez qui —
               ensuite, on s&apos;occupe de tout : proposer, rappeler, organiser.
             </p>
+            {isNative && (
+              <button
+                type="button"
+                onClick={handleImportPartner}
+                disabled={importingPartner}
+                className="w-full rounded-xl border bg-white py-3 text-sm font-medium disabled:opacity-60"
+                style={{ borderColor: BORDER, color: INK }}
+              >
+                {importingPartner ? "Import..." : "Importer depuis mes contacts"}
+              </button>
+            )}
+            {isNative && (
+              <PhoneContactPicker
+                onPick={applyPickedPartner}
+                triggerClassName="w-full rounded-xl border bg-white py-3 text-sm font-medium disabled:opacity-60"
+                triggerStyle={{ borderColor: BORDER, color: INK }}
+              />
+            )}
             <div>
               <label className="block text-sm font-medium">Prénom de votre proche</label>
               <input

@@ -14,7 +14,8 @@ import { Capacitor } from "@capacitor/core";
 import { auth, watchAuthState } from "@/lib/firebase";
 import type { Contact } from "@/lib/types";
 import { isValidEmail } from "@/lib/validation";
-import { pickNativeContact } from "@/lib/nativeContacts";
+import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
+import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
@@ -115,27 +116,34 @@ export default function ContactsClient() {
     }
   }
 
+  // Shared by handleImportContact (OS single-pick dialog) and the
+  // PhoneContactPicker below (in-app browsable list) — both hand back the
+  // same PickedContact shape.
+  function applyPickedContact(picked: PickedContact) {
+    if (picked.name) setName(picked.name);
+    const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+    if (hasValidEmail) {
+      setEmail(picked.email!);
+      setPhone("");
+    } else if (picked.phone) {
+      // The overwhelmingly common case for a real phone address book —
+      // most contacts there have a number, not an email.
+      setPhone(picked.phone);
+      setEmail("");
+    } else {
+      setEmail("");
+      setPhone("");
+      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+    }
+  }
+
   async function handleImportContact() {
     setError(null);
     setImporting(true);
     try {
       const picked = await pickNativeContact();
       if (!picked) return; // not native, permission denied, or cancelled — leave the form as-is
-      if (picked.name) setName(picked.name);
-      const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
-      if (hasValidEmail) {
-        setEmail(picked.email!);
-        setPhone("");
-      } else if (picked.phone) {
-        // The overwhelmingly common case for a real phone address book —
-        // most contacts there have a number, not an email.
-        setPhone(picked.phone);
-        setEmail("");
-      } else {
-        setEmail("");
-        setPhone("");
-        setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
-      }
+      applyPickedContact(picked);
     } finally {
       setImporting(false);
     }
@@ -190,6 +198,13 @@ export default function ContactsClient() {
             >
               {importing ? "Import..." : "Importer depuis mes contacts"}
             </button>
+          )}
+          {isNative && (
+            <PhoneContactPicker
+              onPick={applyPickedContact}
+              triggerClassName="w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-60"
+              triggerStyle={{ borderColor: BORDER, color: INK }}
+            />
           )}
           <input
             type="text"
