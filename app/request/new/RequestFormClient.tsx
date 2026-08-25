@@ -288,6 +288,7 @@ export default function RequestFormClient() {
   // the selection legible.
   async function handleImportContact() {
     setError(null);
+    setVoiceCandidate(null); // don't leave a stale voice confirm card showing alongside this
     setImportingContact(true);
     try {
       const picked = await pickNativeContact();
@@ -303,17 +304,23 @@ export default function RequestFormClient() {
         return;
       }
 
-      update("recipientName", picked.name || picked.email);
-      update("recipientEmail", picked.email);
+      // Lowercased to match how /api/contacts always normalizes and returns
+      // emails — device contacts are often mixed-case, and without this the
+      // chip-highlight check below (a strict ===) would silently never
+      // match, leaving simple mode with no visible confirmation of who got
+      // selected.
+      const email = picked.email.toLowerCase();
+      update("recipientName", picked.name || email);
+      update("recipientEmail", email);
 
       if (simpleMode && user) {
-        const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === picked.email!.toLowerCase());
+        const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === email);
         if (!alreadyKnown) {
           const idToken = await user.getIdToken();
           const res = await fetch("/api/contacts", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ name: picked.name || picked.email, email: picked.email }),
+            body: JSON.stringify({ name: picked.name || email, email }),
           });
           if (res.ok) {
             const saved = await res.json();
@@ -626,7 +633,7 @@ export default function RequestFormClient() {
                   </div>
                 </div>
               )}
-              {isNative && (
+              {isNative && !voiceCandidate && (
                 <button
                   type="button"
                   onClick={handleImportContact}
