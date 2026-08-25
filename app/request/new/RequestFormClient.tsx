@@ -879,11 +879,15 @@ export default function RequestFormClient() {
               {!browsingPhoneContacts && contacts.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
                   {contacts.map((c) => {
-                    // A contact has either an email or a phone (never
-                    // neither) — compare against whichever one it has,
-                    // since draft only ever carries one of the two at a
-                    // time for a given selection (see pickContact).
-                    const selected = c.email ? draft.recipientEmail === c.email : Boolean(c.phone) && draft.recipientPhone === c.phone;
+                    // A contact can have an email, a phone, or both (see
+                    // pickContact, which now sets both draft fields from
+                    // whatever the contact record has) — match on EITHER
+                    // identifier rather than only email when present, so a
+                    // contact with both still highlights correctly if only
+                    // its phone happens to match the current draft.
+                    const selected = Boolean(
+                      (c.email && draft.recipientEmail === c.email) || (c.phone && draft.recipientPhone === c.phone)
+                    );
                     return (
                       <button
                         key={c.id}
