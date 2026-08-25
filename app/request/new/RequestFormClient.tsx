@@ -382,6 +382,29 @@ export default function RequestFormClient() {
     }));
   }
 
+  // Picking a type tile (Café/Musée/...) used to only change the
+  // illustration, silently leaving whatever venue was already selected in
+  // place — so tapping "Musée" while a suggestion chip like "Mariage
+  // Frères" (a tea salon) was selected sent an invitation claiming a
+  // museum at a tea salon's address. Now it actually tries to find a
+  // nearby suggestion of that type and switches to it; when there isn't
+  // one, it clears the mismatched name/address instead of leaving a wrong
+  // one in place — the manual fields right above stay visible in this
+  // (non-simple) mode, so there's a real way to fill them back in, not a
+  // dead end.
+  function pickVenueType(v: VenueType) {
+    if (draft.venueType === v) {
+      update("venueType", null);
+      return;
+    }
+    const match = suggestions.find((s) => s.venueType === v);
+    if (match) {
+      pickVenue(match);
+      return;
+    }
+    setDraft((d) => ({ ...d, venueType: v, venueName: "", venueAddress: "" }));
+  }
+
   // Only pre-fills fields — never sends anything. Someone still reviews
   // and can edit every field before tapping "Envoyer".
   async function handleParseFreeText() {
@@ -770,24 +793,20 @@ export default function RequestFormClient() {
                 </>
               )}
 
-              {/* Hidden in simple mode: tapping a bare category here (vs. a
-                  specific suggestion chip above) sets venueType but not
-                  venueName/venueAddress, which "Envoyer" requires — with the
-                  manual text fields also hidden in this mode, that would be
-                  a real dead end with no way to fix it. Requiring a named
-                  suggestion instead also matches what was actually asked
-                  for: specific tappable places, not abstract categories. */}
+              {/* Hidden in simple mode: with the manual text fields also
+                  hidden there, pickVenueType's "clear the mismatched venue"
+                  fallback below would be a real dead end with no way to
+                  refill them. Requiring a named suggestion chip instead
+                  also matches what was actually asked for there: specific
+                  tappable places, not abstract categories. */}
               {!simpleMode && (
                 <>
                   <p className="mt-4 text-xs" style={{ color: MUTED }}>
-                    Type de lieu (optionnel, ajoute une illustration à l&apos;invitation)
+                    Type de lieu (optionnel — cherche un lieu de ce type parmi les suggestions, ou vide le lieu
+                    choisi pour en indiquer un nouveau)
                   </p>
                   <div className="mt-2">
-                    <DiscoveryGrid
-                      tiles={VENUE_TYPE_TILES}
-                      selected={draft.venueType ? [draft.venueType] : []}
-                      onToggle={(v) => update("venueType", draft.venueType === v ? null : v)}
-                    />
+                    <DiscoveryGrid tiles={VENUE_TYPE_TILES} selected={draft.venueType ? [draft.venueType] : []} onToggle={pickVenueType} />
                   </div>
                 </>
               )}
