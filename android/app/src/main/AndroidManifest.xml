@@ -49,6 +49,22 @@
                 <data android:scheme="https" android:host="www.ittsui.fr" />
             </intent-filter>
 
+            <!--
+              @capgo/capacitor-share-target (lib/nativeShareTarget.ts) —
+              makes "Ittsui" appear in Android's own Share sheet from any
+              other app (TikTok, Instagram, a group chat...), so proposing
+              a meetup can start from wherever the person already is
+              instead of requiring them to open Ittsui first. text/* only:
+              this app has nowhere to put a shared image/video (see that
+              file's own comment on why iOS can't get the same treatment
+              without a real Xcode Share Extension target).
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+
         </activity>
 
         <provider

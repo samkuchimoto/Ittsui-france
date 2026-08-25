@@ -2,6 +2,7 @@
 
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ShareTargetListener } from "@/app/components/ShareTargetListener";
 
 export const metadata: Metadata = {
   title: "Ittsui",
@@ -21,7 +22,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-[#FFFDF9] antialiased">{children}</body>
+      <body className="min-h-screen bg-[#FFFDF9] antialiased">
+        <ShareTargetListener />
+        {children}
+      </body>
     </html>
   );
 }

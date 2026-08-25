@@ -231,6 +231,41 @@ accurate enough for real names in real noisy conditions (an airport, notably), a
 result actually flows back and matches correctly end to end. Same status as the contact picker and
 the GPS gap above — "should work," not "confirmed working," until tested on a real device.
 
+## Share target (appear in Android's Share sheet) — IMPLEMENTED, NOT VERIFIED ON A REAL DEVICE
+
+Added 2026-08-25 (`@capgo/capacitor-share-target` v8.0.49), so proposing a meetup can start from
+wherever someone already is — a TikTok video, an Instagram post, a group chat — rather than
+requiring them to open Ittsui first. Real-user finding driving this the same day: someone should be
+able to see something worth sharing and go straight from "I want to meet them about this" to a
+filled-in request, not have to remember to open an app first.
+
+`lib/nativeShareTarget.ts` wraps the plugin's `shareReceived` listener (native-platform-guarded,
+dynamic `import()`, same pattern as `lib/nativeContacts.ts`/`lib/nativeSpeech.ts`).
+`app/components/ShareTargetListener.tsx` mounts it once at the root layout — not inside
+`/request/new` itself — because Android delivers a share intent to whichever screen the app resumes
+on, not necessarily that one, so this has to listen globally and navigate there itself. It hands the
+shared text off via the same `sessionStorage` pattern `RequestFormClient.tsx` already used for its
+own draft (a new key, read once and cleared immediately), landing it in the existing free-text box
+rather than being silently auto-parsed — someone still reviews it before anything is guessed from
+it, exactly like typing a description by hand already works.
+
+**Android only.** `AndroidManifest.xml` now declares a `SEND` intent-filter for `text/*` on
+`MainActivity`, which is genuinely just XML — safe to add without a device. **iOS deliberately isn't
+attempted**: per the plugin's own setup instructions, iOS needs an actual new Xcode target (a Share
+Extension, with its own `ShareViewController.swift` and an App Group), created via Xcode's target
+wizard — not something safely hand-edited from text files the way the Android manifest change is.
+That stays a real, named gap requiring Mac/Xcode access, not something faked or silently skipped.
+
+What was verified without a device: the plugin's real TypeScript API (read directly, not assumed
+from docs) and Android setup requirements; `npx tsc --noEmit` and `npm run build` both pass; the
+production server serves every page (home, `/request/new`, `/dashboard`, `/setup`) without a crash
+now that the listener mounts globally.
+
+What was NOT verified, because no physical Android device was available: whether Ittsui actually
+appears in Android's Share sheet from another app, and whether shared text actually arrives in
+`/request/new`'s free-text box end to end. Same "should work, not confirmed working" status as the
+contact picker, voice search, and the GPS gap.
+
 ## Not yet implemented
 
 - Play Store listing, screenshots, content rating, Data Safety form — all Play Console UI work,

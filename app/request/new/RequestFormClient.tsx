@@ -28,6 +28,7 @@ import { whatsappLinkForNumber, smsLinkForNumber, normalizePhoneForShare } from 
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
+import { SHARED_TEXT_KEY } from "@/app/components/ShareTargetListener";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -203,6 +204,20 @@ export default function RequestFormClient() {
       setSimpleMode(true);
     } else {
       setSimpleMode(localStorage.getItem(SIMPLE_MODE_KEY) === "1");
+    }
+    // Dropped here by ShareTargetListener.tsx after someone shared a link
+    // into Ittsui from another app (TikTok, a group chat...) — read once
+    // and removed immediately so it can't reappear on a later, unrelated
+    // visit to this page. Lands in the free-text box (not silently
+    // parsed) so it goes through the exact same review step any typed
+    // description already does. Forces simple mode off: someone who just
+    // shared something in clearly wants the free-text parser, which
+    // simple mode hides.
+    const sharedText = sessionStorage.getItem(SHARED_TEXT_KEY);
+    if (sharedText) {
+      sessionStorage.removeItem(SHARED_TEXT_KEY);
+      setFreeText(sharedText);
+      setSimpleMode(false);
     }
     return watchAuthState((u) => setUser(u ?? false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
