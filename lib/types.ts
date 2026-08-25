@@ -24,7 +24,15 @@ export interface Pair {
   userIds: string[]; // 1 while pending (inviter only), 2 once active
   status: PairStatus;
   partnerName: string; // name the inviter gave for the invited person
+  // At least one of these two is always present while a pair is pending
+  // (enforced by /api/invite-partner's Zod refine) — same reasoning as
+  // MeetingRequest/Contact's identical shape (2026-08-25 real-user
+  // finding: real people know a phone number, not an email). Both get
+  // cleared on decline (see activate-pending-pair's data-minimization
+  // comment) — invitedPhone is exactly as identifying as invitedEmail
+  // once someone's declined, so it's deleted the same way.
   invitedEmail?: string; // set while pending; the email the invite was sent to
+  invitedPhone?: string;
   expiresAt?: string; // ISO date; pending invites older than this are dead
   agreedDay: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   agreedWindowStart: string; // e.g. "15:00"

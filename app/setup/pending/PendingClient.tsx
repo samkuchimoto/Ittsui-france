@@ -29,6 +29,8 @@ import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
+import { shareLink } from "@/lib/shareLink";
+import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -67,6 +69,61 @@ function DeliveryStatus({ pair }: { pair: Pair }) {
       {pair.partnerEmailSent ? "✓ E-mail envoyé" : "⚠ Échec d'envoi de l'e-mail"}
       {time && ` · ${time}`}
     </p>
+  );
+}
+
+// A phone-only invite has no server-side delivery at all — the whole
+// point of this screen for that case is giving the inviter another
+// chance to actually send the link, not just watch DeliveryStatus render
+// nothing (its own guard above already stays silent when there's no email
+// to report on, which is correct for THAT component, but leaves a real
+// gap here without something to replace it).
+function SharePhoneInvite({ pair }: { pair: Pair }) {
+  if (pair.invitedEmail || !pair.invitedPhone) return null;
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${pair.id}`;
+  const text = `${pair.partnerName}, je t'ai préparé notre moment de la semaine sur Ittsui : ${inviteUrl}`;
+  const whatsappHref = whatsappLinkForNumber(pair.invitedPhone, text);
+  const smsHref = smsLinkForNumber(pair.invitedPhone, text);
+
+  async function handleOtherApp() {
+    await shareLink({ title: "Ittsui", text, url: inviteUrl });
+  }
+
+  return (
+    <div className="mt-4 space-y-2 text-left">
+      <p className="text-xs" style={{ color: MUTED }}>
+        Cette invitation n&apos;a pas d&apos;e-mail — envoyez-lui le lien vous-même si ce n&apos;est pas déjà
+        fait.
+      </p>
+      {whatsappHref && (
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: "#25D366" }}
+        >
+          Envoyer par WhatsApp
+        </a>
+      )}
+      {smsHref && (
+        <a
+          href={smsHref}
+          className="flex w-full items-center justify-center rounded-full border py-3 text-sm font-medium"
+          style={{ borderColor: BORDER, color: INK }}
+        >
+          Envoyer par SMS
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={handleOtherApp}
+        className="w-full rounded-full border py-2.5 text-sm font-medium"
+        style={{ borderColor: BORDER, color: MUTED }}
+      >
+        Autre appli...
+      </button>
+    </div>
   );
 }
 
@@ -277,6 +334,7 @@ export default function PendingClient() {
         <CockpitStatus pair={pair} />
       </div>
       <DeliveryStatus pair={pair} />
+      <SharePhoneInvite pair={pair} />
       {cancelError && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>
           {cancelError}

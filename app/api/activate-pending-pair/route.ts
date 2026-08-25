@@ -80,20 +80,26 @@ export async function POST(request: Request) {
 
   if (decline) {
     // Real data minimization, not just a status flag: the invitee never
-    // signed in (never got a users/{uid} record at all), so their email is
-    // the one piece of directly-identifying, directly-contactable data
-    // this whole pending pair ever held about them — same principle
-    // api/user/delete/route.ts already applies to a deleted account's own
-    // pairs. partnerName stays (the inviter's own note about who they
-    // invited, shown back to them on /setup/pending) so that screen keeps
-    // working; invitedEmail genuinely serves no purpose once declined.
-    await pairRef.update({ status: "declined", invitedEmail: FieldValue.delete() });
+    // signed in (never got a users/{uid} record at all), so their email
+    // and/or phone are the one piece of directly-identifying, directly-
+    // contactable data this whole pending pair ever held about them — same
+    // principle api/user/delete/route.ts already applies to a deleted
+    // account's own pairs. partnerName stays (the inviter's own note about
+    // who they invited, shown back to them on /setup/pending) so that
+    // screen keeps working; invitedEmail/invitedPhone genuinely serve no
+    // purpose once declined.
+    await pairRef.update({ status: "declined", invitedEmail: FieldValue.delete(), invitedPhone: FieldValue.delete() });
     const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "La personne invitée"} a décliné l'invitation.`);
     if (!sent) console.warn(`activate-pending-pair: decline notification failed for inviter ${inviterUid}`);
     return NextResponse.json({ status: "declined" });
   }
 
-  if (pair.invitedEmail !== String(userEmail).trim().toLowerCase()) {
+  // No email on file at all means this was a phone-only invite — the
+  // inviter shared the link themselves (see invite-partner's inviteUrl),
+  // so the unguessable bearer link is the authorization here, same trust
+  // boundary decline above already uses. Only enforce the match when an
+  // email actually exists to check against.
+  if (pair.invitedEmail && pair.invitedEmail !== String(userEmail).trim().toLowerCase()) {
     return NextResponse.json({ error: "cette invitation ne correspond pas à votre compte" }, { status: 403 });
   }
 

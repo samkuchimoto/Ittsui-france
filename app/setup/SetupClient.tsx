@@ -50,6 +50,7 @@ import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { shareLink } from "@/lib/shareLink";
+import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -210,6 +211,10 @@ export default function SetupClient() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [partnerName, setPartnerName] = useState("");
+  // Phone first, on purpose: real people know a friend's phone number,
+  // not their email, especially away from a desk (2026-08-25 real-user
+  // test — see /request/new's identical fields for the fuller reasoning).
+  const [partnerPhone, setPartnerPhone] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
   const [duoType, setDuoType] = useState<DuoType | null>(null); // local UI only, not sent to API
 
@@ -227,7 +232,9 @@ export default function SetupClient() {
   const [submitting, setSubmitting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
+  const [invited, setInvited] = useState<{ name: string; hasEmail: boolean; phone: string; pairId: string; inviteUrl: string } | null>(
+    null
+  );
   const [copied, setCopied] = useState(false);
 
   // Geolocation is deliberately NOT triggered on mount — it's requested
@@ -350,11 +357,13 @@ export default function SetupClient() {
       setError("Indiquez le prénom de votre proche.");
       return;
     }
-    if (!partnerEmail.trim()) {
-      setError("Indiquez son e-mail.");
+    const hasPhone = partnerPhone.trim().length > 0;
+    const hasEmail = partnerEmail.trim().length > 0;
+    if (!hasPhone && !hasEmail) {
+      setError("Indiquez son numéro de téléphone ou son e-mail.");
       return;
     }
-    if (!isValidEmail(partnerEmail)) {
+    if (hasEmail && !isValidEmail(partnerEmail)) {
       setError("Cette adresse e-mail ne semble pas valide.");
       return;
     }
@@ -377,6 +386,9 @@ export default function SetupClient() {
       return;
     }
 
+    const hasPhone = partnerPhone.trim().length > 0;
+    const hasEmail = partnerEmail.trim().length > 0;
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/invite-partner", {
@@ -386,7 +398,8 @@ export default function SetupClient() {
           inviterUid: user.uid,
           inviterName: user.displayName ?? "Quelqu'un",
           partnerName,
-          partnerEmail,
+          ...(hasEmail ? { partnerEmail } : {}),
+          ...(hasPhone ? { partnerPhone } : {}),
           agreedDay: day,
           agreedWindowStart: windowStart,
           agreedWindowEnd: windowEnd,
@@ -399,7 +412,7 @@ export default function SetupClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
-      setInvited({ name: partnerName, email: partnerEmail, pairId: data.pairId });
+      setInvited({ name: partnerName, hasEmail, phone: partnerPhone, pairId: data.pairId, inviteUrl: data.inviteUrl });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -414,11 +427,10 @@ export default function SetupClient() {
 
   async function handleShare() {
     if (!invited) return;
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
     const result = await shareLink({
       title: "Ittsui - Notre moment",
       text: "Je t'ai préparé notre moment de la semaine ! Rejoins-moi sur Ittsui :",
-      url: inviteUrl,
+      url: invited.inviteUrl,
     });
     if (result === "copied") {
       setCopied(true);
@@ -495,34 +507,87 @@ export default function SetupClient() {
             ✓
           </span>
           <h1 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-            Invitation envoyée
+            {invited.hasEmail ? "Invitation envoyée" : "Invitation prête"}
           </h1>
-          <p className="mt-3 text-sm" style={{ color: MUTED }}>
-            Un e-mail a été envoyé à {invited.name} ({invited.email}).
-          </p>
-
-          <div className="mt-4 flex justify-center">
-            <StatusBanner
-              steps={SENT_STEPS}
-              currentKey="sent"
-              doneSlot={
+          {invited.hasEmail ? (
+            <>
+              <p className="mt-3 text-sm" style={{ color: MUTED }}>
+                Un e-mail a été envoyé à {invited.name}.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <StatusBanner
+                  steps={SENT_STEPS}
+                  currentKey="sent"
+                  doneSlot={
+                    <button type="button" onClick={handleShare} className="ml-1 font-medium underline underline-offset-4">
+                      Partager l&apos;invitation
+                    </button>
+                  }
+                />
+              </div>
+              {copied && (
+                <p
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                  style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+                >
+                  Lien copié !
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-sm" style={{ color: MUTED }}>
+                Presque : {invited.name} n&apos;a pas d&apos;e-mail enregistré, alors envoyez-lui ce lien
+                vous-même — un tap suffit.
+              </p>
+              <div className="mt-4 space-y-2">
+                {(() => {
+                  const text = `${invited.name}, je t'ai préparé notre moment de la semaine sur Ittsui : ${invited.inviteUrl}`;
+                  const whatsappHref = whatsappLinkForNumber(invited.phone, text);
+                  const smsHref = smsLinkForNumber(invited.phone, text);
+                  return (
+                    <>
+                      {whatsappHref && (
+                        <a
+                          href={whatsappHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center justify-center rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+                          style={{ backgroundColor: "#25D366" }}
+                        >
+                          Envoyer par WhatsApp
+                        </a>
+                      )}
+                      {smsHref && (
+                        <a
+                          href={smsHref}
+                          className="flex w-full items-center justify-center rounded-full border py-3.5 text-sm font-medium"
+                          style={{ borderColor: BORDER, color: INK }}
+                        >
+                          Envoyer par SMS
+                        </a>
+                      )}
+                    </>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="ml-1 font-medium underline underline-offset-4"
+                  className="w-full rounded-full border py-3 text-sm font-medium"
+                  style={{ borderColor: BORDER, color: MUTED }}
                 >
-                  Partager l&apos;invitation
+                  Autre appli...
                 </button>
-              }
-            />
-          </div>
-          {copied && (
-            <p
-              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
-            >
-              Lien copié !
-            </p>
+              </div>
+              {copied && (
+                <p
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                  style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+                >
+                  Lien copié !
+                </p>
+              )}
+            </>
           )}
 
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
@@ -580,14 +645,27 @@ export default function SetupClient() {
                 style={{ borderColor: BORDER }}
                 placeholder="Prénom"
               />
+              {/* Phone first, on purpose: real people know a friend's
+                  phone number, not their email, especially away from a
+                  desk — see this file's own state comment. */}
+              <input
+                type="tel"
+                value={partnerPhone}
+                onChange={(e) => setPartnerPhone(e.target.value)}
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                style={{ borderColor: BORDER }}
+                placeholder="Son numéro de téléphone"
+              />
+              <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                Ou, si vous l&apos;avez, son e-mail :
+              </p>
               <input
                 type="email"
-                required
                 value={partnerEmail}
                 onChange={(e) => setPartnerEmail(e.target.value)}
                 className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
                 style={{ borderColor: BORDER }}
-                placeholder="Son e-mail"
+                placeholder="Son e-mail (optionnel)"
               />
             </div>
 
