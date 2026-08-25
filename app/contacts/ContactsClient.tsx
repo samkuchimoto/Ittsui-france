@@ -38,6 +38,10 @@ export default function ContactsClient() {
   const [user, setUser] = useState<User | false | null>(null);
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [name, setName] = useState("");
+  // Phone first, on purpose: real people know a friend's phone number,
+  // not their email, especially away from a desk (2026-08-25 real-user
+  // test — see /request/new's identical fields for the fuller reasoning).
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -75,11 +79,17 @@ export default function ContactsClient() {
 
   async function handleAdd() {
     setError(null);
-    if (!name.trim() || !email.trim()) {
-      setError("Le nom et l'e-mail sont requis.");
+    if (!name.trim()) {
+      setError("Le nom est requis.");
       return;
     }
-    if (!isValidEmail(email)) {
+    const hasEmail = email.trim().length > 0;
+    const hasPhone = phone.trim().length > 0;
+    if (!hasEmail && !hasPhone) {
+      setError("Indiquez un e-mail ou un numéro de téléphone.");
+      return;
+    }
+    if (hasEmail && !isValidEmail(email)) {
       setError("Cette adresse e-mail ne semble pas valide.");
       return;
     }
@@ -90,11 +100,12 @@ export default function ContactsClient() {
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, ...(hasEmail ? { email } : {}), ...(hasPhone ? { phone } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
       setName("");
+      setPhone("");
       setEmail("");
       await refresh();
     } catch (err) {
@@ -111,11 +122,19 @@ export default function ContactsClient() {
       const picked = await pickNativeContact();
       if (!picked) return; // not native, permission denied, or cancelled — leave the form as-is
       if (picked.name) setName(picked.name);
-      if (picked.email) {
-        setEmail(picked.email);
+      const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+      if (hasValidEmail) {
+        setEmail(picked.email!);
+        setPhone("");
+      } else if (picked.phone) {
+        // The overwhelmingly common case for a real phone address book —
+        // most contacts there have a number, not an email.
+        setPhone(picked.phone);
+        setEmail("");
       } else {
         setEmail("");
-        setError("Ce contact n'a pas d'e-mail enregistré — merci de le compléter avant d'ajouter.");
+        setPhone("");
+        setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
       }
     } finally {
       setImporting(false);
@@ -181,8 +200,19 @@ export default function ContactsClient() {
             style={{ borderColor: BORDER }}
           />
           <input
+            type="tel"
+            placeholder="Numéro de téléphone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2.5 text-sm"
+            style={{ borderColor: BORDER }}
+          />
+          <p className="text-xs" style={{ color: MUTED }}>
+            Ou, si vous l&apos;avez, son e-mail :
+          </p>
+          <input
             type="email"
-            placeholder="E-mail"
+            placeholder="E-mail (optionnel)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -211,7 +241,7 @@ export default function ContactsClient() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{c.name}</p>
                     <p className="truncate text-xs" style={{ color: MUTED }}>
-                      {c.email}
+                      {c.email || c.phone}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">

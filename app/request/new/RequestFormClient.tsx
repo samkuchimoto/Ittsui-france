@@ -24,7 +24,7 @@ import { isValidEmail } from "@/lib/validation";
 import { pickNativeContact } from "@/lib/nativeContacts";
 import { listenOnce } from "@/lib/nativeSpeech";
 import { shareLink } from "@/lib/shareLink";
-import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
+import { whatsappLinkForNumber, smsLinkForNumber, normalizePhoneForShare } from "@/lib/phoneShareLinks";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
@@ -304,8 +304,41 @@ export default function RequestFormClient() {
 
   function pickContact(contact: Contact) {
     update("recipientName", contact.name);
-    update("recipientEmail", contact.email);
-    update("recipientPhone", ""); // saved contacts are email-based today; clear any stale phone from a previous entry
+    update("recipientEmail", contact.email ?? "");
+    update("recipientPhone", contact.phone ?? "");
+  }
+
+  // Shared by handleImportContact's simple-mode auto-save and handleSend's
+  // "remember this person for next time" — one identity check (email if
+  // given, else normalized phone, matching /api/contacts' own dedup
+  // priority) instead of two copies that could drift. Never throws;
+  // callers get a plain status back instead of having to wrap this
+  // themselves.
+  async function saveContactIfNew(
+    name: string,
+    identity: { email?: string; phone?: string }
+  ): Promise<"saved" | "already-known" | "failed" | "skipped"> {
+    if (!user) return "skipped";
+    const alreadyKnown = identity.email
+      ? contacts.some((c) => c.email?.toLowerCase() === identity.email!.toLowerCase())
+      : identity.phone
+        ? contacts.some((c) => c.phone && normalizePhoneForShare(c.phone) === normalizePhoneForShare(identity.phone!))
+        : false;
+    if (alreadyKnown) return "already-known";
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ name, ...identity }),
+      });
+      if (!res.ok) return "failed";
+      const saved = (await res.json()) as Contact;
+      setContacts((prev) => [...prev, saved]);
+      return "saved";
+    } catch {
+      return "failed";
+    }
   }
 
   // Simple mode shows only contact chips (no manual name/email fields to
@@ -333,15 +366,15 @@ export default function RequestFormClient() {
 
       if (!hasValidEmail) {
         // Phone-only device contact — the overwhelmingly common case for a
-        // real phone address book. This is exactly the scenario the whole
-        // phone-first flow exists for, so this fills the fields directly
-        // and stops here; the "already known?" persist-as-contact step
-        // below is email-based only for now (Contact doesn't model
-        // phone-only entries yet), so this stays a per-send fill rather
-        // than something auto-saved to "Mes contacts".
-        update("recipientName", picked.name || picked.phone!);
-        update("recipientPhone", picked.phone!);
+        // real phone address book.
+        const phone = picked.phone!;
+        update("recipientName", picked.name || phone);
+        update("recipientPhone", phone);
         update("recipientEmail", "");
+        if (simpleMode) {
+          const result = await saveContactIfNew(picked.name || phone, { phone });
+          if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
+        }
         return;
       }
 
@@ -355,22 +388,9 @@ export default function RequestFormClient() {
       update("recipientEmail", email);
       update("recipientPhone", "");
 
-      if (simpleMode && user) {
-        const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === email);
-        if (!alreadyKnown) {
-          const idToken = await user.getIdToken();
-          const res = await fetch("/api/contacts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ name: picked.name || email, email }),
-          });
-          if (res.ok) {
-            const saved = await res.json();
-            setContacts((prev) => [...prev, saved as Contact]);
-          } else {
-            setError("Contact importé mais pas encore enregistré — réessayez.");
-          }
-        }
+      if (simpleMode) {
+        const result = await saveContactIfNew(picked.name || email, { email });
+        if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
       }
     } finally {
       setImportingContact(false);
@@ -551,18 +571,9 @@ export default function RequestFormClient() {
       // Save as a contact for next time, unless it's already one on file —
       // exactly what "add to closest contact list" means in practice: a
       // side effect of sending, not a separate step someone has to
-      // remember to do first. Email-based only for now (Contact doesn't
-      // model phone-only entries yet).
-      if (hasEmail) {
-        const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === draft.recipientEmail.trim().toLowerCase());
-        if (!alreadyKnown) {
-          fetch("/api/contacts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ name: draft.recipientName, email: draft.recipientEmail }),
-          }).catch(() => {});
-        }
-      }
+      // remember to do first. Not awaited — a background nicety, not
+      // something worth delaying the actual send for.
+      saveContactIfNew(draft.recipientName, hasEmail ? { email: draft.recipientEmail } : { phone: draft.recipientPhone });
 
       const res = await fetch("/api/meeting-requests/create", {
         method: "POST",
@@ -788,21 +799,28 @@ export default function RequestFormClient() {
               )}
               {contacts.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
-                  {contacts.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => pickContact(c)}
-                      className={simpleMode ? "min-h-[56px] rounded-2xl border px-5 text-lg font-medium" : "rounded-full border px-3 py-1.5 text-xs"}
-                      style={{
-                        borderColor: draft.recipientEmail === c.email ? ACCENT : BORDER,
-                        color: draft.recipientEmail === c.email ? ACCENT : INK,
-                        backgroundColor: draft.recipientEmail === c.email && simpleMode ? `${ACCENT}14` : undefined,
-                      }}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
+                  {contacts.map((c) => {
+                    // A contact has either an email or a phone (never
+                    // neither) — compare against whichever one it has,
+                    // since draft only ever carries one of the two at a
+                    // time for a given selection (see pickContact).
+                    const selected = c.email ? draft.recipientEmail === c.email : Boolean(c.phone) && draft.recipientPhone === c.phone;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => pickContact(c)}
+                        className={simpleMode ? "min-h-[56px] rounded-2xl border px-5 text-lg font-medium" : "rounded-full border px-3 py-1.5 text-xs"}
+                        style={{
+                          borderColor: selected ? ACCENT : BORDER,
+                          color: selected ? ACCENT : INK,
+                          backgroundColor: selected && simpleMode ? `${ACCENT}14` : undefined,
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               {simpleMode ? (

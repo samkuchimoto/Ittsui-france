@@ -116,13 +116,19 @@ export interface User {
   };
 }
 
-// A user's own address-book-style contact list (name + email) — not a
-// messaging system, just enough to pick a recipient for a MeetingRequest
-// without retyping their details every time.
+// A user's own address-book-style contact list — not a messaging system,
+// just enough to pick a recipient for a MeetingRequest without retyping
+// their details every time. At least one of email/phone always exists
+// (enforced by /api/contacts' Zod refine, same shape as MeetingRequest's
+// identical invariant) — both optional at the type level rather than a
+// discriminated union, since every consumer already treats "no email" as
+// a real, handled case (2026-08-25: real people often only know a
+// friend's phone number, not their email).
 export interface Contact {
   id: string;
   name: string;
-  email: string; // lowercased
+  email?: string; // lowercased
+  phone?: string; // stored as typed, not normalized — compared via lib/phoneShareLinks.ts's normalizer where dedup/matching needs it
   createdAt: string; // ISO date
 }
 
