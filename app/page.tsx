@@ -385,6 +385,15 @@ export default function Home() {
                 <IconSparkles className="h-3.5 w-3.5" />
                 Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
               </p>
+              {/* /request/new is deliberately usable with no account at all
+                  (see that file's own header comment) — a real, lower-
+                  commitment way in for someone not ready for a standing
+                  weekly ritual yet, but every CTA on this page used to
+                  point at /setup only, so a first-time visitor had no way
+                  to even discover it existed. */}
+              <Link href="/request/new" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
+                Ou proposez un seul rendez-vous d&apos;abord, sans créer de compte →
+              </Link>
             </div>
           </Reveal>
 
