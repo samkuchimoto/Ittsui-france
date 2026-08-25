@@ -28,7 +28,14 @@ const bodySchema = z.object({
   agreedDay: z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]),
   agreedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   agreedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  notifyDaysBefore: z.number().int().min(0).optional(),
+  // Capped at 6: isDueToday() in weekly-propose/route.ts resolves this via
+  // (meetingIndex - leadDays + 7) % 7, which silently produces a negative
+  // array index — and therefore permanently breaks that pair's weekly
+  // proposal forever, with no error anywhere — once leadDays reaches 14
+  // (verified directly, not assumed). The UI only ever offers 0 or 1, but
+  // this is the actual trust boundary, and semantically nothing past "a
+  // week ahead of a weekly event" makes sense anyway.
+  notifyDaysBefore: z.number().int().min(0).max(6).optional(),
   postalCode: z.string().optional(),
   preferences: z.object({
     venueTypes: z.array(z.enum(["cafe", "restaurant", "home", "park", "museum"])),

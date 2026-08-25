@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
+import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
@@ -210,13 +211,15 @@ export default function InvitePage() {
   // triggered by the "Je viens" tap below, not by landing on this page.
   return (
     <Shell>
-      <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>Ittsui</span>
+      <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+        Ittsui
+      </Link>
       <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
         Vous avez été invité(e) sur Ittsui
       </h1>
       <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
-        Un rendez-vous protégé, une fois par semaine, avec la personne qui vous a envoyé ce lien — une proposition,
-        validable en un geste, sans agenda à gérer.
+        Pas une appli de rencontre : un rendez-vous protégé, une fois par semaine, avec la personne qui vous a
+        envoyé ce lien — une proposition, validable en un geste, sans agenda à gérer.
       </p>
       <p className="mt-3 text-sm" style={{ color: MUTED }}>
         Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette invitation, ça

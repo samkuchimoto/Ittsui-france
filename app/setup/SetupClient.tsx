@@ -35,6 +35,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -49,6 +50,7 @@ import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { tapHaptic, ImpactStyle } from "@/lib/haptics";
+import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -340,10 +342,22 @@ export default function SetupClient() {
     setter(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   }
 
+  // Field-specific messages, not a combined "fill everything in" — and a
+  // real format check, since goToStep2 is called from a plain button click
+  // (not a form submit), so the input's own type="email" browser
+  // validation never gets a submit event to trigger on.
   function goToStep2() {
     setError(null);
-    if (!partnerName.trim() || !partnerEmail.trim()) {
-      setError("Indiquez un prénom et un e-mail pour continuer.");
+    if (!partnerName.trim()) {
+      setError("Indiquez le prénom de votre proche.");
+      return;
+    }
+    if (!partnerEmail.trim()) {
+      setError("Indiquez son e-mail.");
+      return;
+    }
+    if (!isValidEmail(partnerEmail)) {
+      setError("Cette adresse e-mail ne semble pas valide.");
       return;
     }
     setStep(2);
@@ -455,12 +469,19 @@ export default function SetupClient() {
     );
   }
 
-  // Not signed in
+  // Not signed in — every sign-out in the app (dashboard, contacts, etc.)
+  // redirects here once `user` resolves to false, so this was a real
+  // dead end: no logo, no link back to `/`, only a URL-bar edit could
+  // get someone back to the marketing site. Found via real end-to-end
+  // testing, not a hypothetical.
   if (user === false) {
     return (
       <Shell>
         <div className="text-center">
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
+          <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+            Ittsui
+          </Link>
+          <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
             Configuration
           </h1>
           <p className="mt-2 text-sm" style={{ color: MUTED }}>

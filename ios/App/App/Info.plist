@@ -22,6 +22,21 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- @capacitor-community/contacts (lib/nativeContacts.ts): shown by iOS
+	     the first time pickContact() runs, in Réglages > Ittsui > Contacts
+	     if ever revoked. Ittsui only reads the one contact someone
+	     explicitly picks — this is required by iOS's Contacts framework
+	     for read access, there's no separate read-only permission. -->
+	<key>NSContactsUsageDescription</key>
+	<string>Pour choisir un proche depuis vos contacts sans avoir à retaper son nom et son e-mail.</string>
+	<!-- @capacitor-community/speech-recognition (lib/nativeSpeech.ts): voice
+	     name lookup in "Mode simple" — both keys are required by iOS's
+	     Speech framework (SFSpeechRecognizer needs the first, its
+	     underlying AVAudioEngine microphone capture needs the second). -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Pour reconnaître le nom que vous dites et proposer le bon contact.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pour écouter le nom que vous dites lors de la création d'un rendez-vous.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

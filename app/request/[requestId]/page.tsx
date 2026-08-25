@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
@@ -245,10 +246,16 @@ export default function RequestResponsePage() {
 
   return (
     <Shell>
-      <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>Ittsui</span>
+      <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+        Ittsui
+      </Link>
       <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
         Vous avez reçu une demande de rendez-vous
       </h1>
+      <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
+        Pas une appli de rencontre : quelqu&apos;un que vous connaissez vous propose un lieu, une date et une
+        heure via Ittsui, un outil de maintien relationnel.
+      </p>
       <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
         Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette demande, ça
         suffit à l&apos;accepter.

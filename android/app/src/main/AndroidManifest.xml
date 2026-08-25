@@ -65,4 +65,24 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- @capacitor-community/contacts' native picker (lib/nativeContacts.ts)
+         — Ittsui only ever reads a single contact someone explicitly picks,
+         never writes to their device address book. WRITE_CONTACTS is
+         declared anyway: verified directly in the plugin's own Android
+         source (ContactsPlugin.java) that both permissions share one
+         Capacitor permission alias ("contacts"), and the plugin checks
+         that whole alias's granted state before allowing pickContact to
+         proceed — declaring READ alone left the alias unable to ever
+         resolve as fully granted. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
+    <!-- @capacitor-community/speech-recognition (lib/nativeSpeech.ts) — voice
+         name lookup in "Mode simple". The plugin's own AndroidManifest.xml
+         already declares this (Android's manifest merger would pull it in
+         either way), but it's restated here explicitly, same as every other
+         native permission in this file, so anyone reading this manifest
+         alone sees the full list this app actually depends on. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 </manifest>

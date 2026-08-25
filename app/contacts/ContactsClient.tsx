@@ -10,8 +10,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
 import type { User } from "firebase/auth";
+import { Capacitor } from "@capacitor/core";
 import { auth, watchAuthState } from "@/lib/firebase";
 import type { Contact } from "@/lib/types";
+import { isValidEmail } from "@/lib/validation";
+import { pickNativeContact } from "@/lib/nativeContacts";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 
@@ -38,8 +41,17 @@ export default function ContactsClient() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => watchAuthState((u) => setUser(u ?? false)), []);
+
+  // Checked post-mount, not during render: Capacitor's platform check
+  // only resolves correctly in the browser, so seeding it into render
+  // directly would render "web" on the server and "native" on the
+  // client's first paint — the same SSR/client mismatch already worked
+  // around elsewhere in this app (see lib/nativeContacts.ts).
+  useEffect(() => setIsNative(Capacitor.isNativePlatform()), []);
 
   useEffect(() => {
     if (user === null) return;
@@ -67,6 +79,10 @@ export default function ContactsClient() {
       setError("Le nom et l'e-mail sont requis.");
       return;
     }
+    if (!isValidEmail(email)) {
+      setError("Cette adresse e-mail ne semble pas valide.");
+      return;
+    }
     if (!auth.currentUser) return;
     setSaving(true);
     try {
@@ -85,6 +101,24 @@ export default function ContactsClient() {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleImportContact() {
+    setError(null);
+    setImporting(true);
+    try {
+      const picked = await pickNativeContact();
+      if (!picked) return; // not native, permission denied, or cancelled — leave the form as-is
+      if (picked.name) setName(picked.name);
+      if (picked.email) {
+        setEmail(picked.email);
+      } else {
+        setEmail("");
+        setError("Ce contact n'a pas d'e-mail enregistré — merci de le compléter avant d'ajouter.");
+      }
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -112,7 +146,9 @@ export default function ContactsClient() {
     <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
       <div className="mx-auto max-w-md px-6 py-12">
         <div className="flex items-center justify-between">
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>Ittsui</span>
+          <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+            Ittsui
+          </Link>
           <Link href="/dashboard" className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
             Tableau de bord
           </Link>
@@ -126,6 +162,16 @@ export default function ContactsClient() {
         </p>
 
         <div className="mt-6 space-y-2">
+          {isNative && (
+            <button
+              onClick={handleImportContact}
+              disabled={importing}
+              className="w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-60"
+              style={{ borderColor: BORDER, color: INK }}
+            >
+              {importing ? "Import..." : "Importer depuis mes contacts"}
+            </button>
+          )}
           <input
             type="text"
             placeholder="Nom"

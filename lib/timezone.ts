@@ -22,22 +22,48 @@ export function parisNow(): { dateStr: string; weekday: Weekday } {
 }
 
 // Converts an "HH:MM" Paris wall-clock time (today's Paris date unless a
-// specific YYYY-MM-DD is given) into the correct UTC instant. Works by
-// guessing the instant naively (as if HH:MM were already UTC), checking
-// what hour that guess actually renders as in Paris, then shifting by the
-// difference — self-correcting for CET (+1) vs CEST (+2) without needing
-// to hardcode either offset or their transition dates.
+// specific YYYY-MM-DD is given) into the correct UTC instant.
+//
+// Works by guessing the instant naively (as if HH:MM on the given date
+// were already UTC), rendering that guess back in Paris, then shifting by
+// the FULL timestamp gap between the render and the intended wall-clock
+// moment — not just an hour-of-day subtraction.
+//
+// That distinction is load-bearing, found via direct testing (not a
+// hypothetical): an earlier version compared bare hour numbers
+// (`h - parisHour`), which quietly breaks the moment the naive guess
+// lands on a different Paris calendar day than intended — e.g. any time
+// from 22:00-23:59 in summer (CEST, +2) or 23:00-23:59 in winter (CET,
+// +1), which is an every-single-day window, not a rare edge case, plus
+// two narrower cases right at the instant of each DST transition. In
+// those cases the "hour difference" stops being the small ±1/±2 offset
+// the old code assumed and becomes up to ±23, corrupting the result by
+// nearly a full day. Diffing full timestamps sidesteps the day-boundary
+// entirely; one correction pass handles the ordinary case, a second
+// absorbs the rare case where that first shift itself crosses into a
+// different DST regime.
 export function parisWallClockToUTCISOString(hhmm: string, dateStr?: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
   const anchorDate = dateStr ?? parisNow().dateStr;
-  const naiveUTC = new Date(`${anchorDate}T${hhmm}:00.000Z`);
-  const parisHourOfNaiveUTC = Number(
-    new Intl.DateTimeFormat("en-GB", { timeZone: PARIS_TZ, hour: "2-digit", hour12: false }).format(naiveUTC)
-  );
-  const offsetHours = h - parisHourOfNaiveUTC;
-  const corrected = new Date(naiveUTC.getTime() + offsetHours * 3600_000);
-  corrected.setUTCMinutes(m, 0, 0);
-  return corrected.toISOString();
+  const target = new Date(`${anchorDate}T${hhmm}:00.000Z`).getTime();
+
+  let guess = new Date(target);
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: PARIS_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(guess);
+    const get = (type: string) => parts.find((p) => p.type === type)!.value;
+    const hour = get("hour") === "24" ? "00" : get("hour"); // defensive: some ICU builds render midnight as "24"
+    const renderedAsUTC = new Date(`${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}:00.000Z`).getTime();
+    guess = new Date(guess.getTime() + (target - renderedAsUTC));
+  }
+
+  return guess.toISOString();
 }
 
 // Monday of the current week, as Paris's calendar reads it.

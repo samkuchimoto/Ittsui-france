@@ -329,12 +329,11 @@ export default function DashboardClient() {
           <button onClick={handleSignOut} className="mt-6 text-xs underline underline-offset-4" style={{ color: MUTED }}>
             Se déconnecter
           </button>
-          <button
-            onClick={handleDeleteAccount}
-            className="mt-2 block text-xs text-red-500 underline underline-offset-4"
-          >
-            Supprimer mon compte
-          </button>
+          <div className="mt-8 border-t pt-4" style={{ borderColor: BORDER }}>
+            <button onClick={handleDeleteAccount} className="text-xs text-red-500 underline underline-offset-4">
+              Supprimer mon compte
+            </button>
+          </div>
         </div>
       </Shell>
     );
@@ -347,14 +346,9 @@ export default function DashboardClient() {
     <Shell>
       <div className="flex items-center justify-between">
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>Cette semaine</h1>
-        <div className="flex flex-col items-end gap-1">
-          <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
-            Se déconnecter
-          </button>
-          <button onClick={handleDeleteAccount} className="text-xs text-red-500 underline underline-offset-4">
-            Supprimer mon compte
-          </button>
-        </div>
+        <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
+          Se déconnecter
+        </button>
       </div>
 
       {/* Momentum, not just this week's card — silent for a brand-new pair
@@ -463,6 +457,20 @@ export default function DashboardClient() {
 
       <div className="mt-8 border-t pt-6" style={{ borderColor: BORDER }}>
         <PasskeyManager />
+      </div>
+
+      {/* Deliberately separated from "Se déconnecter" above (they used to
+          sit side by side as two same-size underlined text links, an easy
+          mis-tap between a routine action and an irreversible one) — its
+          own labeled section at the very end of the page, matching the
+          usual "danger zone" placement convention. */}
+      <div className="mt-8 border-t pt-6" style={{ borderColor: BORDER }}>
+        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
+          Zone de danger
+        </p>
+        <button onClick={handleDeleteAccount} className="mt-3 text-xs text-red-500 underline underline-offset-4">
+          Supprimer mon compte
+        </button>
       </div>
     </Shell>
   );

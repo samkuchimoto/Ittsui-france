@@ -354,16 +354,23 @@ export default function Home() {
       <section className="px-6 pb-8 pt-4 sm:pb-12">
         <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
           <Reveal className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+            <span
+              className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
+              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+            >
+              Pas une appli de rencontre — un outil de maintien relationnel
+            </span>
             <h1
-              className="leading-[1.08]"
+              className="mt-4 leading-[1.08]"
               style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
             >
               Protégez vos relations précieuses contre l&apos;érosion du quotidien.
             </h1>
             <p className="mx-auto mt-5 max-w-md text-[17px] lg:mx-0" style={{ color: MUTED }}>
-              Ittsui est un outil de maintien relationnel conçu pour préserver vos liens existants (proches,
-              partenaire, famille) malgré le travail et la routine. Une proposition unique par semaine, validable en
-              1 clic—sans aucun agenda à gérer.
+              Entre la charge de travail et le manque de temps, on finit par perdre de vue les gens qui
+              comptent — sans jamais l&apos;avoir décidé. Ittsui l&apos;empêche : une proposition unique par
+              semaine, pour un(e) proche, un(e) partenaire ou la famille, validable en un clic, sans aucun
+              agenda à gérer ni charge mentale supplémentaire.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
               <Link

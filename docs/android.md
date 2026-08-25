@@ -160,6 +160,77 @@ tokens) instead of the raw Web API. Test on a real device or emulator before tru
 this exact class of "looks right in the diff, unverified on a real device" mistake is precisely
 what this project's own rules warn against.
 
+## Native contact picker — IMPLEMENTED, NOT VERIFIED ON A REAL DEVICE
+
+Added 2026-08-25 (`@capacitor-community/contacts` v8.0.0) so someone can pick a recipient from
+their phone's real address book instead of typing a name and email — the concrete gap identified
+while working through a "70-year-old picking up her grandson at the airport" scenario, where
+typing anything at all was the friction point. `lib/nativeContacts.ts` wraps it (same
+`Capacitor.isNativePlatform()`-guarded, dynamic-`import()` pattern as `lib/nativePush.ts`), wired
+into an "Importer depuis mes contacts" button on `/contacts` (`ContactsClient.tsx`) and `/request/new`
+(`RequestFormClient.tsx`, both its normal and "Mode simple" flows).
+
+Deliberately uses the plugin's `pickContact()` — opens the OS's own single-contact picker UI —
+not `getContacts()`, which returns the whole address book and would need a custom in-app list plus
+a broader permission grant for something someone only ever does once. This is also the real reason
+a native plugin is needed here at all rather than the browser Contact Picker API: that Web API was
+checked this session and does not work reliably inside a bare Capacitor remote-URL WebView on
+either platform.
+
+What was actually verified, without a device:
+- The plugin's real API and Android permission behavior, by reading its TypeScript definitions and
+  Java/Swift source directly (not assumed from its docs) — confirmed `pickContact()` is the right
+  method, and that Android's `ContactsPlugin.java` groups `READ_CONTACTS`/`WRITE_CONTACTS` under
+  one Capacitor permission alias (`"contacts"`) that gets checked as a whole, which is why both are
+  declared in `AndroidManifest.xml` even though Ittsui never writes to a device's address book.
+- `NSContactsUsageDescription` added to `ios/App/App/Info.plist` (iOS has no separate read-only
+  permission for its Contacts framework).
+- `npx tsc --noEmit` and `npm run build` both pass; the production server (`npm run start`) serves
+  `/contacts` and `/request/new` without a server-side crash.
+
+What was NOT verified, because no physical Android/iOS device or emulator was available: whether
+the permission prompt actually appears, whether the native picker UI actually opens, and whether a
+picked contact's data actually flows back correctly. Same status this file already uses for the
+GPS gap above — treat this as "should work," not "confirmed working," until tested on a real
+device before/during closed testing.
+
+## Voice name search — IMPLEMENTED, NOT VERIFIED ON A REAL DEVICE
+
+Added 2026-08-25 (`@capacitor-community/speech-recognition` v7.0.1), for the "hands busy at the
+airport" scenario the contact picker above was also built for: say a contact's name instead of
+tapping through a chip list. `lib/nativeSpeech.ts` wraps it (same
+`Capacitor.isNativePlatform()`-guarded, dynamic-`import()` pattern as `lib/nativePush.ts` and
+`lib/nativeContacts.ts`), wired into a "🎤 Dire un nom" button on `/request/new`
+(`RequestFormClient.tsx`).
+
+Deliberately narrow in scope: voice only replaces the recipient-search step. Venue category, date,
+and time all stay tap-only — those are exactly the fields most likely to get misheard, and this
+project already had to harden `lib/parseMeetingRequest.ts` once against unreliable date handling by
+moving date *computation* out of the model entirely. The name a person says is matched, via plain
+string filtering (`extractNameFromVoiceTranscript` in `RequestFormClient.tsx`, not an LLM call),
+only against that signed-in user's own already-saved contacts — it never creates a new contact from
+voice, and a match is never applied silently: it always surfaces as a "Tad Martin ?" / Oui / Non
+confirmation first, since a misheard name landing on the wrong recipient is worse here than
+anywhere else in the app.
+
+What was actually verified, without a device:
+- The plugin's real resolve behavior, by reading its Android (Java) and iOS (Swift) source
+  directly: with `partialResults: false`, both platforms resolve `start()` exactly once, with the
+  final transcript — Android only calls back on ASR's `onResults`, and iOS sets
+  `shouldReportPartialResults = false` on the recognition request itself.
+- Android needs `RECORD_AUDIO` (declared in `AndroidManifest.xml`, and the plugin's own manifest
+  already carries it too); iOS needs both `NSSpeechRecognitionUsageDescription` (its
+  `SFSpeechRecognizer`) and `NSMicrophoneUsageDescription` (the underlying `AVAudioEngine` capture)
+  in `Info.plist` — added.
+- `npx tsc --noEmit` and `npm run build` both pass; the production server serves `/request/new`
+  without a server-side crash.
+
+What was NOT verified, because no physical Android/iOS device or emulator was available: whether
+the mic permission prompt actually appears, whether French (`fr-FR`) recognition is actually
+accurate enough for real names in real noisy conditions (an airport, notably), and whether a
+result actually flows back and matches correctly end to end. Same status as the contact picker and
+the GPS gap above — "should work," not "confirmed working," until tested on a real device.
+
 ## Not yet implemented
 
 - Play Store listing, screenshots, content rating, Data Safety form — all Play Console UI work,

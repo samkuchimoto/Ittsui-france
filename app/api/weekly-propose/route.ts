@@ -47,10 +47,39 @@
 //   at. Cafe/restaurant stay Paris-only for the same reason; "home" always
 //   resolves everywhere. This is an honest partial step toward nationwide
 //   coverage, not the finished thing — see departmentFromPostalCode().
+//
+//   ALSO CHANGED (2026-08-24): confirmation text gets a best-effort warmth
+//   pass via lib/groq.ts, but ONLY for tiers 2/3 — the RAG tier already
+//   returns its own LLM-authored text from that service's precompute job,
+//   so this doesn't double up on it. This is a direct, interim Groq call
+//   (GROQ_API_KEY was sitting configured and unused since the RAG-service
+//   refactor moved the old inline call out of this route entirely) — it
+//   rewrites the ALREADY-DETERMINISTICALLY-CHOSEN venue's confirmation
+//   line into something warmer, it never influences which venue gets
+//   picked. Bounded and best-effort like everything else here: on any
+//   failure or timeout, the existing deterministic template string is used
+//   unchanged, so this can never be the reason a Friday proposal doesn't
+//   go out.
+//
+//   ALSO CHANGED (2026-08-24): a real-weather pass, applied BEFORE tiers
+//   2/3 pick a venue, not after. If Open-Meteo (lib/weather.ts) reports
+//   rain likely for the pair's metro on the actual meeting date, and
+//   "park" is one of this pair's preferences, park is dropped from the
+//   preference list for this run only — the existing preference-walk logic
+//   in both tiers then naturally lands on whatever's next (or "cafe" as
+//   its own existing default, unchanged). This is deliberately a filter on
+//   the INPUT to the existing deterministic selection, not a new selection
+//   path of its own — the venue-picking logic itself never changes. The
+//   weather call is best-effort like the RAG tier: timeout, network error,
+//   an unsupported metro, or a forecast date too far out all resolve to
+//   "no signal," and the pair's original preferences are used exactly as
+//   before this existed.
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
+import { generateWarmConfirmation } from "@/lib/confirmationText";
+import { getWeatherSignal } from "@/lib/weather";
 import type { Pair, VenueOption, VenueType } from "@/lib/types";
 import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from "@/lib/timezone";
@@ -97,7 +126,7 @@ export async function GET(request: Request) {
     .where("subscriptionStatus", "in", ["active", "trialing"])
     .get();
 
-  const results: { pairId: string; status: string; source?: string }[] = [];
+  const results: { pairId: string; status: string; source?: string; weatherSwapped?: boolean }[] = [];
 
   for (const pairDoc of pairsSnap.docs) {
     const pair = { id: pairDoc.id, ...pairDoc.data() } as Pair;
@@ -116,11 +145,16 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const proposal = await getFridayProposal(pair, weekOf);
+    const { pair: weatherPair, swapNote } = await weatherAdjustPair(pair, weekOf);
+
+    const proposal = await getFridayProposal(weatherPair, weekOf);
     if (!proposal) {
       results.push({ pairId: pair.id, status: "no_venues_available" });
       continue;
     }
+
+    const confirmationText =
+      proposal.source === "rag-service" ? proposal.confirmationText : await withWarmConfirmation(pair, proposal, swapNote);
 
     const proposedTime = buildProposedTime(pair.agreedWindowStart);
 
@@ -131,7 +165,7 @@ export async function GET(request: Request) {
       weekOf,
       venueName: proposal.optionA.venueName,
       venueAddress: proposal.optionA.venueAddress,
-      confirmationText: proposal.confirmationText,
+      confirmationText,
       proposedTime,
       status: "proposed",
       responses: { [pair.userIds[0]]: null, [pair.userIds[1]]: null },
@@ -139,11 +173,11 @@ export async function GET(request: Request) {
       ...(proposal.optionB ? { optionB: proposal.optionB } : {}),
     });
 
-    const notifyResults = await notifyBothUsers(pair, proposal.confirmationText);
+    const notifyResults = await notifyBothUsers(pair, confirmationText);
     await weekRef.update({
       notificationLog: [{ event: "proposed", sentAt: new Date().toISOString(), results: notifyResults }],
     });
-    results.push({ pairId: pair.id, status: "proposed", source: proposal.source });
+    results.push({ pairId: pair.id, status: "proposed", source: proposal.source, weatherSwapped: Boolean(swapNote) });
   }
 
   return NextResponse.json({ weekOf, results });
@@ -156,8 +190,82 @@ export async function GET(request: Request) {
 function isDueToday(pair: Pair, today: (typeof WEEKDAYS)[number]): boolean {
   const leadDays = pair.notifyDaysBefore ?? 0;
   const meetingIndex = WEEKDAYS.indexOf(pair.agreedDay);
-  const notifyIndex = (meetingIndex - leadDays + WEEKDAYS.length) % WEEKDAYS.length;
+  // Double-modulo, not a single "+7" correction: found directly in testing
+  // that leadDays >= 14 makes (meetingIndex - leadDays + 7) go negative
+  // again, producing a negative array index -> WEEKDAYS[notifyIndex] is
+  // undefined -> this pair's weekly proposal silently never fires again,
+  // permanently. invite-partner/route.ts's Zod schema now caps
+  // notifyDaysBefore at 6, but this is the function whose failure mode is
+  // catastrophic (breaks the entire product loop with no error anywhere)
+  // — worth being correct on its own regardless of what validates the
+  // input upstream, not dependent on a single point of defense.
+  const notifyIndex = (((meetingIndex - leadDays) % WEEKDAYS.length) + WEEKDAYS.length) % WEEKDAYS.length;
   return WEEKDAYS[notifyIndex] === today;
+}
+
+// Best-effort warmth pass over an already-deterministically-chosen venue's
+// confirmation text (tiers 2/3 only — see AUDIT NOTE above). Falls back to
+// the tier's own template string on any failure, so this never blocks or
+// alters a proposal, only its wording.
+async function withWarmConfirmation(pair: Pair, proposal: VenueProposal, weatherSwapNote: string | null): Promise<string> {
+  const streakCount = await getConfirmedStreakCount(pair.id);
+  const warm = await generateWarmConfirmation({
+    venueName: proposal.optionA.venueName,
+    day: dayLabel(pair.agreedDay),
+    time: pair.agreedWindowStart,
+    partnerName: pair.partnerName,
+    streakCount,
+    weatherSwapNote,
+  });
+  return warm ?? proposal.confirmationText;
+}
+
+// Filters "park" out of a pair's venue-type preferences, for this run
+// only, when rain is actually likely on their actual meeting date — never
+// mutates the stored Pair doc. Returns the ORIGINAL pair unchanged (and a
+// null swapNote) whenever weather is unavailable, park isn't even one of
+// this pair's preferences, or rain isn't likely — so the vast majority of
+// calls are a single skipped fetch, not a wasted one: the weather lookup
+// itself is only attempted when park is actually in play.
+async function weatherAdjustPair(pair: Pair, weekOf: string): Promise<{ pair: Pair; swapNote: string | null }> {
+  if (!pair.preferences.venueTypes.includes("park")) return { pair, swapNote: null };
+
+  const metro = departmentFromPostalCode(pair.postalCode) ?? "paris";
+  const weather = await getWeatherSignal(metro, weekOf, pair.agreedDay);
+  if (!weather || !weather.rainLikely) return { pair, swapNote: null };
+
+  const adjustedTypes = pair.preferences.venueTypes.filter((t) => t !== "park");
+  return {
+    pair: {
+      ...pair,
+      preferences: {
+        ...pair.preferences,
+        venueTypes: adjustedTypes.length ? adjustedTypes : (["cafe"] as VenueType[]),
+      },
+    },
+    swapNote: "pluie probable, une option en intérieur a été proposée à la place",
+  };
+}
+
+// How many past weeks this pair has actually confirmed — used only to give
+// the warm confirmation line real context to reference (e.g. "12 semaines
+// déjà partagées"), never shown as its own streak/counter UI (see AGENTS.md
+// on avoiding dependency-loop mechanics). Best-effort: a Firestore error
+// here just means the line is generated without that context, not that the
+// whole proposal fails.
+async function getConfirmedStreakCount(pairId: string): Promise<number | null> {
+  try {
+    const snap = await adminDb
+      .collection("pairs")
+      .doc(pairId)
+      .collection("weeks")
+      .where("status", "==", "confirmed")
+      .count()
+      .get();
+    return snap.data().count;
+  } catch {
+    return null;
+  }
 }
 
 // --- API Independence Pattern: RAG service primary, deterministic fallback chain ---
