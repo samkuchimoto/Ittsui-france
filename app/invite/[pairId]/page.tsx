@@ -15,6 +15,7 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { dayLabel } from "@/lib/dayLabel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -33,16 +34,6 @@ const workSans = Work_Sans({
 });
 
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "activated" | "error";
-
-const DAY_LABEL: Record<string, string> = {
-  mon: "lundi",
-  tue: "mardi",
-  wed: "mercredi",
-  thu: "jeudi",
-  fri: "vendredi",
-  sat: "samedi",
-  sun: "dimanche",
-};
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -197,7 +188,7 @@ export default function InvitePage() {
           Vous êtes lié(e) à {activated.partnerName ?? "cette personne"}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Rendez-vous chaque {DAY_LABEL[activated.agreedDay] ?? activated.agreedDay}, vers {activated.agreedWindowStart}
+          Rendez-vous chaque {dayLabel(activated.agreedDay)}, vers {activated.agreedWindowStart}
           . La première proposition arrive automatiquement, sans rien à faire d&apos;ici là.
         </p>
         <button

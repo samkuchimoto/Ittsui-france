@@ -80,15 +80,4 @@ export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyR
   return results;
 }
 
-export function dayLabel(day: Pair["agreedDay"]): string {
-  const labels: Record<Pair["agreedDay"], string> = {
-    mon: "lundi",
-    tue: "mardi",
-    wed: "mercredi",
-    thu: "jeudi",
-    fri: "vendredi",
-    sat: "samedi",
-    sun: "dimanche",
-  };
-  return labels[day];
-}
+export { dayLabel } from "@/lib/dayLabel";
