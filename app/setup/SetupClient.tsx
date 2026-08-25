@@ -570,13 +570,18 @@ export default function SetupClient() {
                     </>
                   );
                 })()}
+                {/* Snapchat named explicitly — see /request/new's identical
+                    comment: 90% of French Gen Z uses it, but its deep links
+                    are username- not phone-number-based, so it's reachable
+                    here (native share -> pick Snapchat) rather than via its
+                    own dedicated button the way WhatsApp/SMS have. */}
                 <button
                   type="button"
                   onClick={handleShare}
                   className="w-full rounded-full border py-3 text-sm font-medium"
                   style={{ borderColor: BORDER, color: MUTED }}
                 >
-                  Autre appli...
+                  Snapchat, Messenger, ou une autre appli...
                 </button>
               </div>
               {copied && (

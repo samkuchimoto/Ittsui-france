@@ -5,15 +5,16 @@
 // name and email by hand — the actual friction point identified for a
 // low-tech-literacy user picking who to send an ad-hoc meeting request to.
 //
-// Deliberately uses pickContact() (opens the OS's own native contact
-// picker for a single contact), not getContacts() (which returns the
-// entire address book and would need a custom in-app list UI plus a
-// broader permission grant for something someone only ever wants once).
-// pickContact is the closest native analog to the browser's Contact
-// Picker API, which real testing this session found does NOT work
-// reliably inside a bare Capacitor WebView on either platform (see the
-// AI-opportunities/UX research from this session) — this plugin is what
-// actually closes that gap, not the web API.
+// pickContact() opens the OS's own native contact picker for a single
+// contact — the closest native analog to the browser's Contact Picker
+// API, which real testing this session found does NOT work reliably
+// inside a bare Capacitor WebView on either platform. listNativeContacts()
+// below uses getContacts() instead (the full address book) — originally
+// skipped in favor of pickContact() alone, until a real-user request
+// specifically asked for a WhatsApp-style "browse my own contacts inside
+// the app, tap one, go straight into it" flow, which the OS single-picker
+// dialog can't give (it always hands control back to the OS picker UI,
+// not Ittsui's own list).
 //
 // IMPLEMENTED BUT NOT VERIFIED ON A REAL DEVICE — same honest status
 // docs/android.md already uses for the geolocation gap. No physical
@@ -70,5 +71,42 @@ export async function pickNativeContact(): Promise<PickedContact | null> {
     // Includes the person cancelling the native picker — that's a normal,
     // expected outcome here, not something to surface as an error.
     return null;
+  }
+}
+
+// Full address book, for an in-app browsable list rather than the OS's
+// own single-pick dialog. Sorted by name (device contact stores don't
+// guarantee an order) and filtered down to contacts with an actual name
+// and at least one way to reach them — an entry with neither is not
+// something anyone could tap to use here anyway. Same permission alias as
+// pickNativeContact() above (already covered by the existing
+// AndroidManifest.xml/Info.plist declarations — no new permission is
+// needed for this).
+export async function listNativeContacts(): Promise<PickedContact[]> {
+  if (!Capacitor.isNativePlatform()) return [];
+
+  try {
+    const { Contacts } = await import("@capacitor-community/contacts");
+
+    const permission = await Contacts.checkPermissions();
+    if (permission.contacts !== "granted" && permission.contacts !== "limited") {
+      const requested = await Contacts.requestPermissions();
+      if (requested.contacts !== "granted" && requested.contacts !== "limited") return [];
+    }
+
+    const { contacts } = await Contacts.getContacts({
+      projection: { name: true, emails: true, phones: true },
+    });
+
+    return contacts
+      .map((contact) => ({
+        name: contact.name?.display ?? null,
+        email: contact.emails?.[0]?.address ?? null,
+        phone: contact.phones?.[0]?.number ?? null,
+      }))
+      .filter((c): c is PickedContact & { name: string } => Boolean(c.name && (c.email || c.phone)))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  } catch {
+    return [];
   }
 }

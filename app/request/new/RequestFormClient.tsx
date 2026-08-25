@@ -21,7 +21,7 @@ import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGri
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 import { fetchNearbyVenueSuggestions } from "@/lib/geoVenueSuggestions";
 import { isValidEmail } from "@/lib/validation";
-import { pickNativeContact } from "@/lib/nativeContacts";
+import { pickNativeContact, listNativeContacts, type PickedContact } from "@/lib/nativeContacts";
 import { listenOnce } from "@/lib/nativeSpeech";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber, normalizePhoneForShare } from "@/lib/phoneShareLinks";
@@ -182,6 +182,15 @@ export default function RequestFormClient() {
   const [listeningForName, setListeningForName] = useState(false);
   const [voiceCandidate, setVoiceCandidate] = useState<Contact | null>(null);
   const [signingIn, setSigningIn] = useState(false);
+  // null = not opened yet, [] = opened and genuinely empty/denied, array =
+  // loaded. Distinct from `contacts` above (this user's own saved Ittsui
+  // address book) — this is the raw phone address book, browsable in-app
+  // rather than one-at-a-time through the OS's own picker dialog, per a
+  // real request: "like I can WhatsApp people directly [from my phone
+  // contacts], I want to Ittsui people directly."
+  const [phoneContacts, setPhoneContacts] = useState<PickedContact[] | null>(null);
+  const [loadingPhoneContacts, setLoadingPhoneContacts] = useState(false);
+  const [phoneContactSearch, setPhoneContactSearch] = useState("");
 
   // Checked post-mount, not during render: Capacitor's platform check only
   // resolves correctly in the browser, so seeding it into render directly
@@ -363,6 +372,49 @@ export default function RequestFormClient() {
   // In the full form the manual fields make the fill itself visible, so
   // this persists there too only to save a redundant retype, not to make
   // the selection legible.
+  // Shared by handleImportContact (OS single-pick dialog) and
+  // handlePickPhoneContact (the in-app browsable list below) — both end up
+  // with the same PickedContact shape and need the same "which identifier
+  // does this actually have, and should simple mode remember it" handling.
+  async function applyPickedContact(picked: PickedContact) {
+    const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+
+    if (!hasValidEmail && !picked.phone) {
+      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+      if (picked.name) update("recipientName", picked.name);
+      return;
+    }
+
+    if (!hasValidEmail) {
+      // Phone-only device contact — the overwhelmingly common case for a
+      // real phone address book.
+      const phone = picked.phone!;
+      update("recipientName", picked.name || phone);
+      update("recipientPhone", phone);
+      update("recipientEmail", "");
+      if (simpleMode) {
+        const result = await saveContactIfNew(picked.name || phone, { phone });
+        if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
+      }
+      return;
+    }
+
+    // Lowercased to match how /api/contacts always normalizes and returns
+    // emails — device contacts are often mixed-case, and without this the
+    // chip-highlight check below (a strict ===) would silently never
+    // match, leaving simple mode with no visible confirmation of who got
+    // selected.
+    const email = picked.email!.toLowerCase();
+    update("recipientName", picked.name || email);
+    update("recipientEmail", email);
+    update("recipientPhone", "");
+
+    if (simpleMode) {
+      const result = await saveContactIfNew(picked.name || email, { email });
+      if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
+    }
+  }
+
   async function handleImportContact() {
     setError(null);
     setVoiceCandidate(null); // don't leave a stale voice confirm card showing alongside this
@@ -370,46 +422,40 @@ export default function RequestFormClient() {
     try {
       const picked = await pickNativeContact();
       if (!picked) return; // not native, permission denied, or cancelled
-
-      const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
-
-      if (!hasValidEmail && !picked.phone) {
-        setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
-        if (picked.name) update("recipientName", picked.name);
-        return;
-      }
-
-      if (!hasValidEmail) {
-        // Phone-only device contact — the overwhelmingly common case for a
-        // real phone address book.
-        const phone = picked.phone!;
-        update("recipientName", picked.name || phone);
-        update("recipientPhone", phone);
-        update("recipientEmail", "");
-        if (simpleMode) {
-          const result = await saveContactIfNew(picked.name || phone, { phone });
-          if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
-        }
-        return;
-      }
-
-      // Lowercased to match how /api/contacts always normalizes and returns
-      // emails — device contacts are often mixed-case, and without this the
-      // chip-highlight check below (a strict ===) would silently never
-      // match, leaving simple mode with no visible confirmation of who got
-      // selected.
-      const email = picked.email!.toLowerCase();
-      update("recipientName", picked.name || email);
-      update("recipientEmail", email);
-      update("recipientPhone", "");
-
-      if (simpleMode) {
-        const result = await saveContactIfNew(picked.name || email, { email });
-        if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
-      }
+      await applyPickedContact(picked);
     } finally {
       setImportingContact(false);
     }
+  }
+
+  // "Like I can WhatsApp people directly [from my phone contacts], I want
+  // to Ittsui people directly" — pickNativeContact() above always hands
+  // control to the OS's own one-at-a-time picker dialog; this instead
+  // loads the whole address book once into an in-app, searchable list, so
+  // picking someone feels the same as opening a chat app and tapping a
+  // name — no dialog round-trip in between.
+  async function handleBrowsePhoneContacts() {
+    setError(null);
+    setVoiceCandidate(null);
+    setLoadingPhoneContacts(true);
+    try {
+      const list = await listNativeContacts();
+      setPhoneContacts(list);
+    } finally {
+      setLoadingPhoneContacts(false);
+    }
+  }
+
+  async function handlePickPhoneContact(picked: PickedContact) {
+    setPhoneContacts(null); // close the list immediately — tap, then go, not tap-then-still-browsing
+    setPhoneContactSearch("");
+    await applyPickedContact(picked);
+    // Matches the directness of the ask: picking straight from the phone's
+    // own contact list is exactly simple mode's target scenario (minimal
+    // fields, big targets, no manual typing), so land there automatically
+    // instead of requiring a second, separate tap to turn it on.
+    setSimpleMode(true);
+    localStorage.setItem(SIMPLE_MODE_KEY, "1");
   }
 
   // Voice only ever searches this person's own already-saved Ittsui
@@ -687,13 +733,23 @@ export default function RequestFormClient() {
                       </>
                     );
                   })()}
+                  {/* Snapchat specifically named, not left as a generic
+                      "share somewhere" label: 90% of French Gen Z uses
+                      Snapchat (Statista, 2026) — the single most relevant
+                      app for exactly who this flow is built around — but
+                      unlike WhatsApp/SMS, Snapchat's own deep links are
+                      username-based, not phone-number-based, so there's no
+                      way to address a chat to this number directly the
+                      way the two buttons above do. It's still reachable
+                      right here, just one tap further in (native share ->
+                      pick Snapchat -> pick the person there). */}
                   <button
                     type="button"
                     onClick={handleShareRequestLink}
                     className="w-full rounded-full border py-3 text-sm font-medium"
                     style={{ borderColor: BORDER, color: MUTED }}
                   >
-                    Autre appli...
+                    Snapchat, Messenger, ou une autre appli...
                   </button>
                 </div>
               </>
@@ -797,7 +853,7 @@ export default function RequestFormClient() {
                   </div>
                 </div>
               )}
-              {isNative && !voiceCandidate && (
+              {isNative && !voiceCandidate && !phoneContacts && (
                 <button
                   type="button"
                   onClick={handleImportContact}
@@ -812,7 +868,76 @@ export default function RequestFormClient() {
                   {importingContact ? "Import..." : "Importer depuis mes contacts"}
                 </button>
               )}
-              {contacts.length > 0 && (
+              {/* "Like I can WhatsApp people directly [from my phone
+                  contacts], I want to Ittsui people directly" — browses the
+                  whole address book in-app instead of the OS's one-at-a-
+                  time picker dialog above, so picking someone feels like
+                  opening a chat app and tapping a name. */}
+              {isNative && !voiceCandidate && !phoneContacts && (
+                <button
+                  type="button"
+                  onClick={handleBrowsePhoneContacts}
+                  disabled={loadingPhoneContacts}
+                  className={
+                    simpleMode
+                      ? "mt-2 min-h-[56px] w-full rounded-2xl border text-lg font-medium disabled:opacity-60"
+                      : "mt-2 w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-60"
+                  }
+                  style={{ borderColor: BORDER, color: INK }}
+                >
+                  {loadingPhoneContacts ? "Chargement..." : "Voir tous mes contacts"}
+                </button>
+              )}
+              {phoneContacts && (
+                <div className="mt-2 rounded-2xl border p-3" style={{ borderColor: BORDER }}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Rechercher un nom..."
+                      value={phoneContactSearch}
+                      onChange={(e) => setPhoneContactSearch(e.target.value)}
+                      autoFocus
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      style={{ borderColor: BORDER }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhoneContacts(null);
+                        setPhoneContactSearch("");
+                      }}
+                      className="shrink-0 text-xs underline underline-offset-4"
+                      style={{ color: MUTED }}
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                  {phoneContacts.length === 0 ? (
+                    <p className="mt-3 text-sm" style={{ color: MUTED }}>
+                      Aucun contact trouvé sur ce téléphone.
+                    </p>
+                  ) : (
+                    <div className="mt-2 max-h-72 divide-y overflow-y-auto" style={{ borderColor: BORDER }}>
+                      {phoneContacts
+                        .filter((c) => (c.name ?? "").toLowerCase().includes(phoneContactSearch.trim().toLowerCase()))
+                        .map((c, i) => (
+                          <button
+                            key={`${c.name}-${c.phone ?? c.email}-${i}`}
+                            type="button"
+                            onClick={() => handlePickPhoneContact(c)}
+                            className="block w-full py-3 text-left"
+                          >
+                            <span className="block truncate text-sm font-medium">{c.name}</span>
+                            <span className="block truncate text-xs" style={{ color: MUTED }}>
+                              {c.phone || c.email}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!phoneContacts && contacts.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
                   {contacts.map((c) => {
                     // A contact has either an email or a phone (never
@@ -838,7 +963,7 @@ export default function RequestFormClient() {
                   })}
                 </div>
               )}
-              {simpleMode ? (
+              {phoneContacts ? null : simpleMode ? (
                 <>
                   {contacts.length === 0 && (
                     <p className="mt-2 text-sm" style={{ color: MUTED }}>
