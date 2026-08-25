@@ -19,15 +19,35 @@ const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
 const VENUE_TYPES = ["cafe", "restaurant", "home", "park", "museum"] as const;
 
-const createSchema = z.object({
-  recipientName: z.string().trim().min(1).max(200),
-  recipientEmail: z.string().trim().email().max(320),
-  venueName: z.string().trim().min(1).max(200),
-  venueAddress: z.string().trim().min(1).max(300),
-  venueType: z.enum(VENUE_TYPES).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date invalide"),
-  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure invalide"),
-});
+// Real people overwhelmingly know a friend's phone number, not their
+// email (2026-08-25 real-user test: an email-only recipient field caused
+// an under-10-second abandonment) — email is optional now, but at least
+// one of email/phone is still required by the refine below. Phone format
+// is deliberately loose: French numbers get written many ways (+33 6 12
+// 34 56 78, 06 12 34 56 78, with dots/spaces/dashes), and this number is
+// never parsed or dialed by this app, only displayed back and handed to
+// the sender's own share sheet — a strict E.164 check would reject real
+// numbers for no actual benefit.
+const createSchema = z
+  .object({
+    recipientName: z.string().trim().min(1).max(200),
+    recipientEmail: z.string().trim().email().max(320).optional(),
+    recipientPhone: z
+      .string()
+      .trim()
+      .min(6)
+      .max(30)
+      .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
+      .optional(),
+    venueName: z.string().trim().min(1).max(200),
+    venueAddress: z.string().trim().min(1).max(300),
+    venueType: z.enum(VENUE_TYPES).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date invalide"),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure invalide"),
+  })
+  .refine((data) => data.recipientEmail || data.recipientPhone, {
+    message: "indiquez un e-mail ou un numéro de téléphone",
+  });
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -39,13 +59,14 @@ export async function POST(request: Request) {
   }
 
   const { recipientName, venueName, venueAddress, venueType, date, time } = parsed.data;
-  const recipientEmail = parsed.data.recipientEmail.toLowerCase();
+  const recipientEmail = parsed.data.recipientEmail?.toLowerCase();
+  const recipientPhone = parsed.data.recipientPhone;
 
   const senderSnap = await adminDb.collection("users").doc(uid).get();
   const senderName: string = senderSnap.data()?.displayName ?? "Quelqu'un sur Ittsui";
   const senderEmail: string | null = senderSnap.data()?.email ?? null;
 
-  if (senderEmail && senderEmail.toLowerCase() === recipientEmail) {
+  if (recipientEmail && senderEmail && senderEmail.toLowerCase() === recipientEmail) {
     return NextResponse.json({ error: "vous ne pouvez pas vous envoyer une demande à vous-même" }, { status: 400 });
   }
 
@@ -58,7 +79,8 @@ export async function POST(request: Request) {
     senderName,
     senderEmail,
     recipientName,
-    recipientEmail,
+    ...(recipientEmail ? { recipientEmail } : {}),
+    ...(recipientPhone ? { recipientPhone } : {}),
     venueName,
     venueAddress,
     ...(venueType ? { venueType } : {}),
@@ -70,39 +92,47 @@ export async function POST(request: Request) {
   });
 
   const requestUrl = `${process.env.NEXT_PUBLIC_APP_URL}/request/${ref.id}`;
-  const calendarUrl = googleCalendarLink({
-    title: `${venueName} avec ${senderName} — Ittsui`,
-    details: `Proposition de rendez-vous via Ittsui. Répondre ici : ${requestUrl}`,
-    venueAddress,
-    date,
-    time,
-  });
 
-  const recipientEmailSent = await sendEmail({
-    to: recipientEmail,
-    subject: `${senderName} vous propose un rendez-vous sur Ittsui`,
-    text:
-      `${senderName} vous propose de vous retrouver :\n\n` +
-      `Lieu : ${venueName} (${venueAddress})\n` +
-      `Date : ${date} à ${time}\n\n` +
-      `Pour accepter ou décliner, connectez-vous ici : ${requestUrl}\n` +
-      `Ajouter à Google Agenda (dès maintenant, avant même de répondre) : ${calendarUrl}\n\n` +
-      `Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.`,
-    html:
-      `<p>${escapeHtml(senderName)} vous propose de vous retrouver :</p>` +
-      `<p><strong>Lieu :</strong> ${escapeHtml(venueName)} (${escapeHtml(venueAddress)})<br>` +
-      `<strong>Date :</strong> ${escapeHtml(date)} à ${escapeHtml(time)}</p>` +
-      `<p><a href="${requestUrl}">Accepter ou décliner</a></p>` +
-      `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)</p>` +
-      `<p style="color:#8A8378;font-size:12px">Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.</p>`,
-  });
+  // No email on file at all (phone-only) — there's nothing to send server-
+  // side (no SMS provider exists in this app). The client shows a
+  // share-this-link-yourself flow instead (lib/shareLink.ts) using
+  // requestUrl below, so this isn't a dead end, just a different delivery
+  // path than email.
+  let recipientEmailSent: boolean | undefined;
+  if (recipientEmail) {
+    const calendarUrl = googleCalendarLink({
+      title: `${venueName} avec ${senderName} — Ittsui`,
+      details: `Proposition de rendez-vous via Ittsui. Répondre ici : ${requestUrl}`,
+      venueAddress,
+      date,
+      time,
+    });
+    recipientEmailSent = await sendEmail({
+      to: recipientEmail,
+      subject: `${senderName} vous propose un rendez-vous sur Ittsui`,
+      text:
+        `${senderName} vous propose de vous retrouver :\n\n` +
+        `Lieu : ${venueName} (${venueAddress})\n` +
+        `Date : ${date} à ${time}\n\n` +
+        `Pour accepter ou décliner, connectez-vous ici : ${requestUrl}\n` +
+        `Ajouter à Google Agenda (dès maintenant, avant même de répondre) : ${calendarUrl}\n\n` +
+        `Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.`,
+      html:
+        `<p>${escapeHtml(senderName)} vous propose de vous retrouver :</p>` +
+        `<p><strong>Lieu :</strong> ${escapeHtml(venueName)} (${escapeHtml(venueAddress)})<br>` +
+        `<strong>Date :</strong> ${escapeHtml(date)} à ${escapeHtml(time)}</p>` +
+        `<p><a href="${requestUrl}">Accepter ou décliner</a></p>` +
+        `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)</p>` +
+        `<p style="color:#8A8378;font-size:12px">Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.</p>`,
+    });
 
-  // Persisted, not just returned in this one response — same reasoning as
-  // invite-partner/route.ts's partnerEmailSent: the sender needs to be able
-  // to see real delivery status later, not just at send time.
-  await ref.update({ recipientEmailSent });
+    // Persisted, not just returned in this one response — same reasoning as
+    // invite-partner/route.ts's partnerEmailSent: the sender needs to be able
+    // to see real delivery status later, not just at send time.
+    await ref.update({ recipientEmailSent });
+  }
 
-  return NextResponse.json({ id: ref.id, status: "pending", recipientEmailSent });
+  return NextResponse.json({ id: ref.id, status: "pending", recipientEmailSent: recipientEmailSent ?? null, requestUrl });
 }
 
 // Only ever interpolates this app's own data (names, addresses, ittsui.fr

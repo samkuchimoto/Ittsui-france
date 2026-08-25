@@ -23,9 +23,18 @@ import { fetchNearbyVenueSuggestions } from "@/lib/geoVenueSuggestions";
 import { isValidEmail } from "@/lib/validation";
 import { pickNativeContact } from "@/lib/nativeContacts";
 import { listenOnce } from "@/lib/nativeSpeech";
+import { shareLink } from "@/lib/shareLink";
+import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { mostRecentByCreatedAt } from "@/lib/sort";
+import { useUserLocation } from "@/app/hooks/useUserLocation";
+import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+
+const LOCATION_STEPS: StatusStep[] = [
+  { key: "locating", label: "Détection de votre position..." },
+  { key: "resolving", label: "Sélection des lieux..." },
+];
 
 const SIMPLE_MODE_KEY = "ittsui-request-simple-mode";
 
@@ -103,6 +112,13 @@ const DRAFT_KEY = "ittsui-request-draft";
 
 interface Draft {
   recipientName: string;
+  // Phone comes first in the UI on purpose (2026-08-25 real-user test:
+  // asking for a friend's email as the first field caused an under-10-
+  // second abandonment — real people know a phone number, not an email,
+  // especially in the moment, away from a desk). Both stay optional at
+  // the type level; handleSend requires at least one, matching
+  // /api/meeting-requests/create's own Zod refine.
+  recipientPhone: string;
   recipientEmail: string;
   venueName: string;
   venueAddress: string;
@@ -116,6 +132,7 @@ function emptyDraft(): Draft {
   const today = new Date();
   return {
     recipientName: "",
+    recipientPhone: "",
     recipientEmail: "",
     venueName: "",
     venueAddress: "",
@@ -147,7 +164,7 @@ export default function RequestFormClient() {
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<{ name: string; requestUrl: string; hasEmail: boolean; phone: string } | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [freeText, setFreeText] = useState("");
@@ -198,6 +215,16 @@ export default function RequestFormClient() {
       return next;
     });
   }
+
+  // Same "use my current location" pattern SetupClient.tsx already proved
+  // out — a first-time visitor here (the exact "walking down the street"
+  // scenario this whole flow targets) isn't going to type a postal code
+  // from memory any more readily than they'd type a friend's email.
+  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+  useEffect(() => {
+    if (detectedPostalCode) update("postalCode", detectedPostalCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detectedPostalCode]);
 
   // Auto-fills the postal code from this person's own existing weekly Pair,
   // if they have one — one less thing to type. Same "most recent, sorted
@@ -278,6 +305,7 @@ export default function RequestFormClient() {
   function pickContact(contact: Contact) {
     update("recipientName", contact.name);
     update("recipientEmail", contact.email);
+    update("recipientPhone", ""); // saved contacts are email-based today; clear any stale phone from a previous entry
   }
 
   // Simple mode shows only contact chips (no manual name/email fields to
@@ -295,13 +323,25 @@ export default function RequestFormClient() {
       const picked = await pickNativeContact();
       if (!picked) return; // not native, permission denied, or cancelled
 
-      if (!picked.email || !isValidEmail(picked.email)) {
-        setError(
-          simpleMode
-            ? "Ce contact n'a pas d'e-mail valide — ajoutez-le d'abord depuis « Mes contacts »."
-            : "Ce contact n'a pas d'e-mail valide — complétez-le ci-dessous."
-        );
-        if (picked.name && !simpleMode) update("recipientName", picked.name);
+      const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+
+      if (!hasValidEmail && !picked.phone) {
+        setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+        if (picked.name) update("recipientName", picked.name);
+        return;
+      }
+
+      if (!hasValidEmail) {
+        // Phone-only device contact — the overwhelmingly common case for a
+        // real phone address book. This is exactly the scenario the whole
+        // phone-first flow exists for, so this fills the fields directly
+        // and stops here; the "already known?" persist-as-contact step
+        // below is email-based only for now (Contact doesn't model
+        // phone-only entries yet), so this stays a per-send fill rather
+        // than something auto-saved to "Mes contacts".
+        update("recipientName", picked.name || picked.phone!);
+        update("recipientPhone", picked.phone!);
+        update("recipientEmail", "");
         return;
       }
 
@@ -310,9 +350,10 @@ export default function RequestFormClient() {
       // chip-highlight check below (a strict ===) would silently never
       // match, leaving simple mode with no visible confirmation of who got
       // selected.
-      const email = picked.email.toLowerCase();
+      const email = picked.email!.toLowerCase();
       update("recipientName", picked.name || email);
       update("recipientEmail", email);
+      update("recipientPhone", "");
 
       if (simpleMode && user) {
         const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === email);
@@ -484,11 +525,17 @@ export default function RequestFormClient() {
     if (!user) return;
     setError(null);
 
-    if (!draft.recipientName.trim() || !draft.recipientEmail.trim()) {
-      setError("Le nom et l'e-mail du destinataire sont requis.");
+    if (!draft.recipientName.trim()) {
+      setError("Le nom du destinataire est requis.");
       return;
     }
-    if (!isValidEmail(draft.recipientEmail)) {
+    const hasEmail = draft.recipientEmail.trim().length > 0;
+    const hasPhone = draft.recipientPhone.trim().length > 0;
+    if (!hasEmail && !hasPhone) {
+      setError("Indiquez un e-mail ou un numéro de téléphone.");
+      return;
+    }
+    if (hasEmail && !isValidEmail(draft.recipientEmail)) {
       setError("Cette adresse e-mail ne semble pas valide.");
       return;
     }
@@ -504,14 +551,17 @@ export default function RequestFormClient() {
       // Save as a contact for next time, unless it's already one on file —
       // exactly what "add to closest contact list" means in practice: a
       // side effect of sending, not a separate step someone has to
-      // remember to do first.
-      const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === draft.recipientEmail.trim().toLowerCase());
-      if (!alreadyKnown) {
-        fetch("/api/contacts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ name: draft.recipientName, email: draft.recipientEmail }),
-        }).catch(() => {});
+      // remember to do first. Email-based only for now (Contact doesn't
+      // model phone-only entries yet).
+      if (hasEmail) {
+        const alreadyKnown = contacts.some((c) => c.email.toLowerCase() === draft.recipientEmail.trim().toLowerCase());
+        if (!alreadyKnown) {
+          fetch("/api/contacts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ name: draft.recipientName, email: draft.recipientEmail }),
+          }).catch(() => {});
+        }
       }
 
       const res = await fetch("/api/meeting-requests/create", {
@@ -519,7 +569,8 @@ export default function RequestFormClient() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           recipientName: draft.recipientName,
-          recipientEmail: draft.recipientEmail,
+          ...(hasEmail ? { recipientEmail: draft.recipientEmail } : {}),
+          ...(hasPhone ? { recipientPhone: draft.recipientPhone } : {}),
           venueName: draft.venueName,
           venueAddress: draft.venueAddress,
           ...(draft.venueType ? { venueType: draft.venueType } : {}),
@@ -531,12 +582,17 @@ export default function RequestFormClient() {
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
       sessionStorage.removeItem(DRAFT_KEY);
-      setSentTo(draft.recipientName);
+      setSentTo({ name: draft.recipientName, requestUrl: data.requestUrl as string, hasEmail, phone: draft.recipientPhone });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleShareRequestLink() {
+    if (!sentTo) return;
+    await shareLink({ title: "Ittsui", text: `Je te propose un rendez-vous sur Ittsui :`, url: sentTo.requestUrl });
   }
 
   return (
@@ -565,13 +621,65 @@ export default function RequestFormClient() {
 
         {sentTo ? (
           <div className="mt-8">
-            <p className="text-sm" style={{ color: MUTED }}>
-              Demande envoyée à {sentTo}. Vous serez notifié(e) par e-mail dès qu&apos;elle répond.
-            </p>
+            {sentTo.hasEmail ? (
+              <p className="text-sm" style={{ color: MUTED }}>
+                Demande envoyée à {sentTo.name}. Vous serez notifié(e) par e-mail dès qu&apos;elle répond.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm" style={{ color: MUTED }}>
+                  Presque : {sentTo.name} n&apos;a pas d&apos;e-mail enregistré, alors envoyez-lui ce lien
+                  vous-même — un tap suffit.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {(() => {
+                    const text = `Je te propose un rendez-vous sur Ittsui : ${sentTo.requestUrl}`;
+                    const whatsappHref = whatsappLinkForNumber(sentTo.phone, text);
+                    const smsHref = smsLinkForNumber(sentTo.phone, text);
+                    return (
+                      <>
+                        {whatsappHref && (
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-full items-center justify-center rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+                            style={{ backgroundColor: "#25D366" }}
+                          >
+                            Envoyer par WhatsApp
+                          </a>
+                        )}
+                        {smsHref && (
+                          <a
+                            href={smsHref}
+                            className="flex w-full items-center justify-center rounded-full border py-3.5 text-sm font-medium"
+                            style={{ borderColor: BORDER, color: INK }}
+                          >
+                            Envoyer par SMS
+                          </a>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <button
+                    type="button"
+                    onClick={handleShareRequestLink}
+                    className="w-full rounded-full border py-3 text-sm font-medium"
+                    style={{ borderColor: BORDER, color: MUTED }}
+                  >
+                    Autre appli...
+                  </button>
+                </div>
+              </>
+            )}
             <button
               onClick={() => router.push("/dashboard")}
-              className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white"
-              style={{ backgroundColor: ACCENT }}
+              className={
+                sentTo.hasEmail
+                  ? "mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white"
+                  : "mt-4 w-full text-center text-sm underline underline-offset-4"
+              }
+              style={sentTo.hasEmail ? { backgroundColor: ACCENT } : { color: MUTED }}
             >
               Retour au tableau de bord
             </button>
@@ -698,15 +806,27 @@ export default function RequestFormClient() {
                 </div>
               )}
               {simpleMode ? (
-                contacts.length === 0 && (
-                  <p className="mt-2 text-sm" style={{ color: MUTED }}>
-                    Aucun contact enregistré.{" "}
-                    <Link href="/contacts" className="underline underline-offset-4" style={{ color: ACCENT }}>
-                      En ajouter un
-                    </Link>{" "}
-                    d&apos;abord.
-                  </p>
-                )
+                <>
+                  {contacts.length === 0 && (
+                    <p className="mt-2 text-sm" style={{ color: MUTED }}>
+                      Aucun contact enregistré.{" "}
+                      <Link href="/contacts" className="underline underline-offset-4" style={{ color: ACCENT }}>
+                        En ajouter un
+                      </Link>{" "}
+                      d&apos;abord.
+                    </p>
+                  )}
+                  {/* An imported phone-only contact (or a stale voice/import
+                      fill) isn't necessarily reflected by a highlighted chip
+                      above — this mode's whole feedback model is "see it
+                      highlighted", so without this line a real selection
+                      could be genuinely invisible here. */}
+                  {draft.recipientName && (
+                    <p className="mt-2 text-sm" style={{ color: MUTED }}>
+                      Sélectionné : <span style={{ color: INK, fontWeight: 500 }}>{draft.recipientName}</span>
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   <input
@@ -717,9 +837,23 @@ export default function RequestFormClient() {
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
                     style={{ borderColor: BORDER }}
                   />
+                  {/* Phone first, on purpose: real people know a friend's
+                      phone number, not their email, especially away from a
+                      desk — see this file's header comment. */}
+                  <input
+                    type="tel"
+                    placeholder="Numéro de téléphone"
+                    value={draft.recipientPhone}
+                    onChange={(e) => update("recipientPhone", e.target.value)}
+                    className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
+                    style={{ borderColor: BORDER }}
+                  />
+                  <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                    Ou, si vous l&apos;avez, son e-mail :
+                  </p>
                   <input
                     type="email"
-                    placeholder="E-mail"
+                    placeholder="E-mail (optionnel)"
                     value={draft.recipientEmail}
                     onChange={(e) => update("recipientEmail", e.target.value)}
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -738,14 +872,49 @@ export default function RequestFormClient() {
                   in simple mode this is usually already auto-filled from the
                   person's own weekly Pair, so this rarely appears at all. */}
               {(!simpleMode || !draft.postalCode) && (
-                <input
-                  type="text"
-                  placeholder="Code postal (suggestions de lieux)"
-                  value={draft.postalCode}
-                  onChange={(e) => update("postalCode", e.target.value)}
-                  className={simpleMode ? "mt-2 min-h-[56px] w-full rounded-2xl border px-4 text-lg" : "mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"}
-                  style={{ borderColor: BORDER }}
-                />
+                <>
+                  <input
+                    type="text"
+                    placeholder="Code postal (suggestions de lieux)"
+                    value={draft.postalCode}
+                    onChange={(e) => update("postalCode", e.target.value)}
+                    className={simpleMode ? "mt-2 min-h-[56px] w-full rounded-2xl border px-4 text-lg" : "mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"}
+                    style={{ borderColor: BORDER }}
+                  />
+                  {/* Same "use my current location" pattern as /setup —
+                      someone using this page on the spot (the exact
+                      scenario it's built for) isn't going to know their
+                      postal code from memory any more readily than a
+                      friend's email address. */}
+                  {(locationStatus === "locating" || locationStatus === "resolving") && (
+                    <div className="mt-2">
+                      <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+                    </div>
+                  )}
+                  {locationStatus === "idle" && (
+                    <button type="button" onClick={detectLocation} className="mt-2 text-xs font-medium underline underline-offset-4" style={{ color: ACCENT }}>
+                      Utiliser ma position actuelle
+                    </button>
+                  )}
+                  {locationStatus === "denied" && (
+                    <p className="mt-2 text-xs" style={{ color: ACCENT }}>
+                      Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec
+                      le code postal.{" "}
+                      <button type="button" onClick={detectLocation} className="underline underline-offset-4">
+                        Réessayer
+                      </button>
+                    </p>
+                  )}
+                  {locationStatus === "error" && (
+                    <p className="mt-2 text-xs" style={{ color: ACCENT }}>
+                      Impossible de déterminer votre position.{" "}
+                      <button type="button" onClick={detectLocation} className="underline underline-offset-4">
+                        Réessayer
+                      </button>{" "}
+                      ou continuez avec le code postal.
+                    </p>
+                  )}
+                </>
               )}
               {suggestionsLoading && (
                 <p className="mt-2 text-xs" style={{ color: MUTED }}>

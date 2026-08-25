@@ -49,7 +49,7 @@ import { TimeSelect } from "@/app/components/TimeSelect";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
-import { tapHaptic, ImpactStyle } from "@/lib/haptics";
+import { shareLink } from "@/lib/shareLink";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -412,47 +412,20 @@ export default function SetupClient() {
     await submitInvite();
   }
 
-  // Native share sheet first (lets the recipient pick any app, not just
-  // WhatsApp) -> WhatsApp direct link if unsupported or the sheet itself
-  // fails to open -> clipboard + toast as the last resort. Mirrors the
-  // same graceful-degradation shape as weekly-propose/route.ts's venue
-  // pipeline (RAG -> Firestore -> static), just for sharing instead of
-  // venue selection.
   async function handleShare() {
     if (!invited) return;
-    tapHaptic(ImpactStyle.Light);
-
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invited.pairId}`;
-    const shareData = {
+    const result = await shareLink({
       title: "Ittsui - Notre moment",
       text: "Je t'ai préparé notre moment de la semaine ! Rejoins-moi sur Ittsui :",
       url: inviteUrl,
-    };
-
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (err) {
-        // AbortError = the user closed the share sheet without picking
-        // anything — an expected, non-error outcome, not something to
-        // fall through to a fallback or surface to error tracking for.
-        if (err instanceof Error && err.name === "AbortError") return;
-      }
-    }
-
-    const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${shareData.text} ${shareData.url}`)}`;
-    const opened = typeof window !== "undefined" ? window.open(whatsappHref, "_blank", "noopener,noreferrer") : null;
-    if (opened) return;
-
-    try {
-      await navigator.clipboard.writeText(shareData.url);
+    });
+    if (result === "copied") {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Nothing more to do silently — the link is still visible on screen
-      // for the user to select and copy manually.
     }
+    // "failed" leaves the link visible on screen either way, for the
+    // person to select and copy manually — nothing more to do silently.
   }
 
   // Still checking auth state, or checking for an existing pair

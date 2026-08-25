@@ -81,7 +81,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "declined" });
   }
 
-  if (data.recipientEmail !== String(userEmail).trim().toLowerCase()) {
+  // No email on file at all means this was a phone-only request — the
+  // sender shared the link themselves (see meeting-requests/create's
+  // requestUrl), so the unguessable bearer link is the authorization here,
+  // same trust boundary the decline path above already accepts. Only
+  // enforce the match when an email actually exists to check against.
+  if (data.recipientEmail && data.recipientEmail !== String(userEmail).trim().toLowerCase()) {
     return NextResponse.json({ error: "cette demande ne correspond pas à votre compte" }, { status: 403 });
   }
 
@@ -117,8 +122,12 @@ export async function POST(request: Request) {
           html: `<p>${escapeHtml(data.recipientName ?? "")} a accepté.</p>${confirmationHtml}`,
         })
       : Promise.resolve(false),
+    // A phone-only request has no recipientEmail on file, but the person
+    // accepting just signed in with Google either way — send the
+    // confirmation to that address instead of skipping it entirely, now
+    // that an address actually exists.
     sendEmail({
-      to: data.recipientEmail,
+      to: data.recipientEmail ?? userEmail,
       subject: "Rendez-vous confirmé sur Ittsui",
       text: confirmationText,
       html: confirmationHtml,

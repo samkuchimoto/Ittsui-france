@@ -139,7 +139,16 @@ export interface MeetingRequest {
   senderName: string;
   senderEmail: string | null;
   recipientName: string; // name the sender gave for the recipient
-  recipientEmail: string; // lowercased
+  // At least one of these two is always present (enforced by
+  // /api/meeting-requests/create's Zod schema), never both required — real
+  // people overwhelmingly know a friend's phone number, not their email
+  // (2026-08-25 real-user test: asking for an email as the very first
+  // field caused an under-10-second abandonment). recipientPhone is never
+  // used to send anything server-side (no SMS provider exists in this
+  // app) — it exists so the sender can be handed a share-this-link-
+  // yourself flow (lib/shareLink.ts) instead of a dead end.
+  recipientEmail?: string; // lowercased
+  recipientPhone?: string;
   recipientId?: string; // set once the recipient signs in and accepts
   venueName: string;
   venueAddress: string;
