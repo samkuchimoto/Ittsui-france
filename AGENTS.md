@@ -200,15 +200,21 @@ The original reason for moving off the default domain — Chrome treating
 `firebaseapp.com`'s storage as partitioned during `signInWithRedirect`'s
 round-trip, so `getRedirectResult()` silently came back empty after a
 real, completed sign-in — no longer applies, because `lib/firebase.ts`'s
-`signInWithGoogle()` now uses `signInWithPopup` on desktop specifically
-because it never calls `getRedirectResult()` at all. Redirect stays the
-mobile-web path only (popups get killed by OS backgrounding there), and
-is unaffected either way. If mobile-web sign-in ever needs the same fix
-popup already gives desktop, treat that as its own decision — don't
-reach for a custom `authDomain` again to solve it; that's the exact
-change that cost three outages last time. Full account of each incident
-is in `next.config.js`'s CSP comment and the git history around commits
-`c6ddba4`, `7afa92e`, `21e6ecd`, `a475ee8`.
+`signInWithGoogle()` uses `signInWithPopup` unconditionally now (desktop
+**and** mobile web) specifically because it never calls
+`getRedirectResult()` at all. Mobile web used to get carved out to
+`signInWithRedirect` instead, on the theory that popups are less reliable
+there — in practice that redirect path was the one actually broken: real
+device testing 2026-08-25 reproduced the exact silent-failure symptom
+above (mobile stuck on a loading screen, then back to the sign-in button,
+no error, no explanation, every attempt), so mobile web was moved onto the
+same popup path desktop already had, keeping `authDomain` untouched. If
+popup ever turns out to have its own real mobile-specific failure mode,
+treat that as its own decision — don't reach for a custom `authDomain`
+again to solve it; that's the exact change that cost three outages last
+time. Full account of each incident is in `next.config.js`'s CSP comment
+and the git history around commits `c6ddba4`, `7afa92e`, `21e6ecd`,
+`a475ee8`.
 
 ## The venue-recommendation pipeline
 
@@ -271,12 +277,14 @@ not a replacement for it.
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` — see the dedicated section above.
   Not a "just try it" experiment; changing it away from Firebase's own
   domain has a specific, documented cost.
-- `lib/firebase.ts`'s desktop-vs-mobile-web split in `signInWithGoogle()`
-  (`isMobileWebBrowser()` picks `signInWithPopup` vs `signInWithRedirect`)
-  and the CSP entries in `next.config.js` that popup sign-in depends on
+- `lib/firebase.ts`'s `signInWithGoogle()` (`signInWithPopup`
+  unconditionally — no desktop-vs-mobile-web split any more, see the
+  `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` section above for why the mobile-web
+  redirect path was removed 2026-08-25) and the CSP entries in
+  `next.config.js` that popup sign-in depends on
   (`script-src`/`connect-src`/`frame-src` all needing `apis.google.com`).
-  Removing either independently of the other reintroduces one of the
-  outages described above.
+  Removing the CSP entries breaks popup sign-in on every platform now,
+  not just desktop.
 
 ## Repo hygiene
 

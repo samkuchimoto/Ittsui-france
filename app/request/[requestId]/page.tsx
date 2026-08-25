@@ -69,6 +69,7 @@ export default function RequestResponsePage() {
   const [user, setUser] = useState<User | false | null>(null);
   const [slowConnection, setSlowConnection] = useState(false);
   const [accepted, setAccepted] = useState<AcceptedDetails | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -82,13 +83,11 @@ export default function RequestResponsePage() {
   }, [user]);
 
   // Auto-accept as soon as a signed-in user is known — mirrors
-  // /invite/[pairId]/page.tsx exactly, and deliberately doesn't gate on
-  // "did the person just tap the button": on mobile web, signInWithGoogle()
-  // does a full-page signInWithRedirect (see lib/firebase.ts), which wipes
-  // all React state on the way back — a click-tracking flag here would
-  // reset to false on that return and this would never fire, leaving the
-  // page stuck on its loading state forever. The /api/meeting-requests/respond
-  // email check already guards against activating for the wrong account.
+  // /invite/[pairId]/page.tsx exactly. Reacting to the user itself (rather
+  // than a "did they just tap the button" flag) means this also fires
+  // correctly if a session is somehow already present on load, not just
+  // right after a fresh sign-in. The /api/meeting-requests/respond email
+  // check already guards against activating for the wrong account.
   useEffect(() => {
     if (user === null) return;
     if (user) {
@@ -143,15 +142,21 @@ export default function RequestResponsePage() {
   }
 
   async function handleAcceptTap() {
+    if (signingIn) return; // a second tap while the popup is open cancels and
+    // reopens it, which looks like the account chooser inexplicably
+    // reappearing (confirmed via real testing 2026-08-25)
     setErrorMsg(null);
     if (user) {
       accept(user);
       return;
     }
+    setSigningIn(true);
     try {
       await signInWithGoogle();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Échec de la connexion.");
+    } finally {
+      setSigningIn(false);
     }
   }
 
@@ -269,10 +274,11 @@ export default function RequestResponsePage() {
       )}
       <button
         onClick={handleAcceptTap}
-        className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+        disabled={signingIn}
+        className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
         style={{ backgroundColor: ACCENT }}
       >
-        {errorMsg ? "Se connecter avec un autre compte" : "J'accepte"}
+        {signingIn ? "Connexion..." : errorMsg ? "Se connecter avec un autre compte" : "J'accepte"}
       </button>
       {!errorMsg && (
         <>

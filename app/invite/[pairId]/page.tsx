@@ -55,6 +55,7 @@ export default function InvitePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [user, setUser] = useState<User | false | null>(null);
   const [slowConnection, setSlowConnection] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -136,11 +137,17 @@ export default function InvitePage() {
   }
 
   async function handleSignIn() {
+    if (signingIn) return; // a second tap while the popup is open cancels and
+    // reopens it, which looks like the account chooser inexplicably
+    // reappearing (confirmed via real testing 2026-08-25)
     setErrorMsg(null);
+    setSigningIn(true);
     try {
       await signInWithGoogle();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Échec de la connexion.");
+    } finally {
+      setSigningIn(false);
     }
   }
 
@@ -234,10 +241,11 @@ export default function InvitePage() {
       )}
       <button
         onClick={handleSignIn}
-        className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+        disabled={signingIn}
+        className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
         style={{ backgroundColor: ACCENT }}
       >
-        {errorMsg ? "Se connecter avec un autre compte" : "Je viens"}
+        {signingIn ? "Connexion..." : errorMsg ? "Se connecter avec un autre compte" : "Je viens"}
       </button>
       {!errorMsg && (
         <p className="mt-3 text-xs" style={{ color: MUTED }}>

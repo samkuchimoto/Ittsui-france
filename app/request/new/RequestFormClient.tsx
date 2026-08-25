@@ -163,6 +163,7 @@ export default function RequestFormClient() {
   const [importingContact, setImportingContact] = useState(false);
   const [listeningForName, setListeningForName] = useState(false);
   const [voiceCandidate, setVoiceCandidate] = useState<Contact | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
 
   // Checked post-mount, not during render: Capacitor's platform check only
   // resolves correctly in the browser, so seeding it into render directly
@@ -441,12 +442,18 @@ export default function RequestFormClient() {
   }
 
   async function handleConnect() {
+    if (signingIn) return; // a second tap while the popup is open cancels and
+    // reopens it, which looks like the account chooser inexplicably
+    // reappearing (confirmed via real testing 2026-08-25)
     setError(null);
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    setSigningIn(true);
     try {
       await signInWithGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de la connexion.");
+    } finally {
+      setSigningIn(false);
     }
   }
 
@@ -863,14 +870,15 @@ export default function RequestFormClient() {
               <div>
                 <button
                   onClick={handleConnect}
+                  disabled={signingIn}
                   className={
                     simpleMode
-                      ? "min-h-[64px] w-full rounded-full text-xl font-medium text-white"
-                      : "w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+                      ? "min-h-[64px] w-full rounded-full text-xl font-medium text-white disabled:opacity-60"
+                      : "w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
                   }
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Se connecter pour envoyer
+                  {signingIn ? "Connexion..." : "Se connecter pour envoyer"}
                 </button>
                 <p className="mt-3 text-center text-xs" style={{ color: MUTED }}>
                   Via Google, juste pour vérifier que c&apos;est bien vous.

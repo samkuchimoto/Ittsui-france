@@ -225,6 +225,7 @@ export default function SetupClient() {
   const [postalCode, setPostalCode] = useState("");
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invited, setInvited] = useState<{ name: string; email: string; pairId: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -241,17 +242,8 @@ export default function SetupClient() {
     if (detectedPostalCode) setPostalCode(detectedPostalCode);
   }, [detectedPostalCode]);
 
-  // Watch auth state on mount. The error callback surfaces a redirect
-  // sign-in that failed silently (see lib/firebase.ts's onRedirectError
-  // comment) instead of just re-showing the same button with no
-  // explanation — the single most common real-world cause is Chrome
-  // treating the Firebase authDomain's storage as partitioned during the
-  // accounts.google.com round-trip.
   useEffect(() => {
-    const unsub = watchAuthState(
-      (u) => setUser(u ?? false),
-      (message) => setError(message)
-    );
+    const unsub = watchAuthState((u) => setUser(u ?? false));
     return unsub;
   }, []);
 
@@ -298,11 +290,17 @@ export default function SetupClient() {
   }, [user, router]);
 
   async function handleGoogleSignIn() {
+    if (signingIn) return; // already in flight — a second tap while the popup is open
+    // cancels the first one and reopens it, which looked like the account
+    // chooser inexplicably reappearing (confirmed via real testing 2026-08-25)
     setError(null);
+    setSigningIn(true);
     try {
       await signInWithGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de la connexion.");
+    } finally {
+      setSigningIn(false);
     }
   }
 
@@ -494,10 +492,11 @@ export default function SetupClient() {
           )}
           <button
             onClick={handleGoogleSignIn}
-            className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
+            disabled={signingIn}
+            className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
             style={{ backgroundColor: ACCENT }}
           >
-            Se connecter avec Google
+            {signingIn ? "Connexion..." : "Se connecter avec Google"}
           </button>
           <button
             onClick={handlePasskeySignIn}

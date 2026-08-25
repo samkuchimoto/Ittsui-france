@@ -6,8 +6,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -17,7 +15,6 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 import { registerNativePush } from "@/lib/nativePush";
-import { Capacitor } from "@capacitor/core";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -102,29 +99,24 @@ function authFailureMessage(err: unknown): string {
     : "La connexion a échoué. Réessayez.";
 }
 
-// Mobile *browsers* (not the Capacitor-wrapped native app, checked
-// separately) are where signInWithPopup demonstrably fails: the popup gets
-// silently blocked, or loses its connection back to the opener when the OS
-// backgrounds the tab during the Google auth screen — the real, observed
-// "stuck on chargement, keeps asking me to reconnect" report. Redirect
-// doesn't have that failure mode, so it stays the mobile-web path.
-function isMobileWebBrowser(): boolean {
-  if (typeof navigator === "undefined" || Capacitor.isNativePlatform()) return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-// Desktop uses signInWithPopup: the whole exchange happens inside the
-// popup and resolves this promise directly, with no getRedirectResult()
-// round-trip afterward. That round-trip is what broke sign-in under
-// signInWithRedirect specifically — Chrome treats the firebaseapp.com
-// authDomain's storage as partitioned during the accounts.google.com
-// bounce, so getRedirectResult() came back empty even after a real,
+// Every web platform (desktop AND mobile browsers) uses signInWithPopup —
+// mobile used to get carved out to signInWithRedirect instead, on the
+// theory that popups are the less reliable option there. In practice
+// redirect was reliably WORSE: the whole exchange bounces through
+// accounts.google.com and back, and Chrome treats the default
+// firebaseapp.com authDomain's storage as partitioned across that
+// round-trip, so getRedirectResult() came back empty even after a real,
 // completed sign-in (see NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN's history in
-// next.config.js for the full account of what moving authDomain around
-// to chase that cost). Popup never calls getRedirectResult() at all, so
-// it was never exposed to that failure mode regardless of which domain
-// authDomain points at — mobile web is unaffected either way since it
-// keeps using redirect below.
+// next.config.js for the full account of chasing this on the authDomain
+// side instead). Worse still, that failure is SILENT — a null result looks
+// identical to "no redirect was ever pending", so there was no way for
+// the app to even detect it, let alone show an error; the person just saw
+// the sign-in button reappear with zero explanation, confirmed via real
+// device testing 2026-08-25 (mobile stuck on "Un instant..." then back to
+// "Se connecter avec Google", repeatedly, no error shown). Popup never
+// calls getRedirectResult() at all, so it was never exposed to that
+// failure mode — and it already has real error handling below (timeout,
+// popup-blocked, cancelled) that redirect had no equivalent of.
 //
 // Note: this still isn't a fix for the Capacitor-wrapped native app
 // specifically — Google's OAuth policy blocks sign-in inside embedded
@@ -134,11 +126,6 @@ function isMobileWebBrowser(): boolean {
 const POPUP_TIMEOUT_MS = 45000; // generous — a real phone 2FA/confirm step can take a while
 
 export async function signInWithGoogle(): Promise<void> {
-  if (isMobileWebBrowser()) {
-    await signInWithRedirect(auth, googleProvider);
-    return;
-  }
-
   try {
     // signInWithPopup's own promise has no built-in timeout — if the
     // popup ever gets into a state where it neither completes nor
@@ -169,35 +156,11 @@ export async function signInWithGoogle(): Promise<void> {
   }
 }
 
-// The mobile-web redirect path returns to this same page on a fresh load,
-// so there's no function call left to resolve — the result has to be
-// picked up here instead, once, whenever auth state is first watched.
-// onAuthStateChanged fires with the new user regardless, but this is what
-// actually runs finishSignIn for that path (the popup path above already
-// ran it inline, before this ever gets a chance to fire for it).
-let redirectResultHandled = false;
-let onRedirectError: ((message: string) => void) | null = null;
-
-function consumeRedirectResultOnce() {
-  if (redirectResultHandled) return;
-  redirectResultHandled = true;
-  getRedirectResult(auth)
-    .then(async (result) => {
-      if (!result) return;
-      await finishSignIn(result.user);
-    })
-    .catch((err) => {
-      onRedirectError?.(authFailureMessage(err));
-    });
-}
-
 export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 
-export function watchAuthState(callback: (user: User | null) => void, onError?: (message: string) => void) {
-  if (onError) onRedirectError = onError;
-  consumeRedirectResultOnce();
+export function watchAuthState(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
 }
 
