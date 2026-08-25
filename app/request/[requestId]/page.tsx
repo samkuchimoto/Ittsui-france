@@ -273,9 +273,18 @@ export default function RequestResponsePage() {
         Pas une appli de rencontre : quelqu&apos;un que vous connaissez vous propose un lieu, une date et une
         heure via Ittsui, un outil de maintien relationnel.
       </p>
+      {/* Doesn't commit to "log in with the same email" up front — the
+          recipient may have been invited by phone only, in which case
+          /api/meeting-requests/respond accepts any signed-in account (the
+          unguessable link itself is the authorization, see that route's
+          recipientEmail-optional check). Saying "same e-mail" here would
+          be actively wrong and confusing for exactly the phone-first users
+          this flow exists for. The email-specific guidance still shows,
+          correctly conditioned, in the errorMsg branch below — it only
+          fires when a real mismatch happens, i.e. only when there
+          actually was an email on file. */}
       <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
-        Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette demande, ça
-        suffit à l&apos;accepter.
+        Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à l&apos;accepter.
       </p>
       {errorMsg && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>

@@ -211,13 +211,6 @@ export default function SetupClient() {
     return () => clearTimeout(timer);
   }, [user, checkingPair]);
 
-  // Checked post-mount, not during render: Capacitor's platform check only
-  // resolves correctly in the browser, so seeding it into render directly
-  // would render "web" on the server and "native" on the client's first
-  // paint — the same SSR/client mismatch already worked around in
-  // /request/new and /contacts (see lib/nativeContacts.ts).
-  useEffect(() => setIsNative(Capacitor.isNativePlatform()), []);
-
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [partnerName, setPartnerName] = useState("");
@@ -229,6 +222,13 @@ export default function SetupClient() {
   const [duoType, setDuoType] = useState<DuoType | null>(null); // local UI only, not sent to API
   const [isNative, setIsNative] = useState(false);
   const [importingPartner, setImportingPartner] = useState(false);
+
+  // Checked post-mount, not during render: Capacitor's platform check only
+  // resolves correctly in the browser, so seeding it into render directly
+  // would render "web" on the server and "native" on the client's first
+  // paint — the same SSR/client mismatch already worked around in
+  // /request/new and /contacts (see lib/nativeContacts.ts).
+  useEffect(() => setIsNative(Capacitor.isNativePlatform()), []);
 
   const [day, setDay] = useState<Pair["agreedDay"]>("sun");
   const [windowStart, setWindowStart] = useState("15:00");
@@ -368,15 +368,13 @@ export default function SetupClient() {
   function applyPickedPartner(picked: PickedContact) {
     if (picked.name) setPartnerName(picked.name);
     const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
-    if (hasValidEmail) {
-      setPartnerEmail(picked.email!);
-      setPartnerPhone("");
-    } else if (picked.phone) {
-      setPartnerPhone(picked.phone);
-      setPartnerEmail("");
-    } else {
-      setPartnerEmail("");
-      setPartnerPhone("");
+    const hasPhone = Boolean(picked.phone);
+    // Wholesale replace with what THIS contact actually has, but keep
+    // BOTH when the contact has both — same fix as RequestFormClient.tsx
+    // and ContactsClient.tsx's identical applyPickedContact functions.
+    setPartnerEmail(hasValidEmail ? picked.email! : "");
+    setPartnerPhone(hasPhone ? picked.phone! : "");
+    if (!hasValidEmail && !hasPhone) {
       setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
     }
   }
@@ -555,7 +553,7 @@ export default function SetupClient() {
           <h1 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
             {invited.hasEmail ? "Invitation envoyée" : "Invitation prête"}
           </h1>
-          {invited.hasEmail ? (
+          {invited.hasEmail && (
             <>
               <p className="mt-3 text-sm" style={{ color: MUTED }}>
                 Un e-mail a été envoyé à {invited.name}.
@@ -571,20 +569,19 @@ export default function SetupClient() {
                   }
                 />
               </div>
-              {copied && (
-                <p
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
-                >
-                  Lien copié !
-                </p>
-              )}
             </>
-          ) : (
+          )}
+          {/* Phone-based instant share shown whenever a phone number was
+              captured, EVEN when an email was also given — see the
+              identical fix + rationale in /request/new/RequestFormClient.tsx
+              (found via a live test where a partner with both an email and
+              phone number never saw the WhatsApp/SMS buttons at all). */}
+          {invited.phone.trim().length > 0 && (
             <>
-              <p className="mt-3 text-sm" style={{ color: MUTED }}>
-                Presque : {invited.name} n&apos;a pas d&apos;e-mail enregistré, alors envoyez-lui ce lien
-                vous-même — un tap suffit.
+              <p className={invited.hasEmail ? "mt-4 text-sm" : "mt-3 text-sm"} style={{ color: MUTED }}>
+                {invited.hasEmail
+                  ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
+                  : `Presque : ${invited.name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.`}
               </p>
               <div className="mt-4 space-y-2">
                 {(() => {
@@ -630,15 +627,15 @@ export default function SetupClient() {
                   Snapchat, Messenger, ou une autre appli...
                 </button>
               </div>
-              {copied && (
-                <p
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
-                >
-                  Lien copié !
-                </p>
-              )}
             </>
+          )}
+          {copied && (
+            <p
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+            >
+              Lien copié !
+            </p>
           )}
 
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>

@@ -266,6 +266,34 @@ appears in Android's Share sheet from another app, and whether shared text actua
 `/request/new`'s free-text box end to end. Same "should work, not confirmed working" status as the
 contact picker, voice search, and the GPS gap.
 
+## Browsable phone-contacts list — IMPLEMENTED, NOT VERIFIED ON A REAL DEVICE
+
+Added 2026-08-25/26, alongside a real-user request: "like I can WhatsApp people directly from my
+phone contacts, I want to Ittsui people directly." The existing contact picker (above) always hands
+control to the OS's own one-at-a-time picker dialog; `listNativeContacts()`
+(`lib/nativeContacts.ts`, using `@capacitor-community/contacts`' `getContacts()` instead of
+`pickContact()`) loads the whole address book once instead, and
+`app/components/PhoneContactPicker.tsx` renders it as an in-app searchable list — tap a name, done,
+same feel as opening a chat app. Shared by `/request/new`, `/contacts`, and `/setup` (all three
+places someone picks a recipient) rather than copy-pasted three times.
+
+Same permission alias as the single-pick contact feature above — no new `AndroidManifest.xml` /
+`Info.plist` declaration was needed, and that's been verified by reading the plugin's own
+`getContacts()` implementation directly (not assumed): it shares the exact same `contacts`
+permission check as `pickContact()`.
+
+What was verified without a device: the plugin's `getContacts()` signature and permission handling
+(read directly from source, same as every other native integration this session); `npx tsc --noEmit`
+and `npm run build` both pass; a production-server render confirms `/request/new`, `/contacts`, and
+`/setup` all still serve correctly with the shared component wired into all three.
+
+What was NOT verified, because no physical Android/iOS device was available: whether
+`getContacts()` actually returns the full address book correctly (including on a phone with a very
+large contact list — hundreds or thousands of entries, which this implementation loads and filters
+entirely client-side, with no pagination), and whether the search/tap/fill flow works end to end on
+a real device. Same "should work, not confirmed working" status as every other native feature in
+this document.
+
 ## Not yet implemented
 
 - Play Store listing, screenshots, content rating, Data Safety form — all Play Console UI work,

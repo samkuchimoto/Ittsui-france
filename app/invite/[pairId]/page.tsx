@@ -262,9 +262,15 @@ export default function InvitePage() {
         Pas une appli de rencontre : un rendez-vous protégé, une fois par semaine, avec la personne qui vous a
         envoyé ce lien — une proposition, validable en un geste, sans agenda à gérer.
       </p>
+      {/* Same fix as /request/[requestId]/page.tsx: doesn't assume an
+          email exists to match against — a phone-only invite is accepted
+          by any signed-in account (see /api/activate-pending-pair's
+          invitedEmail-optional check), so "same e-mail" would be wrong and
+          confusing here. The errorMsg branch below already gives the
+          email-specific guidance, correctly, only when a real mismatch
+          actually happens. */}
       <p className="mt-3 text-sm" style={{ color: MUTED }}>
-        Un seul geste pour confirmer : connectez-vous avec le même e-mail que celui qui a reçu cette invitation, ça
-        suffit à activer le lien.
+        Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à activer le lien.
       </p>
       {errorMsg && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>

@@ -377,24 +377,11 @@ export default function RequestFormClient() {
   // does this actually have, and should simple mode remember it" handling.
   async function applyPickedContact(picked: PickedContact) {
     const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
+    const hasPhone = Boolean(picked.phone);
 
-    if (!hasValidEmail && !picked.phone) {
+    if (!hasValidEmail && !hasPhone) {
       setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
       if (picked.name) update("recipientName", picked.name);
-      return;
-    }
-
-    if (!hasValidEmail) {
-      // Phone-only device contact — the overwhelmingly common case for a
-      // real phone address book.
-      const phone = picked.phone!;
-      update("recipientName", picked.name || phone);
-      update("recipientPhone", phone);
-      update("recipientEmail", "");
-      if (simpleMode) {
-        const result = await saveContactIfNew(picked.name || phone, { phone });
-        if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
-      }
       return;
     }
 
@@ -403,13 +390,22 @@ export default function RequestFormClient() {
     // chip-highlight check below (a strict ===) would silently never
     // match, leaving simple mode with no visible confirmation of who got
     // selected.
-    const email = picked.email!.toLowerCase();
-    update("recipientName", picked.name || email);
+    const email = hasValidEmail ? picked.email!.toLowerCase() : "";
+    const phone = hasPhone ? picked.phone! : "";
+
+    // Keep BOTH when the device contact has both — a contact with an
+    // email and a phone shouldn't lose the phone (and with it, the
+    // WhatsApp/SMS instant-share option) just because it also has an
+    // email. Same fix + rationale as the confirmation-screen gating fix
+    // above (found via a live test where having both silently hid the
+    // phone-based buttons everywhere they appeared).
+    update("recipientName", picked.name || email || phone);
     update("recipientEmail", email);
-    update("recipientPhone", "");
+    update("recipientPhone", phone);
 
     if (simpleMode) {
-      const result = await saveContactIfNew(picked.name || email, { email });
+      const identity = { ...(hasValidEmail ? { email } : {}), ...(hasPhone ? { phone } : {}) };
+      const result = await saveContactIfNew(picked.name || email || phone, identity);
       if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
     }
   }
@@ -620,7 +616,10 @@ export default function RequestFormClient() {
       // side effect of sending, not a separate step someone has to
       // remember to do first. Not awaited — a background nicety, not
       // something worth delaying the actual send for.
-      saveContactIfNew(draft.recipientName, hasEmail ? { email: draft.recipientEmail } : { phone: draft.recipientPhone });
+      saveContactIfNew(draft.recipientName, {
+        ...(hasEmail ? { email: draft.recipientEmail } : {}),
+        ...(hasPhone ? { phone: draft.recipientPhone } : {}),
+      });
 
       const res = await fetch("/api/meeting-requests/create", {
         method: "POST",
@@ -679,15 +678,26 @@ export default function RequestFormClient() {
 
         {sentTo ? (
           <div className="mt-8">
-            {sentTo.hasEmail ? (
+            {sentTo.hasEmail && (
               <p className="text-sm" style={{ color: MUTED }}>
                 Demande envoyée à {sentTo.name}. Vous serez notifié(e) par e-mail dès qu&apos;elle répond.
               </p>
-            ) : (
+            )}
+            {/* Phone-based instant share shown whenever a phone number was
+                captured, EVEN if an email was also given — email delivery
+                depends on the recipient checking their inbox, but the
+                entire point of this session's work was instant delivery
+                ("Ittsui should be ready to deliver in a few seconds"), so
+                having both shouldn't silently drop the faster option. This
+                was a real bug found via a live test: a request sent with
+                both an email and a phone number showed only the email
+                message and no WhatsApp/SMS/Snapchat buttons at all. */}
+            {sentTo.phone.trim().length > 0 && (
               <>
-                <p className="text-sm" style={{ color: MUTED }}>
-                  Presque : {sentTo.name} n&apos;a pas d&apos;e-mail enregistré, alors envoyez-lui ce lien
-                  vous-même — un tap suffit.
+                <p className={sentTo.hasEmail ? "mt-4 text-sm" : "text-sm"} style={{ color: MUTED }}>
+                  {sentTo.hasEmail
+                    ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
+                    : `Presque : ${sentTo.name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.`}
                 </p>
                 <div className="mt-4 space-y-2">
                   {(() => {
@@ -743,11 +753,11 @@ export default function RequestFormClient() {
             <button
               onClick={() => router.push("/dashboard")}
               className={
-                sentTo.hasEmail
-                  ? "mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white"
-                  : "mt-4 w-full text-center text-sm underline underline-offset-4"
+                sentTo.phone.trim().length > 0
+                  ? "mt-4 w-full text-center text-sm underline underline-offset-4"
+                  : "mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white"
               }
-              style={sentTo.hasEmail ? { backgroundColor: ACCENT } : { color: MUTED }}
+              style={sentTo.phone.trim().length > 0 ? { color: MUTED } : { backgroundColor: ACCENT }}
             >
               Retour au tableau de bord
             </button>
@@ -788,7 +798,7 @@ export default function RequestFormClient() {
               <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
                 Destinataire
               </label>
-              {isNative && contacts.length > 0 && !voiceCandidate && (
+              {isNative && contacts.length > 0 && !voiceCandidate && !browsingPhoneContacts && (
                 <button
                   type="button"
                   onClick={handleVoiceSearch}

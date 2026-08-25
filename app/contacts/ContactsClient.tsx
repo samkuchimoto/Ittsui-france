@@ -122,17 +122,17 @@ export default function ContactsClient() {
   function applyPickedContact(picked: PickedContact) {
     if (picked.name) setName(picked.name);
     const hasValidEmail = Boolean(picked.email && isValidEmail(picked.email));
-    if (hasValidEmail) {
-      setEmail(picked.email!);
-      setPhone("");
-    } else if (picked.phone) {
-      // The overwhelmingly common case for a real phone address book —
-      // most contacts there have a number, not an email.
-      setPhone(picked.phone);
-      setEmail("");
-    } else {
-      setEmail("");
-      setPhone("");
+    const hasPhone = Boolean(picked.phone);
+    // Wholesale replace with what THIS contact actually has (so a stale
+    // manually-typed value from before doesn't linger and end up
+    // mismatched with the new pick), but keep BOTH when the contact has
+    // both — a contact with an email and a phone shouldn't lose the phone
+    // (and with it the WhatsApp/SMS option later) just because it also
+    // has an email. Same fix as RequestFormClient.tsx's identical
+    // applyPickedContact.
+    setEmail(hasValidEmail ? picked.email! : "");
+    setPhone(hasPhone ? picked.phone! : "");
+    if (!hasValidEmail && !hasPhone) {
       setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
     }
   }

@@ -74,6 +74,16 @@ export async function pickNativeContact(): Promise<PickedContact | null> {
   }
 }
 
+// Distinguishes WHY the list might be empty, rather than collapsing
+// "permission denied" and "this phone genuinely has no contacts" into the
+// same empty array — the first deserves "go allow this in settings", the
+// second doesn't, and showing the same generic message for both was a
+// real gap found on final review (2026-08-26).
+export type ListContactsResult =
+  | { status: "ok"; contacts: PickedContact[] }
+  | { status: "denied" }
+  | { status: "unavailable" }; // not native, or a genuine plugin/runtime failure
+
 // Full address book, for an in-app browsable list rather than the OS's
 // own single-pick dialog. Sorted by name (device contact stores don't
 // guarantee an order) and filtered down to contacts with an actual name
@@ -82,8 +92,8 @@ export async function pickNativeContact(): Promise<PickedContact | null> {
 // pickNativeContact() above (already covered by the existing
 // AndroidManifest.xml/Info.plist declarations — no new permission is
 // needed for this).
-export async function listNativeContacts(): Promise<PickedContact[]> {
-  if (!Capacitor.isNativePlatform()) return [];
+export async function listNativeContacts(): Promise<ListContactsResult> {
+  if (!Capacitor.isNativePlatform()) return { status: "unavailable" };
 
   try {
     const { Contacts } = await import("@capacitor-community/contacts");
@@ -91,14 +101,16 @@ export async function listNativeContacts(): Promise<PickedContact[]> {
     const permission = await Contacts.checkPermissions();
     if (permission.contacts !== "granted" && permission.contacts !== "limited") {
       const requested = await Contacts.requestPermissions();
-      if (requested.contacts !== "granted" && requested.contacts !== "limited") return [];
+      if (requested.contacts !== "granted" && requested.contacts !== "limited") {
+        return { status: "denied" };
+      }
     }
 
     const { contacts } = await Contacts.getContacts({
       projection: { name: true, emails: true, phones: true },
     });
 
-    return contacts
+    const filtered = contacts
       .map((contact) => ({
         name: contact.name?.display ?? null,
         email: contact.emails?.[0]?.address ?? null,
@@ -106,7 +118,9 @@ export async function listNativeContacts(): Promise<PickedContact[]> {
       }))
       .filter((c): c is PickedContact & { name: string } => Boolean(c.name && (c.email || c.phone)))
       .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+    return { status: "ok", contacts: filtered };
   } catch {
-    return [];
+    return { status: "unavailable" };
   }
 }

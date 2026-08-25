@@ -9,8 +9,8 @@
 // just on one screen.
 
 import { useState } from "react";
-import { listNativeContacts, type PickedContact } from "@/lib/nativeContacts";
-import { MUTED, BORDER, INK } from "@/lib/theme";
+import { listNativeContacts, type PickedContact, type ListContactsResult } from "@/lib/nativeContacts";
+import { MUTED, BORDER, ACCENT, INK } from "@/lib/theme";
 
 export function PhoneContactPicker({
   onPick,
@@ -28,14 +28,14 @@ export function PhoneContactPicker({
   triggerClassName: string;
   triggerStyle: React.CSSProperties;
 }) {
-  const [contacts, setContacts] = useState<PickedContact[] | null>(null);
+  const [result, setResult] = useState<ListContactsResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
   async function open() {
     setLoading(true);
     try {
-      setContacts(await listNativeContacts());
+      setResult(await listNativeContacts());
       onOpenChange?.(true);
     } finally {
       setLoading(false);
@@ -43,7 +43,7 @@ export function PhoneContactPicker({
   }
 
   function close() {
-    setContacts(null);
+    setResult(null);
     setSearch("");
     onOpenChange?.(false);
   }
@@ -53,7 +53,7 @@ export function PhoneContactPicker({
     onPick(c);
   }
 
-  if (!contacts) {
+  if (!result) {
     return (
       <button type="button" onClick={open} disabled={loading} className={triggerClassName} style={triggerStyle}>
         {loading ? "Chargement..." : triggerLabel}
@@ -64,26 +64,46 @@ export function PhoneContactPicker({
   return (
     <div className="mt-2 rounded-2xl border p-3" style={{ borderColor: BORDER }}>
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="Rechercher un nom..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          autoFocus
-          className="w-full rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: BORDER }}
-        />
+        {result.status === "ok" && (
+          <input
+            type="text"
+            placeholder="Rechercher un nom..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            style={{ borderColor: BORDER }}
+          />
+        )}
         <button type="button" onClick={close} className="shrink-0 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Fermer
         </button>
       </div>
-      {contacts.length === 0 ? (
+      {/* Distinct messages, not one generic "no contacts" for all three —
+          a permission denial deserves a real way forward (settings), a
+          genuine empty address book doesn't need one, and a plugin/runtime
+          failure is neither of those. Collapsing them into the same empty-
+          array shape at the lib level would have hidden this distinction
+          from the UI entirely. */}
+      {result.status === "denied" && (
+        <p className="mt-3 text-sm" style={{ color: ACCENT }}>
+          Accès aux contacts refusé — autorisez-le dans les réglages de votre téléphone pour Ittsui,
+          puis réessayez.
+        </p>
+      )}
+      {result.status === "unavailable" && (
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          Impossible de charger vos contacts pour le moment.
+        </p>
+      )}
+      {result.status === "ok" && result.contacts.length === 0 && (
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Aucun contact trouvé sur ce téléphone.
         </p>
-      ) : (
+      )}
+      {result.status === "ok" && result.contacts.length > 0 && (
         <div className="mt-2 max-h-72 divide-y overflow-y-auto" style={{ borderColor: BORDER }}>
-          {contacts
+          {result.contacts
             .filter((c) => (c.name ?? "").toLowerCase().includes(search.trim().toLowerCase()))
             .map((c, i) => (
               <button

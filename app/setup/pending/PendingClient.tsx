@@ -77,9 +77,13 @@ function DeliveryStatus({ pair }: { pair: Pair }) {
 // chance to actually send the link, not just watch DeliveryStatus render
 // nothing (its own guard above already stays silent when there's no email
 // to report on, which is correct for THAT component, but leaves a real
-// gap here without something to replace it).
+// gap here without something to replace it). Shown whenever a phone
+// number exists, EVEN alongside an email — same fix + rationale as
+// RequestFormClient.tsx and SetupClient.tsx: email delivery isn't
+// instant, and a live test found this exact case (both email and phone
+// given) silently dropped the WhatsApp/SMS option everywhere it appeared.
 function SharePhoneInvite({ pair }: { pair: Pair }) {
-  if (pair.invitedEmail || !pair.invitedPhone) return null;
+  if (!pair.invitedPhone) return null;
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${pair.id}`;
   const text = `${pair.partnerName}, je t'ai préparé notre moment de la semaine sur Ittsui : ${inviteUrl}`;
   const whatsappHref = whatsappLinkForNumber(pair.invitedPhone, text);
@@ -92,8 +96,9 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
   return (
     <div className="mt-4 space-y-2 text-left">
       <p className="text-xs" style={{ color: MUTED }}>
-        Cette invitation n&apos;a pas d&apos;e-mail — envoyez-lui le lien vous-même si ce n&apos;est pas déjà
-        fait.
+        {pair.invitedEmail
+          ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
+          : "Cette invitation n'a pas d'e-mail — envoyez-lui le lien vous-même si ce n'est pas déjà fait."}
       </p>
       {whatsappHref && (
         <a

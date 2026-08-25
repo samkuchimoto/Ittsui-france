@@ -15,6 +15,12 @@ export function normalizePhoneForShare(raw: string): string | null {
   const digits = raw.replace(/[^\d+]/g, "");
   if (!digits.replace("+", "")) return null;
   if (digits.startsWith("+")) return digits;
+  // "00" is the standard ITU international dialing prefix, equivalent to
+  // "+" — some people (especially older users less used to typing "+" on
+  // a phone keypad, exactly part of the audience this project targets)
+  // write their number as 0033612345678 instead of +33612345678. Without
+  // this, that produced a broken, non-dialable "+0033612345678" link.
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
   if (digits.startsWith("0") && digits.length === 10) return `+33${digits.slice(1)}`; // French local format
   return `+${digits}`; // already has a country code (33...) or some other country's number
 }
