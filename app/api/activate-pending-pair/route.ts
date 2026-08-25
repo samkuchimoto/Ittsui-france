@@ -105,7 +105,20 @@ export async function POST(request: Request) {
   const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "Votre invité(e)"} a rejoint Ittsui. Le lien est actif.`);
   if (!sent) console.warn(`activate-pending-pair: activation notification failed for inviter ${inviterUid}`);
 
-  return NextResponse.json({ status: "active", pairId });
+  // partnerName/agreedDay/agreedWindowStart were already fetched above —
+  // returning them lets /invite/[pairId] show a real confirmation ("vous
+  // êtes lié(e) à X, rendez-vous le vendredi vers 18h") instead of
+  // silently redirecting to the dashboard the instant this resolves, which
+  // is what it did before: the single biggest commitment moment in the
+  // whole app (permanently joining someone's weekly ritual) had no
+  // acknowledgment at all.
+  return NextResponse.json({
+    status: "active",
+    pairId,
+    partnerName: pair.partnerName ?? null,
+    agreedDay: pair.agreedDay,
+    agreedWindowStart: pair.agreedWindowStart,
+  });
 }
 
 async function notifyInviter(inviterUid: string, text: string): Promise<boolean> {

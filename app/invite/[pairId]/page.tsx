@@ -32,7 +32,17 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "error";
+type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "activated" | "error";
+
+const DAY_LABEL: Record<string, string> = {
+  mon: "lundi",
+  tue: "mardi",
+  wed: "mercredi",
+  thu: "jeudi",
+  fri: "vendredi",
+  sat: "samedi",
+  sun: "dimanche",
+};
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -56,6 +66,9 @@ export default function InvitePage() {
   const [user, setUser] = useState<User | false | null>(null);
   const [slowConnection, setSlowConnection] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [activated, setActivated] = useState<{ partnerName: string | null; agreedDay: string; agreedWindowStart: string } | null>(
+    null
+  );
 
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
@@ -111,7 +124,8 @@ export default function InvitePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
-      router.push("/dashboard");
+      setActivated({ partnerName: data.partnerName ?? null, agreedDay: data.agreedDay, agreedWindowStart: data.agreedWindowStart });
+      setStatus("activated");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Une erreur est survenue.");
       setStatus("error");
@@ -172,6 +186,35 @@ export default function InvitePage() {
             </button>
           </div>
         )}
+      </Shell>
+    );
+  }
+
+  if (status === "activated" && activated) {
+    return (
+      <Shell>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
+          Vous êtes lié(e) à {activated.partnerName ?? "cette personne"}
+        </h1>
+        <p className="mt-3 text-sm" style={{ color: MUTED }}>
+          Rendez-vous chaque {DAY_LABEL[activated.agreedDay] ?? activated.agreedDay}, vers {activated.agreedWindowStart}
+          . La première proposition arrive automatiquement, sans rien à faire d&apos;ici là.
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: ACCENT }}
+        >
+          Aller au tableau de bord
+        </button>
+        {/* Same reasoning as /request/[requestId]'s post-accept nudge:
+            this person has just felt Ittsui's value from the receiving
+            side (arguably more so here — a standing weekly bond, not a
+            one-off) — the natural next step is trying the inviting side
+            themselves, not a cold ask. */}
+        <Link href="/setup" className="mt-4 block text-sm underline underline-offset-4" style={{ color: MUTED }}>
+          Faire pareil avec quelqu&apos;un d&apos;autre
+        </Link>
       </Shell>
     );
   }
