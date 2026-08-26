@@ -28,6 +28,7 @@
 
 import { z } from "zod";
 import { mistralComplete } from "@/lib/mistral";
+import { groqComplete } from "@/lib/groq";
 import { dayLabel } from "@/lib/notify";
 import { parisNow, WEEKDAYS, type Weekday } from "@/lib/timezone";
 import type { VenueType } from "@/lib/types";
@@ -102,13 +103,10 @@ function buildSystemPrompt(todayISO: string, todayWeekdayLabel: string): string 
   );
 }
 
-export async function parseMeetingRequestText(text: string): Promise<ParsedMeetingRequest | null> {
-  const { dateStr, weekday } = parisNow();
-  const content = await mistralComplete(buildSystemPrompt(dateStr, dayLabel(weekday)), text, {
-    model: "mistral-small-latest",
-    maxTokens: 200,
-    temperature: 0.2,
-  });
+// Turns a raw completion string into a validated result, or null if it's
+// malformed JSON or fails the schema — shared by both vendors below so
+// neither copy of this logic can drift from the other.
+function toParsedResult(content: string | null, dateStr: string, weekday: Weekday): ParsedMeetingRequest | null {
   if (!content) return null;
 
   let raw: unknown;
@@ -129,4 +127,31 @@ export async function parseMeetingRequestText(text: string): Promise<ParsedMeeti
     date: parsed.data.relativeDay ? nextDateFor(parsed.data.relativeDay, dateStr, weekday) : null,
     time: parsed.data.time ?? null,
   };
+}
+
+// Mistral primary, Groq fallback — same "API Independence Pattern" as
+// every other AI call in this codebase (confirmation text, venue
+// selection). Found missing here 2026-08-26: a real free-text input
+// ("un cafe dimanche 30 aout vers dans le marais" — venueType and day
+// both trivially extractable) came back as "rien n'a pu être deviné" with
+// every field null, which only happens when the completion call itself
+// fails outright (a real API error, an exhausted account balance, a
+// timeout), not a genuinely hard parse. Without a fallback, that single
+// point of failure meant the WHOLE natural-language-intake feature went
+// dark whenever Mistral was unavailable, no matter how simple the input
+// was.
+export async function parseMeetingRequestText(text: string): Promise<ParsedMeetingRequest | null> {
+  const { dateStr, weekday } = parisNow();
+  const systemPrompt = buildSystemPrompt(dateStr, dayLabel(weekday));
+
+  const fromMistral = await mistralComplete(systemPrompt, text, {
+    model: "mistral-small-latest",
+    maxTokens: 200,
+    temperature: 0.2,
+  });
+  const mistralResult = toParsedResult(fromMistral, dateStr, weekday);
+  if (mistralResult) return mistralResult;
+
+  const fromGroq = await groqComplete(systemPrompt, text, { maxTokens: 200, temperature: 0.2 });
+  return toParsedResult(fromGroq, dateStr, weekday);
 }

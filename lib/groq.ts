@@ -29,15 +29,34 @@ import {
 
 const GROQ_TIMEOUT_MS = 3000;
 
-// Returns the warm one-liner, or null on any failure — missing key,
-// timeout, network error, malformed response, or output that fails basic
-// sanity checks. Callers must always have a next option ready; this is a
-// best-effort enhancement, never a dependency.
-export async function generateWarmConfirmationGroq(params: WarmConfirmationParams): Promise<string | null> {
+interface GroqOptions {
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+// Generic completion call — mirrors lib/mistral.ts's mistralComplete
+// exactly (same signature, same silent-fail-to-null shape), generalized
+// out of what used to be generateWarmConfirmationGroq's confirmation-
+// text-only body. mistralComplete's own comment already anticipated this
+// exact reuse ("any future Mistral use... can reuse it") but Groq's
+// version was never given the same treatment — found as a real gap
+// 2026-08-26: lib/parseMeetingRequest.ts calls mistralComplete directly
+// with NO fallback at all, unlike every other AI call in this codebase
+// (confirmation text, venue selection). When Mistral fails — an
+// exhausted prepaid credit balance, a network blip, a timeout — the
+// natural-language "Remplir automatiquement" feature always shows
+// "rien n'a pu être deviné," regardless of how simple the input was, with
+// no safety net. This function exists so parseMeetingRequestText can have
+// the same Mistral -> Groq resilience every other AI call here already
+// has.
+export async function groqComplete(
+  systemPrompt: string,
+  userPrompt: string,
+  options: GroqOptions = {}
+): Promise<string | null> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
-
-  const userContent = buildConfirmationUserContent(params);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
@@ -50,13 +69,13 @@ export async function generateWarmConfirmationGroq(params: WarmConfirmationParam
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "groq/compound-mini",
+        model: options.model ?? "groq/compound-mini",
         messages: [
-          { role: "system", content: CONFIRMATION_SYSTEM_PROMPT },
-          { role: "user", content: userContent },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
-        max_tokens: 100,
-        temperature: 0.8,
+        max_tokens: options.maxTokens ?? 100,
+        temperature: options.temperature ?? 0.7,
       }),
       signal: controller.signal,
     });
@@ -64,15 +83,24 @@ export async function generateWarmConfirmationGroq(params: WarmConfirmationParam
 
     const data = await res.json();
     const content: unknown = data?.choices?.[0]?.message?.content;
-    if (!isValidConfirmationLine(content)) return null;
-
-    return content.trim();
+    return typeof content === "string" ? content.trim() : null;
   } catch {
     // Timeout (AbortError), network error, or bad JSON — all the same:
-    // the caller's next option (deterministic template) is the correct
-    // fallback.
+    // the caller's next option is the correct fallback.
     return null;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// Returns the warm one-liner, or null on any failure — missing key,
+// timeout, network error, malformed response, or output that fails basic
+// sanity checks. Callers must always have a next option ready; this is a
+// best-effort enhancement, never a dependency.
+export async function generateWarmConfirmationGroq(params: WarmConfirmationParams): Promise<string | null> {
+  const content = await groqComplete(CONFIRMATION_SYSTEM_PROMPT, buildConfirmationUserContent(params), {
+    maxTokens: 100,
+    temperature: 0.8,
+  });
+  return isValidConfirmationLine(content) ? content : null;
 }
