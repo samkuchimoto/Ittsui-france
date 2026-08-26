@@ -213,12 +213,14 @@ export default function RequestResponsePage() {
             (RequestsPanel's StatusPill, the dashboard's StatusBadge), and
             the same honesty rule as the venue-recommendation fallback
             chain: never let the UI imply something happened that didn't. */}
-        <span
-          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-          style={{ backgroundColor: "#1E7A4C1A", color: "#1E7A4C" }}
-        >
-          ✓ Calé sur l&apos;agenda
-        </span>
+        {accepted && (
+          <span
+            className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+            style={{ backgroundColor: "#1E7A4C1A", color: "#1E7A4C" }}
+          >
+            ✓ Calé sur l&apos;agenda
+          </span>
+        )}
         {accepted && (accepted.venueType === "restaurant" || accepted.venueType === "museum") && (
           <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
             <p className="text-sm font-medium" style={{ color: "#B08900" }}>

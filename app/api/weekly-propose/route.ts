@@ -137,9 +137,16 @@ export async function GET(request: Request) {
     }
 
     if (!isDueToday(pair, today)) continue;
-    if (!(await isCadenceDue(pair, weekOf))) continue;
 
-    // Skip if this week's proposal already exists (idempotent re-runs)
+    // Checked BEFORE isCadenceDue on purpose: for a monthly/yearly pair, a
+    // same-day retry would otherwise see its own just-written week as the
+    // "most recent" one and get silently skipped with no entry in
+    // `results` at all (elapsed days since itself is 0, well under the
+    // cadence threshold) — correct in effect (no duplicate), but
+    // inconsistent with how a weekly pair's retry is reported. Checking
+    // the cheap direct doc lookup first means every pair gets the same
+    // "already_proposed" outcome on a retry, and it also skips the extra
+    // isCadenceDue query entirely in that case.
     const existing = await adminDb
       .collection("pairs")
       .doc(pair.id)
@@ -150,6 +157,8 @@ export async function GET(request: Request) {
       results.push({ pairId: pair.id, status: "already_proposed" });
       continue;
     }
+
+    if (!(await isCadenceDue(pair, weekOf))) continue;
 
     const { pair: weatherPair, swapNote } = await weatherAdjustPair(pair, weekOf);
 
@@ -258,6 +267,7 @@ async function withWarmConfirmation(pair: Pair, proposal: VenueProposal, weather
     time: pair.agreedWindowStart,
     partnerName: pair.partnerName,
     streakCount,
+    cadence: pair.cadence ?? "weekly",
     weatherSwapNote,
   });
   return warm ?? proposal.confirmationText;

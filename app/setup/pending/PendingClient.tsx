@@ -82,11 +82,19 @@ function DeliveryStatus({ pair }: { pair: Pair }) {
 // RequestFormClient.tsx and SetupClient.tsx: email delivery isn't
 // instant, and a live test found this exact case (both email and phone
 // given) silently dropped the WhatsApp/SMS option everywhere it appeared.
+// "notre moment de la semaine" was accurate for every pair before
+// Pair.cadence existed — same fix as SetupClient.tsx's identical phrase.
+const CADENCE_MOMENT_PHRASE: Record<NonNullable<Pair["cadence"]>, string> = {
+  weekly: "notre moment de la semaine",
+  monthly: "notre moment du mois",
+  yearly: "notre moment de l'année",
+};
+
 function SharePhoneInvite({ pair }: { pair: Pair }) {
   if (!pair.invitedPhone) return null;
   // Short form (/m/p/... redirects to /invite/... — see next.config.js).
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/m/p/${pair.id}`;
-  const text = `${pair.partnerName}, je t'ai préparé notre moment de la semaine sur Ittsui : ${inviteUrl}`;
+  const text = `${pair.partnerName}, je t'ai préparé ${CADENCE_MOMENT_PHRASE[pair.cadence ?? "weekly"]} sur Ittsui : ${inviteUrl}`;
   const whatsappHref = whatsappLinkForNumber(pair.invitedPhone, text);
   const smsHref = smsLinkForNumber(pair.invitedPhone, text);
 

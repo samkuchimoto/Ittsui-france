@@ -11,7 +11,15 @@ export interface WarmConfirmationParams {
   day: string; // French day label, e.g. "samedi"
   time: string; // "HH:MM"
   partnerName: string;
-  streakCount: number | null; // count of past confirmed weeks, if known
+  streakCount: number | null; // count of past confirmed periods, if known
+  // Which recurrence this streakCount is actually counting — a Pair's
+  // ritual can be weekly/monthly/yearly (see lib/types.ts's Pair.cadence).
+  // Optional, defaults to "weekly": api/rsvp/route.ts never passes this
+  // (it always passes streakCount: null anyway, so the clause below never
+  // renders from that call site regardless), only weekly-propose/route.ts
+  // passes a real streakCount, and it always knows the pair's real
+  // cadence, so it always passes this too.
+  cadence?: "weekly" | "monthly" | "yearly";
   // Set only when weather actually changed which venue got picked this
   // week (see lib/weather.ts + weekly-propose/route.ts) — never just
   // because it happens to be raining. Passing this on a week where the
@@ -21,9 +29,14 @@ export interface WarmConfirmationParams {
   weatherSwapNote: string | null;
 }
 
+// "hebdomadaire" removed from the system prompt — it used to be safe to
+// assert since every pair WAS weekly, but that's no longer universally
+// true (Pair.cadence). The specific day/time/streak-period language comes
+// through the user content below instead, so the model isn't told a
+// frequency that might not match this particular pair's actual one.
 export const CONFIRMATION_SYSTEM_PROMPT =
   "Tu écris UNE seule ligne de confirmation chaleureuse en français pour une " +
-  "appli de rendez-vous hebdomadaire entre deux proches. Règles strictes : " +
+  "appli de rendez-vous protégé entre deux proches. Règles strictes : " +
   "mentionne le lieu, le jour et l'heure fournis ; français uniquement ; pas " +
   "d'emoji ; pas de guillemets ; maximum 100 caractères ; ton chaleureux mais " +
   "sobre, jamais mièvre, sans formule de politesse finale (pas de \"Bonne " +
@@ -32,12 +45,22 @@ export const CONFIRMATION_SYSTEM_PROMPT =
   "plutôt...\") plutôt que de l'ignorer. Réponds uniquement avec la ligne, " +
   "rien d'autre, sans explication.";
 
+// Gender-agreed as a whole phrase rather than composing noun + adjective
+// separately — "mois" is masculine ("partagés"), "semaines"/"années" are
+// feminine ("partagées"), so a generic composition would get one of the
+// three wrong.
+const STREAK_PHRASE: Record<NonNullable<WarmConfirmationParams["cadence"]>, string> = {
+  weekly: "semaines déjà partagées",
+  monthly: "mois déjà partagés",
+  yearly: "années déjà partagées",
+};
+
 export function buildConfirmationUserContent(params: WarmConfirmationParams): string {
   return (
     `Lieu: ${params.venueName}. Jour: ${params.day}. Heure: ${params.time}. ` +
     `Prénom du partenaire: ${params.partnerName}.` +
     (params.streakCount && params.streakCount > 0
-      ? ` Nombre de semaines déjà partagées: ${params.streakCount}.`
+      ? ` Nombre de ${STREAK_PHRASE[params.cadence ?? "weekly"]}: ${params.streakCount}.`
       : "") +
     (params.weatherSwapNote ? ` Raison météo du choix: ${params.weatherSwapNote}.` : "")
   );

@@ -19,6 +19,14 @@ const DEFAULT_NOTIFICATION_PREFS = { pushEnabled: true, emailEnabled: true };
 
 export type DeliveryStatus = "push" | "email" | "failed" | "no-recipient";
 
+// "de la semaine" was accurate for every pair before Pair.cadence existed
+// — now it would misdescribe a monthly/yearly pair's email subject.
+const CADENCE_SUBJECT: Record<NonNullable<Pair["cadence"]>, string> = {
+  weekly: "Votre rendez-vous de la semaine",
+  monthly: "Votre rendez-vous du mois",
+  yearly: "Votre rendez-vous de l'année",
+};
+
 export interface NotifyResult {
   userId: string;
   status: DeliveryStatus;
@@ -64,7 +72,7 @@ export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyR
           body: JSON.stringify({
             from: "Ittsui <hello@ittsui.fr>",
             to: user.email,
-            subject: "Votre rendez-vous de la semaine",
+            subject: CADENCE_SUBJECT[pair.cadence ?? "weekly"],
             text,
           }),
         });

@@ -15,6 +15,15 @@ const PENDING_EXPIRY_DAYS = 14;
 // assumed) — real invites do deliver to real partners.
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
+// "hebdomadaire" was accurate for every invite before Pair.cadence
+// existed — now the invite email needs to describe whichever recurrence
+// the inviter actually chose.
+const CADENCE_INVITE_ADJ: Record<"weekly" | "monthly" | "yearly", string> = {
+  weekly: "hebdomadaire",
+  monthly: "mensuel",
+  yearly: "annuel",
+};
+
 // notifyDaysBefore/postalCode stay optional and postalCode stays
 // loosely-typed here — the existing regex check right before use below
 // silently drops an invalid postal code rather than rejecting the whole
@@ -137,7 +146,7 @@ export async function POST(request: Request) {
         to: cleanEmail,
         subject: `${inviterName} vous invite sur Ittsui`,
         text:
-          `${inviterName} a proposé de protéger un rendez-vous hebdomadaire avec vous sur Ittsui.\n\n` +
+          `${inviterName} a proposé de protéger un rendez-vous ${CADENCE_INVITE_ADJ[cadence ?? "weekly"]} avec vous sur Ittsui.\n\n` +
           `Pour l'activer, connectez-vous ici : ${inviteUrl}\n\n` +
           `Si vous ne souhaitez pas être lié, ignorez ce message ou déclinez ici : ${inviteUrl}?decline=1\n` +
           `Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.`,

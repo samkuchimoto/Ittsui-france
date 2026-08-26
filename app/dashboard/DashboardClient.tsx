@@ -88,6 +88,23 @@ function VenuePhoto({ venueType }: { venueType?: VenueType }) {
   );
 }
 
+// "Cette semaine" was hardcoded before Pair.cadence existed — every pair
+// was weekly, so it was always true. Now a monthly/yearly pair would see
+// a page heading claiming "this week" while actually being proposed to
+// once a month or once a year, which is exactly the kind of mismatch
+// worth catching rather than leaving as a stale assumption.
+function cadenceHeading(cadence: Pair["cadence"]): string {
+  if (cadence === "monthly") return "Ce mois-ci";
+  if (cadence === "yearly") return "Cette année";
+  return "Cette semaine";
+}
+
+function cadenceThisPeriod(cadence: Pair["cadence"]): string {
+  if (cadence === "monthly") return "ce mois-ci";
+  if (cadence === "yearly") return "cette année";
+  return "cette semaine";
+}
+
 export default function DashboardClient() {
   const router = useRouter();
 
@@ -378,7 +395,7 @@ export default function DashboardClient() {
   return (
     <Shell>
       <div className="flex items-center justify-between">
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>Cette semaine</h1>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{cadenceHeading(pair.cadence)}</h1>
         <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Se déconnecter
         </button>
@@ -474,7 +491,7 @@ export default function DashboardClient() {
       {week && week.optionB && (
         <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
           <p className="text-base font-medium">
-            {week.status === "proposed" ? "Deux propositions pour vous cette semaine :" : week.confirmationText}
+            {week.status === "proposed" ? `Deux propositions pour vous ${cadenceThisPeriod(pair.cadence)} :` : week.confirmationText}
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />

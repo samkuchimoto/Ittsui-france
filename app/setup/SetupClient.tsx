@@ -158,6 +158,12 @@ const CADENCE_ADVERB: Record<NonNullable<Pair["cadence"]>, string> = {
   yearly: "chaque année",
 };
 
+const CADENCE_MOMENT_PHRASE: Record<NonNullable<Pair["cadence"]>, string> = {
+  weekly: "notre moment de la semaine",
+  monthly: "notre moment du mois",
+  yearly: "notre moment de l'année",
+};
+
 type DuoType = "ami" | "partenaire" | "famille";
 const DUO_TYPES: { value: DuoType; label: string }[] = [
   { value: "ami", label: "Un(e) ami(e)" },
@@ -503,7 +509,7 @@ export default function SetupClient() {
     if (!invited) return;
     const result = await shareLink({
       title: "Ittsui - Notre moment",
-      text: "Je t'ai préparé notre moment de la semaine ! Rejoins-moi sur Ittsui :",
+      text: `Je t'ai préparé ${CADENCE_MOMENT_PHRASE[invited.cadence]} ! Rejoins-moi sur Ittsui :`,
       url: invited.inviteUrl,
     });
     if (result === "copied") {
@@ -615,7 +621,7 @@ export default function SetupClient() {
               </p>
               <div className="mt-4 space-y-2">
                 {(() => {
-                  const text = `${invited.name}, je t'ai préparé notre moment de la semaine sur Ittsui : ${invited.inviteUrl}`;
+                  const text = `${invited.name}, je t'ai préparé ${CADENCE_MOMENT_PHRASE[invited.cadence]} sur Ittsui : ${invited.inviteUrl}`;
                   const whatsappHref = whatsappLinkForNumber(invited.phone, text);
                   const smsHref = smsLinkForNumber(invited.phone, text);
                   return (
