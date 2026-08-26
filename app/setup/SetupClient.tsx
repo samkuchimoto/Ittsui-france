@@ -146,6 +146,18 @@ const SENT_STEPS: StatusStep[] = [
 
 const DIETARY_OPTIONS: DietaryFilter[] = ["casher", "halal", "vegetarien", "bio", "antillais"];
 
+const CADENCE_OPTIONS: { value: NonNullable<Pair["cadence"]>; label: string }[] = [
+  { value: "weekly", label: "Chaque semaine" },
+  { value: "monthly", label: "Chaque mois" },
+  { value: "yearly", label: "Chaque année" },
+];
+
+const CADENCE_ADVERB: Record<NonNullable<Pair["cadence"]>, string> = {
+  weekly: "chaque semaine",
+  monthly: "chaque mois",
+  yearly: "chaque année",
+};
+
 type DuoType = "ami" | "partenaire" | "famille";
 const DUO_TYPES: { value: DuoType; label: string }[] = [
   { value: "ami", label: "Un(e) ami(e)" },
@@ -222,6 +234,11 @@ export default function SetupClient() {
   const [duoType, setDuoType] = useState<DuoType | null>(null); // local UI only, not sent to API
   const [isNative, setIsNative] = useState(false);
   const [importingPartner, setImportingPartner] = useState(false);
+  // Collapsed by default — see RequestFormClient.tsx's identical toggle for
+  // the real Gen Z tester feedback ("avec l'email c'est pour faire quoi")
+  // this responds to. Auto-revealed whenever a value already exists
+  // (contact import), never hidden once shown.
+  const [showPartnerEmail, setShowPartnerEmail] = useState(false);
 
   // Checked post-mount, not during render: Capacitor's platform check only
   // resolves correctly in the browser, so seeding it into render directly
@@ -230,6 +247,13 @@ export default function SetupClient() {
   // /request/new and /contacts (see lib/nativeContacts.ts).
   useEffect(() => setIsNative(Capacitor.isNativePlatform()), []);
 
+  // Not every relationship needs a weekly touchpoint — a monthly catch-up
+  // fits extended family or a mentor better than the default weekly
+  // rhythm, and the reverse (forcing weekly on someone who doesn't want
+  // it) is a real reason people would avoid setting up a pair at all.
+  // Reuses agreedDay/agreedWindowStart exactly as-is; weekly-propose's
+  // isCadenceDue() just skips most weekly opportunities for the other two.
+  const [cadence, setCadence] = useState<NonNullable<Pair["cadence"]>>("weekly");
   const [day, setDay] = useState<Pair["agreedDay"]>("sun");
   const [windowStart, setWindowStart] = useState("15:00");
   const [windowEnd, setWindowEnd] = useState("17:00");
@@ -244,9 +268,14 @@ export default function SetupClient() {
   const [submitting, setSubmitting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [invited, setInvited] = useState<{ name: string; hasEmail: boolean; phone: string; pairId: string; inviteUrl: string } | null>(
-    null
-  );
+  const [invited, setInvited] = useState<{
+    name: string;
+    hasEmail: boolean;
+    phone: string;
+    pairId: string;
+    inviteUrl: string;
+    cadence: NonNullable<Pair["cadence"]>;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Geolocation is deliberately NOT triggered on mount — it's requested
@@ -447,6 +476,7 @@ export default function SetupClient() {
           agreedDay: day,
           agreedWindowStart: windowStart,
           agreedWindowEnd: windowEnd,
+          cadence,
           notifyDaysBefore,
           postalCode: postalCode || undefined,
           preferences: { venueTypes, dietaryFilters },
@@ -456,7 +486,7 @@ export default function SetupClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
-      setInvited({ name: partnerName, hasEmail, phone: partnerPhone, pairId: data.pairId, inviteUrl: data.inviteUrl });
+      setInvited({ name: partnerName, hasEmail, phone: partnerPhone, pairId: data.pairId, inviteUrl: data.inviteUrl, cadence });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
@@ -641,7 +671,8 @@ export default function SetupClient() {
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
             <p className="text-sm font-medium">Et maintenant ?</p>
             <p className="mt-1 text-sm" style={{ color: MUTED }}>
-              Rien à faire de votre côté. Dès que {invited.name} se connecte, votre rendez-vous hebdomadaire
+              Rien à faire de votre côté. Dès que {invited.name} se connecte, votre rituel{" "}
+              {invited.cadence === "weekly" ? "hebdomadaire" : invited.cadence === "monthly" ? "mensuel" : "annuel"}{" "}
               s&apos;active automatiquement — vous recevrez un e-mail à ce moment-là.
               {postalCode && ` Les propositions seront centrées autour du ${postalCode}.`}
             </p>
@@ -722,17 +753,30 @@ export default function SetupClient() {
                 style={{ borderColor: BORDER }}
                 placeholder="Son numéro de téléphone"
               />
-              <p className="mt-3 text-xs" style={{ color: MUTED }}>
-                Ou, si vous l&apos;avez, son e-mail :
-              </p>
-              <input
-                type="email"
-                value={partnerEmail}
-                onChange={(e) => setPartnerEmail(e.target.value)}
-                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
-                style={{ borderColor: BORDER }}
-                placeholder="Son e-mail (optionnel)"
-              />
+              {showPartnerEmail || partnerEmail.trim().length > 0 ? (
+                <>
+                  <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                    Ou, si vous l&apos;avez, son e-mail :
+                  </p>
+                  <input
+                    type="email"
+                    value={partnerEmail}
+                    onChange={(e) => setPartnerEmail(e.target.value)}
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                    style={{ borderColor: BORDER }}
+                    placeholder="Son e-mail (optionnel)"
+                  />
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowPartnerEmail(true)}
+                  className="mt-3 text-xs font-medium underline underline-offset-4"
+                  style={{ color: MUTED }}
+                >
+                  + Ajouter aussi un e-mail
+                </button>
+              )}
             </div>
 
             <div>
@@ -777,7 +821,28 @@ export default function SetupClient() {
         {step === 2 && (
           <section className="space-y-6">
             <div>
-              <label className="block text-sm font-medium">Quand, chaque semaine ?</label>
+              <label className="block text-sm font-medium">À quelle fréquence ?</label>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {CADENCE_OPTIONS.map((c) => (
+                  <button
+                    type="button"
+                    key={c.value}
+                    onClick={() => setCadence(c.value)}
+                    className="rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors sm:text-sm"
+                    style={
+                      cadence === c.value
+                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                        : { borderColor: BORDER, color: INK, backgroundColor: "white" }
+                    }
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Quand, {CADENCE_ADVERB[cadence]} ?</label>
               <div className="mt-2 grid grid-cols-1 gap-2">
                 {TIME_PRESETS.map((p) => (
                   <button

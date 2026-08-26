@@ -190,6 +190,13 @@ export default function RequestFormClient() {
   // real request: "like I can WhatsApp people directly [from my phone
   // contacts], I want to Ittsui people directly."
   const [browsingPhoneContacts, setBrowsingPhoneContacts] = useState(false);
+  // Collapsed by default — real Gen Z tester feedback ("avec l'email c'est
+  // pour faire quoi") showed the email field sitting there as a permanent
+  // second input was itself a point of confusion when phone already covers
+  // the common case. Opt-in via the toggle below, or auto-revealed whenever
+  // a value already exists in draft.recipientEmail (contact import, voice
+  // match) so a real pre-filled value is never hidden.
+  const [showEmailField, setShowEmailField] = useState(false);
 
   // Checked post-mount, not during render: Capacitor's platform check only
   // resolves correctly in the browser, so seeding it into render directly
@@ -949,17 +956,30 @@ export default function RequestFormClient() {
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
                     style={{ borderColor: BORDER }}
                   />
-                  <p className="mt-3 text-xs" style={{ color: MUTED }}>
-                    Ou, si vous l&apos;avez, son e-mail :
-                  </p>
-                  <input
-                    type="email"
-                    placeholder="E-mail (optionnel)"
-                    value={draft.recipientEmail}
-                    onChange={(e) => update("recipientEmail", e.target.value)}
-                    className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
-                    style={{ borderColor: BORDER }}
-                  />
+                  {showEmailField || draft.recipientEmail.trim().length > 0 ? (
+                    <>
+                      <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                        Ou, si vous l&apos;avez, son e-mail :
+                      </p>
+                      <input
+                        type="email"
+                        placeholder="E-mail (optionnel)"
+                        value={draft.recipientEmail}
+                        onChange={(e) => update("recipientEmail", e.target.value)}
+                        className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
+                        style={{ borderColor: BORDER }}
+                      />
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailField(true)}
+                      className="mt-3 text-xs font-medium underline underline-offset-4"
+                      style={{ color: MUTED }}
+                    >
+                      + Ajouter aussi un e-mail
+                    </button>
+                  )}
                 </>
               )}
             </section>

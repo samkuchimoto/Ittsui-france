@@ -48,6 +48,11 @@ export default function ContactsClient() {
   const [saving, setSaving] = useState(false);
   const [isNative, setIsNative] = useState(false);
   const [importing, setImporting] = useState(false);
+  // Collapsed by default — see RequestFormClient.tsx's identical toggle for
+  // the real Gen Z tester feedback ("avec l'email c'est pour faire quoi")
+  // this responds to. Auto-revealed whenever a value already exists
+  // (contact import), never hidden once shown.
+  const [showEmail, setShowEmail] = useState(false);
 
   useEffect(() => watchAuthState((u) => setUser(u ?? false)), []);
 
@@ -222,17 +227,30 @@ export default function ContactsClient() {
             className="w-full rounded-lg border px-3 py-2.5 text-sm"
             style={{ borderColor: BORDER }}
           />
-          <p className="text-xs" style={{ color: MUTED }}>
-            Ou, si vous l&apos;avez, son e-mail :
-          </p>
-          <input
-            type="email"
-            placeholder="E-mail (optionnel)"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2.5 text-sm"
-            style={{ borderColor: BORDER }}
-          />
+          {showEmail || email.trim().length > 0 ? (
+            <>
+              <p className="text-xs" style={{ color: MUTED }}>
+                Ou, si vous l&apos;avez, son e-mail :
+              </p>
+              <input
+                type="email"
+                placeholder="E-mail (optionnel)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm"
+                style={{ borderColor: BORDER }}
+              />
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowEmail(true)}
+              className="text-xs font-medium underline underline-offset-4"
+              style={{ color: MUTED }}
+            >
+              + Ajouter aussi un e-mail
+            </button>
+          )}
           {error && (
             <p className="text-sm" style={{ color: ACCENT }}>
               {error}

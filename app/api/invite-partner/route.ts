@@ -43,6 +43,9 @@ const bodySchema = z
     agreedDay: z.enum(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]),
     agreedWindowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     agreedWindowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    // Optional, defaults to "weekly" server-side — see lib/types.ts's
+    // Pair.cadence comment.
+    cadence: z.enum(["weekly", "monthly", "yearly"]).optional(),
     // Capped at 6: isDueToday() in weekly-propose/route.ts resolves this via
     // (meetingIndex - leadDays + 7) % 7, which silently produces a negative
     // array index — and therefore permanently breaks that pair's weekly
@@ -71,6 +74,7 @@ export async function POST(request: Request) {
     agreedDay,
     agreedWindowStart,
     agreedWindowEnd,
+    cadence,
     notifyDaysBefore,
     postalCode,
     preferences,
@@ -110,6 +114,7 @@ export async function POST(request: Request) {
     agreedDay,
     agreedWindowStart,
     agreedWindowEnd,
+    ...(cadence && cadence !== "weekly" ? { cadence } : {}),
     notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
     ...(typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
     preferences,
@@ -119,7 +124,9 @@ export async function POST(request: Request) {
     expiresAt: expiresAt.toISOString(),
   });
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${pairRef.id}`;
+  // Short form (/m/p/... redirects to /invite/... — see next.config.js)
+  // for a cleaner WhatsApp/SMS/email preview.
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/p/${pairRef.id}`;
 
   // No email at all (phone-only invite) — nothing to send server-side (no
   // SMS provider exists in this app). The client shows a share-this-link-

@@ -73,6 +73,17 @@ const nextConfig = {
       },
     ],
   },
+  // Short aliases for the two bearer-link routes — cleaner in a WhatsApp/
+  // SMS preview than the full path. "r"/"p" (not the collection names) so
+  // the shared link never spells out "meetingRequests" or reveals which
+  // Firestore collection backs it. 307, not a permanent redirect: this is
+  // a routing alias that could change shape later, not a URL migration.
+  async redirects() {
+    return [
+      { source: "/m/r/:id", destination: "/request/:id", permanent: false },
+      { source: "/m/p/:id", destination: "/invite/:id", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

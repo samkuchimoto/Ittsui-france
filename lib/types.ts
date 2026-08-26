@@ -37,6 +37,13 @@ export interface Pair {
   agreedDay: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
   agreedWindowStart: string; // e.g. "15:00"
   agreedWindowEnd: string; // e.g. "17:00"
+  // Optional, read-side default "weekly" (every pair created before this
+  // field existed keeps its exact current behavior). Reuses agreedDay/
+  // agreedWindowStart/agreedWindowEnd exactly as-is for "which day, what
+  // time" — "monthly"/"yearly" only change HOW OFTEN that day actually
+  // gets a new proposal, via weekly-propose/route.ts's isCadenceDue(),
+  // not a separate calendar-date schedule.
+  cadence?: "weekly" | "monthly" | "yearly";
   // Days before agreedDay that the weekly proposal notification should go
   // out. Optional, defaults to 0 (same day) read-side — lets e.g. a
   // Saturday-afternoon meeting notify on Thursday instead of Saturday,

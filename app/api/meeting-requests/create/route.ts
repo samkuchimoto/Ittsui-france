@@ -91,7 +91,9 @@ export async function POST(request: Request) {
     expiresAt: expiresAt.toISOString(),
   });
 
-  const requestUrl = `${process.env.NEXT_PUBLIC_APP_URL}/request/${ref.id}`;
+  // Short form (/m/r/... redirects to /request/... — see next.config.js)
+  // for a cleaner WhatsApp/SMS/email preview.
+  const requestUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/r/${ref.id}`;
 
   // No email on file at all (phone-only) — there's nothing to send server-
   // side (no SMS provider exists in this app). The client shows a

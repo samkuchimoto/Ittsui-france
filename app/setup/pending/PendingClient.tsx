@@ -84,7 +84,8 @@ function DeliveryStatus({ pair }: { pair: Pair }) {
 // given) silently dropped the WhatsApp/SMS option everywhere it appeared.
 function SharePhoneInvite({ pair }: { pair: Pair }) {
   if (!pair.invitedPhone) return null;
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${pair.id}`;
+  // Short form (/m/p/... redirects to /invite/... — see next.config.js).
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/m/p/${pair.id}`;
   const text = `${pair.partnerName}, je t'ai préparé notre moment de la semaine sur Ittsui : ${inviteUrl}`;
   const whatsappHref = whatsappLinkForNumber(pair.invitedPhone, text);
   const smsHref = smsLinkForNumber(pair.invitedPhone, text);

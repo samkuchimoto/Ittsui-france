@@ -311,6 +311,17 @@ export default function DashboardClient() {
     return w.status === "proposed" && Date.now() > new Date(w.proposedTime).getTime() + 24 * 60 * 60 * 1000;
   }
 
+  // A confirmed two-option week keeps BOTH optionA/optionB on the doc as
+  // originally proposed (see api/rsvp/route.ts) — only the top-level
+  // venueName/venueAddress get overwritten to the winning choice, never a
+  // top-level venueType. The winning option is still derivable client-side
+  // from which response value ("A"/"B") the pair actually agreed on.
+  function confirmedVenueType(w: Week): VenueType | undefined {
+    if (!w.optionB) return w.optionA?.venueType;
+    const winner = Object.values(w.responses).find((v) => v === "A" || v === "B");
+    return winner === "B" ? w.optionB?.venueType : w.optionA?.venueType;
+  }
+
   // Still checking auth state
   if (user === null) {
     return (
@@ -428,6 +439,7 @@ export default function DashboardClient() {
           <p className="text-base font-medium">{week.confirmationText}</p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
@@ -466,6 +478,7 @@ export default function DashboardClient() {
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
@@ -685,6 +698,37 @@ function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapse
     <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
       {lapsed ? "Expiré" : labels[status]}
     </span>
+  );
+}
+
+// Honest status, not just a checkmark and a venue name: a restaurant or
+// museum commonly still needs an actual reservation or ticket, which
+// nothing in this app has booked — see the identical amber/green
+// distinction on /request/[requestId]'s accept screen for the fuller
+// reasoning. Silent for a proposed/cancelled/lapsed week, or any venue
+// type that doesn't typically need booking (cafe/park/home) — absence of
+// the card already signals "nothing to do here" without adding noise.
+function ReservationNote({
+  week,
+  isLapsed,
+  confirmedVenueType,
+}: {
+  week: Week;
+  isLapsed: boolean;
+  confirmedVenueType: (w: Week) => VenueType | undefined;
+}) {
+  if (week.status !== "confirmed" || isLapsed) return null;
+  const type = confirmedVenueType(week);
+  if (type !== "restaurant" && type !== "museum") return null;
+  return (
+    <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
+      <p className="text-sm font-medium" style={{ color: "#B08900" }}>
+        ⚠ Réservation requise
+      </p>
+      <p className="mt-1 text-xs" style={{ color: MUTED }}>
+        {week.venueName} n&apos;a pas été réservé pour vous — pensez à appeler ou réserver directement.
+      </p>
+    </div>
   );
 }
 

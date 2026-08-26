@@ -205,6 +205,31 @@ export default function RequestResponsePage() {
             {accepted.venueName} · {accepted.date} à {accepted.time}
           </p>
         )}
+        {/* Honest status, not just a checkmark and a venue name: "Calé sur
+            l'agenda" is real (both people confirmed a date/time) — but a
+            restaurant or museum commonly still needs an actual reservation
+            or ticket, which nothing in this app has booked. Same
+            amber/green convention already used for status elsewhere
+            (RequestsPanel's StatusPill, the dashboard's StatusBadge), and
+            the same honesty rule as the venue-recommendation fallback
+            chain: never let the UI imply something happened that didn't. */}
+        <span
+          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+          style={{ backgroundColor: "#1E7A4C1A", color: "#1E7A4C" }}
+        >
+          ✓ Calé sur l&apos;agenda
+        </span>
+        {accepted && (accepted.venueType === "restaurant" || accepted.venueType === "museum") && (
+          <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
+            <p className="text-sm font-medium" style={{ color: "#B08900" }}>
+              ⚠ Réservation requise
+            </p>
+            <p className="mt-1 text-xs" style={{ color: MUTED }}>
+              {accepted.venueName} n&apos;a pas été réservé pour vous — pensez à appeler ou réserver directement.
+              {accepted.venueAddress && ` ${accepted.venueAddress}.`}
+            </p>
+          </div>
+        )}
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Vous recevrez un e-mail de confirmation. L&apos;autre personne a été notifiée.
         </p>

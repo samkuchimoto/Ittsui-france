@@ -137,6 +137,7 @@ export async function GET(request: Request) {
     }
 
     if (!isDueToday(pair, today)) continue;
+    if (!(await isCadenceDue(pair, weekOf))) continue;
 
     // Skip if this week's proposal already exists (idempotent re-runs)
     const existing = await adminDb
@@ -206,6 +207,43 @@ function isDueToday(pair: Pair, today: (typeof WEEKDAYS)[number]): boolean {
   // input upstream, not dependent on a single point of defense.
   const notifyIndex = (((meetingIndex - leadDays) % WEEKDAYS.length) + WEEKDAYS.length) % WEEKDAYS.length;
   return WEEKDAYS[notifyIndex] === today;
+}
+
+// isDueToday() alone only ever answers "is today this pair's normal
+// meeting weekday" — for a weekly pair (the default, and every pair
+// created before Pair.cadence existed) that's the whole answer, unchanged.
+// For monthly/yearly, it's necessary but not sufficient: this pair's
+// weekday comes around every week regardless of cadence, so most of those
+// weekly matches need to be skipped. Checked against the most recent
+// existing week doc rather than a stored "next due" date, so cadence can
+// change later without needing a migration — it just changes how far back
+// the interval check looks starting from the next run.
+// No existing week doc at all -> always due, regardless of cadence, so a
+// brand-new monthly/yearly pair still gets its first proposal right away
+// instead of waiting out a full cycle first.
+const CADENCE_MIN_DAYS: Record<NonNullable<Pair["cadence"]>, number> = {
+  weekly: 0,
+  monthly: 21, // skip 3 weekly opportunities, fire on the 4th (~28 days)
+  yearly: 357, // skip 50, fire on the 52nd (~364 days)
+};
+
+async function isCadenceDue(pair: Pair, weekOf: string): Promise<boolean> {
+  const cadence = pair.cadence ?? "weekly";
+  const minDays = CADENCE_MIN_DAYS[cadence];
+  if (minDays === 0) return true;
+
+  const lastWeekSnap = await adminDb
+    .collection("pairs")
+    .doc(pair.id)
+    .collection("weeks")
+    .orderBy("weekOf", "desc")
+    .limit(1)
+    .get();
+  if (lastWeekSnap.empty) return true;
+
+  const lastWeekOf = lastWeekSnap.docs[0].data().weekOf as string;
+  const elapsedDays = Math.round((new Date(weekOf).getTime() - new Date(lastWeekOf).getTime()) / (24 * 60 * 60 * 1000));
+  return elapsedDays >= minDays;
 }
 
 // Best-effort warmth pass over an already-deterministically-chosen venue's
