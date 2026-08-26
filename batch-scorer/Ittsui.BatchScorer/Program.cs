@@ -34,3 +34,12 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// .NET's top-level-statement Program.cs compiles to an INTERNAL Program
+// class by default — invisible outside this assembly. The integration
+// tests in Ittsui.BatchScorer.Tests need WebApplicationFactory<Program> to
+// spin up this exact app in-memory, from a different assembly, which
+// requires Program to be public. This partial declaration is the
+// well-known, minimal fix — it doesn't change anything about how the app
+// actually runs, only what's visible to the test project.
+public partial class Program { }
