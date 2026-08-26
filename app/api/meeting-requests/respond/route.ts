@@ -1,10 +1,23 @@
 // /app/api/meeting-requests/respond/route.ts
-// Called from /request/{requestId} once the recipient decides. Mirrors
-// activate-pending-pair/route.ts's exact reasoning: accept requires being
-// signed in with the exact invited email (the requestId alone isn't
-// authorization), decline doesn't (an opt-out shouldn't cost someone an
-// account). On accept, both parties get an email — the one explicit
-// requirement for this flow.
+// Called from /request/{requestId} once the recipient decides.
+//
+// Accept has TWO distinct trust paths, not one, matching whether an email
+// was ever on file to check against:
+//   - Email-addressed request: sign-in with the exact invited email is
+//     required, same as activate-pending-pair/route.ts — the requestId
+//     alone isn't authorization here, because email is interceptable/
+//     forwardable and the whole point of the check is confirming it's
+//     really that person, not just possession of the link.
+//   - Phone-only request: no recipientEmail ever existed to check against,
+//     so requiring a Google sign-in here was pure friction with ZERO
+//     added security — any signed-in account could already accept it
+//     regardless, since there was never an identity to verify. Real gap
+//     found 2026-08-26: the unguessable link is already the sole
+//     authorization for this case (same trust boundary decline already
+//     uses below), so accept can be genuinely one-tap, no login, for
+//     exactly this case and no other.
+// Decline never requires login either way — an opt-out shouldn't cost
+// someone an account.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -13,28 +26,24 @@ import { googleCalendarLink } from "@/lib/googleCalendarLink";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
-// Same shape as activate-pending-pair/route.ts's identical accept/decline
-// split: decline only needs requestId (a bearer-style link mailed to one
-// address; requiring login to opt out would be exactly the wrong kind of
-// friction), accept needs the signed-in uid/email too.
-const bodySchema = z
-  .object({
-    requestId: z.string().min(1),
-    userId: z.string().min(1).optional(),
-    userEmail: z.string().min(1).optional(),
-    decline: z.boolean().optional(),
-  })
-  .refine((data) => data.decline || (data.userId && data.userEmail), { message: "champs manquants" });
+// userId/userEmail are now optional even for accept — the handler below
+// decides whether they're actually required, once it knows if this
+// specific request has an email on file to check against. A schema-level
+// .refine() can't make that call, since it doesn't have the Firestore doc
+// yet at validation time.
+const bodySchema = z.object({
+  requestId: z.string().min(1),
+  userId: z.string().min(1).optional(),
+  userEmail: z.string().min(1).optional(),
+  decline: z.boolean().optional(),
+});
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "champs manquants" }, { status: 400 });
   }
-  const { requestId, decline } = parsed.data;
-  // Guaranteed present by the refine above whenever !decline.
-  const userId = parsed.data.userId!;
-  const userEmail = parsed.data.userEmail!;
+  const { requestId, decline, userId, userEmail } = parsed.data;
 
   const ref = adminDb.collection("meetingRequests").doc(requestId);
   const snap = await ref.get();
@@ -44,10 +53,27 @@ export async function POST(request: Request) {
 
   const data = snap.data()!;
 
+  // Only an email-addressed request actually needs a signed-in identity
+  // to accept — see the file header. A phone-only request accepted with
+  // no userId at all is the new, genuine one-tap path; if a userId WAS
+  // provided anyway (someone signed in even though they didn't have to),
+  // it's still recorded below exactly as before.
+  if (!decline && data.recipientEmail && !(userId && userEmail)) {
+    return NextResponse.json({ error: "connexion requise" }, { status: 401 });
+  }
+
   // Reopening the link (refresh, back button) after already accepting
   // should land back on the dashboard, not throw "déjà traitée" — same
   // idempotency activate-pending-pair applies to its own accept path.
-  if (data.status === "accepted" && !decline && userId && data.recipientId === userId) {
+  // Two ways this counts as "the same person re-visiting": a logged-in
+  // match on recipientId (unchanged), or — new — no login at all on a
+  // request that was itself accepted without one, since there's no
+  // identity to compare against in that path either way.
+  const isIdempotentRevisit =
+    data.status === "accepted" &&
+    !decline &&
+    ((userId && data.recipientId === userId) || (!userId && !data.recipientId));
+  if (isIdempotentRevisit) {
     return NextResponse.json({
       status: "accepted",
       requestId,
@@ -92,7 +118,11 @@ export async function POST(request: Request) {
 
   await ref.update({
     status: "accepted",
-    recipientId: userId,
+    // Conditionally included, never written as `undefined` — the Admin
+    // SDK throws on that rather than omitting the field the way a plain
+    // object spread would. Genuinely absent for the new no-login,
+    // phone-only accept path, which has no identity to record.
+    ...(userId ? { recipientId: userId } : {}),
     respondedAt: new Date().toISOString(),
   });
 
@@ -122,24 +152,28 @@ export async function POST(request: Request) {
           html: `<p>${escapeHtml(data.recipientName ?? "")} a accepté.</p>${confirmationHtml}`,
         })
       : Promise.resolve(false),
-    // A phone-only request has no recipientEmail on file, but the person
-    // accepting just signed in with Google either way — send the
-    // confirmation to that address instead of skipping it entirely, now
-    // that an address actually exists.
-    sendEmail({
-      to: data.recipientEmail ?? userEmail,
-      subject: "Rendez-vous confirmé sur Ittsui",
-      text: confirmationText,
-      html: confirmationHtml,
-    }),
+    // A phone-only request has no recipientEmail on file. If the person
+    // accepted after signing in anyway, send the confirmation to that
+    // address instead of skipping it entirely; if they used the new
+    // no-login path, there's genuinely no address to send to — skip
+    // silently rather than fail. The sender's own copy above always goes
+    // out regardless, so the acceptance itself is never unreported.
+    (data.recipientEmail ?? userEmail)
+      ? sendEmail({
+          to: (data.recipientEmail ?? userEmail)!,
+          subject: "Rendez-vous confirmé sur Ittsui",
+          text: confirmationText,
+          html: confirmationHtml,
+        })
+      : Promise.resolve(false),
   ]);
   if (!senderSent || !recipientSent) {
     console.warn(`meeting-requests/respond: accept notification incomplete for request ${requestId}`);
   }
 
   // Returned so the confirmation screen can show the venue and build its
-  // own "add to calendar" link without a separate, unauthenticated GET
-  // endpoint for request details that doesn't otherwise need to exist.
+  // own "add to calendar" link immediately, without a second round-trip
+  // to GET /api/meeting-requests/[requestId] right after this call.
   return NextResponse.json({
     status: "accepted",
     requestId,

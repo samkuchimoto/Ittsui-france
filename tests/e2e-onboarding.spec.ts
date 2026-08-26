@@ -33,4 +33,25 @@ test.describe("Onboarding pages resolve past their loading state", () => {
     await page.goto("/dashboard");
     await page.waitForURL(/\/setup(?!\/)/, { timeout: 10_000 });
   });
+
+  // A syntactically valid but nonexistent requestId. Unlike the /invite
+  // test above, this page's "checking" state resolves purely from the new
+  // GET /api/meeting-requests/[requestId] preview fetch — no auth
+  // dependency at all — so this also doubles as coverage that the fetch
+  // itself completes and correctly surfaces a 404 as a real page state,
+  // not an infinite loader.
+  test("/request/[requestId] shows a not-found state for an unknown link, not a stuck loader", async ({ page }) => {
+    await page.goto("/request/e2e-test-nonexistent-request-id");
+    await expect(page.getByText("Demande introuvable")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(LOADING_TEXT)).not.toBeVisible();
+  });
+});
+
+test.describe("GET /api/meeting-requests/[requestId] (public preview)", () => {
+  test("returns 404 for a nonexistent request, not a 500 or a hang", async ({ request }) => {
+    const res = await request.get("/api/meeting-requests/e2e-test-nonexistent-request-id");
+    expect(res.status()).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBeTruthy();
+  });
 });
