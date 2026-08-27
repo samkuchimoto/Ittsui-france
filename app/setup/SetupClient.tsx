@@ -49,7 +49,6 @@ import { signInWithPasskey } from "@/lib/passkeyClient";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
-import { PairGlyph } from "@/app/components/PairGlyph";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
@@ -794,19 +793,13 @@ export default function SetupClient() {
                     type="button"
                     key={d.value}
                     onClick={() => setDuoType(d.value)}
-                    className="flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3.5 text-sm transition-colors"
+                    className="rounded-full border px-3.5 py-2 text-sm transition-colors"
                     style={
                       duoType === d.value
                         ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
                         : { borderColor: BORDER, color: INK }
                     }
                   >
-                    <PairGlyph
-                      variant={d.value}
-                      size={22}
-                      className="shrink-0"
-                      style={duoType === d.value ? { filter: "brightness(0) invert(1)" } : undefined}
-                    />
                     {d.label}
                   </button>
                 ))}

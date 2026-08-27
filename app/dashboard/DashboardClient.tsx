@@ -34,7 +34,6 @@ import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
-import { PairGlyph } from "@/app/components/PairGlyph";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
@@ -444,14 +443,11 @@ export default function DashboardClient() {
       )}
 
       {!week && (
-        <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
-          <PairGlyph variant="ami" size={48} style={{ opacity: pair?.paused ? 0.4 : 1 }} />
-          <p className="text-sm" style={{ color: MUTED }}>
-            {pair?.paused
-              ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
-              : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
-          </p>
-        </div>
+        <p className="mt-6 text-sm" style={{ color: MUTED }}>
+          {pair?.paused
+            ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
+            : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
+        </p>
       )}
 
       {week && !week.optionB && (
