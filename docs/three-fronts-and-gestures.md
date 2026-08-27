@@ -77,7 +77,7 @@ shop, and "geste" is already the exact word every bit of French UI copy for it u
 is "send something," one relationship action alongside a café or a walk — not a shop. At
 `/geste/nouveau` (surfaced as an equal-weight tab next to `/request/new`, on the homepage
 hero, and as a real button on the dashboard — not a link buried in small text, per direct
-2026-08-27 feedback that it existed but nobody could find it) the sender picks one of four
+2026-08-27 feedback that it existed but nobody could find it) the sender picks one of five
 modes, not a product category:
 
 - **🎁 Quelque chose que vous avez** — something the sender already owns (a book, an object
@@ -87,15 +87,28 @@ modes, not a product category:
   "I bought you something" — deliberately kept that way rather than routed through a courier
   API it doesn't need yet (see the Stuart note below for when that might change).
 - **🛍️ Quelque chose à choisir** — a small, curated list of gesture *types* (fleurs, livre,
-  chocolat, plante, bougie, papeterie, repas — `lib/gestureLinks.ts`), each linking to one real
-  merchant homepage to finish it. Capped at 7 on purpose — not an attempt at a catalog.
+  chocolat, plante, bougie, papeterie, repas — `lib/gestureLinks.ts`), plus a free-text **Autre**
+  option (`customItem`) so a real gesture never has to be forced into one of the seven fixed
+  buckets. Each fixed type links to one real merchant homepage to finish it — capped at 7 on
+  purpose, not an attempt at a catalog; "Autre" has no external link since there's no honest
+  single merchant for an arbitrary category.
 - **✨ Laissez Ittsui vous proposer** — Ittsui picks one of the seven for the sender
-  (reshuffleable). This is genuinely just decision-load removal, the same honesty principle
-  as `weekly-propose`'s venue ranking: a plain deterministic pick, never a claim that Ittsui
-  knows something personal about the recipient it has no actual data for.
+  (reshuffleable, never "Autre" — there's nothing to suggest when the whole point of that
+  option is "you tell me"). This is genuinely just decision-load removal, the same honesty
+  principle as `weekly-propose`'s venue ranking: a plain deterministic pick, never a claim that
+  Ittsui knows something personal about the recipient it has no actual data for.
 - **💌 Un mot doux** — no object at all, added after both a physical gesture and a pure note
   showed up as their *own* distinct relationship actions across the review, not as variants of
   each other. The zero-friction floor of the whole feature.
+- **🎨 Une peinture Ittsui** — a REAL AI-generated illustration, added 2026-08-27 after direct
+  feedback that the category pickers alone are "a mockup" with "no real value" behind them.
+  Calls the exact same `fal-ai/fast-sdxl` endpoint already proven in
+  `app/api/ai-venue-mood/route.ts`, synchronously, using the sender's optional note as the
+  creative brief. Same honest-501 posture as that route: if `FAL_API_KEY` isn't configured, the
+  gesture still sends (recipient still gets notified) with `paintingStatus: "failed"` and an
+  honest message, never a fabricated image. The mandatory AI-disclosure badge
+  ("Illustration générée par IA", same treatment as `DiscoveryGrid`'s mood tiles) is shown on
+  both the recipient page and the sender's own confirmation screen.
 
 The recipient's page (`/geste/[gestureId]`) lets them reply with how they'd actually like to
 receive a physical gesture — an address, or in person next time — via a `PATCH` that's relayed
@@ -145,13 +158,31 @@ This is the one worth prototyping first if/when the deep-link v1 shows real usag
 a Goody business account (their own signup, not something I can request on your behalf), but
 no courier/merchant partnership beyond that.
 
+**On the other providers named in the 2026-08-27 courier-integration proposal (Stuart,
+Sessile, C'est Cela, Cocolis, Tremendous):** the one that actually looks self-serve enough to
+plug in without a sales conversation first is **Tremendous** — API-key auth, a real developer
+portal, and it issues actual redeemable gift cards (Amazon, Fnac, Starbucks, prepaid Visa,
+etc.), which would give the "curated" mode a genuinely real fulfillment path for the first
+time instead of a link to a merchant's homepage.
+[developers.tremendous.com](https://developers.tremendous.com/) — sign up for a sandbox
+account there; hand me a test API key and I'll wire it the same honest-fallback way as Fal.ai
+above, not a fabricated integration ahead of having real credentials. Stuart, Sessile, and
+C'est Cela are real companies but their public docs don't show a pure self-serve signup the
+way Tremendous does — same "needs an actual conversation with them first" category as Uber
+Direct/Deliveroo above, not something a code change alone unlocks. Cocolis is a crowd-logistics
+marketplace (matching a delivery to a stranger already driving that route), which is a
+meaningfully different trust model from a courier company's own fleet — worth a distinct,
+later evaluation, not bundled into this pass.
+
 **Recommended sequencing**, in order of what's real and available now:
 1. Ship v1 as-is (done) and see whether people actually use "envoyer un geste" at all, and
-   which of the four modes they reach for — that behavioral signal is worth more right now
-   than any integration would be.
-2. If "curated" usage justifies it, integrate Goody's API behind that mode specifically —
-   real catalog, real fulfillment, no logistics for Ittsui to own, without touching the
-   "own"/"suggested"/"message" modes at all.
+   which of the five modes they reach for — that behavioral signal is worth more right now
+   than any integration would be. "Painting" already gives a real answer to "does this bring
+   actual value" without waiting on any external account.
+2. If "curated" usage justifies it, get a Tremendous sandbox key (fastest, most self-serve) or
+   pursue Goody (closer to the original "gift" ambition, needs their business signup) behind
+   that mode specifically — real catalog, real fulfillment, no logistics for Ittsui to own,
+   without touching the "own"/"suggested"/"message"/"painting" modes at all.
 3. If "own" mode gets real usage, Stuart is the one worth evaluating for actually moving the
    object — a distinct, smaller feature from gifting a purchased item, worth its own
    validation before being bundled in.

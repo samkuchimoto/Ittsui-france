@@ -3,11 +3,15 @@
 // What a recipient lands on from the "envoyer un geste" link. Public,
 // no login (same reasoning as /request/[requestId]: an unguessable link
 // is the whole point of a low-friction gesture, not another account to
-// create). Deliberately shows no delivery/tracking state — see
-// lib/gestureLinks.ts: this app never claims to have purchased or
-// shipped anything, only that the sender wanted them to know.
+// create). Deliberately shows no delivery/tracking state for physical
+// modes — see lib/gestureLinks.ts: this app never claims to have
+// purchased or shipped anything, only that the sender wanted them to
+// know. "painting" mode is the one real exception: a real AI-generated
+// image, shown with its mandatory disclosure badge (same treatment as
+// DiscoveryGrid's AI mood tiles) — never delivery/tracking state either,
+// since nothing physical was ever promised for that mode.
 //
-// For a physical gesture (any mode but "message"), the recipient can
+// For a physical gesture (own/curated/suggested), the recipient can
 // reply with how they'd like to actually receive it — an address, or
 // in person next time — via PATCH /api/gestures/[gestureId]. Relayed
 // back to the sender by email if they left one at send time.
@@ -19,7 +23,7 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { Mascot } from "@/app/components/Mascot";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
-import type { GestureMode, CuratedGestureItem, GestureRecipientChoice } from "@/lib/types";
+import type { GestureMode, CuratedGestureItem, GestureRecipientChoice, PaintingStatus } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -43,8 +47,11 @@ interface GesturePreview {
   mode: GestureMode;
   itemDescription: string | null;
   item: CuratedGestureItem | null;
+  customItem: string | null;
   note: string | null;
   recipientChoice: GestureRecipientChoice | null;
+  paintingImageUrl: string | null;
+  paintingStatus: PaintingStatus | null;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -61,6 +68,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       </div>
     </main>
   );
+}
+
+function itemLabel(preview: GesturePreview): string | null {
+  if (preview.mode === "own") return preview.itemDescription;
+  if (preview.mode !== "curated" && preview.mode !== "suggested") return null;
+  if (preview.item === "autre") return preview.customItem;
+  return preview.item ? CURATED_ITEM_LABEL[preview.item] : null;
 }
 
 export default function GesturePage() {
@@ -128,7 +142,10 @@ export default function GesturePage() {
     );
   }
 
-  const isPhysical = preview.mode !== "message";
+  // Painting and message modes have nothing physical to deliver — no
+  // address/in-person choice makes sense for either.
+  const isPhysical = preview.mode === "own" || preview.mode === "curated" || preview.mode === "suggested";
+  const label = itemLabel(preview);
 
   return (
     <Shell>
@@ -137,12 +154,38 @@ export default function GesturePage() {
         <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
           {preview.senderName} a pensé à vous
         </h1>
-        {isPhysical && (
-          <p className="mt-3 text-base" style={{ color: INK }}>
-            {preview.mode === "own" ? preview.itemDescription : CURATED_ITEM_LABEL[preview.item!]}
+
+        {preview.mode === "painting" && preview.paintingImageUrl && (
+          <div className="relative mt-5 overflow-hidden rounded-2xl" style={{ border: `1px solid ${BORDER}` }}>
+            {/* Mandatory, high-contrast, on every AI-generated image
+                without exception — same rule as DiscoveryGrid's mood
+                tiles, not a small-print watermark. */}
+            <span
+              className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+              style={{ backgroundColor: "rgba(0,0,0,0.72)" }}
+            >
+              Illustration générée par IA
+            </span>
+            {/* Real generated image, not a stock photo — a plain <img>,
+                same as this app's other Fal.ai output, since the host is
+                a per-request Fal.ai URL, not a stable asset domain worth
+                allowlisting in next.config.js like images.unsplash.com. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview.paintingImageUrl} alt="Peinture générée par IA" className="block w-full" />
+          </div>
+        )}
+        {preview.mode === "painting" && !preview.paintingImageUrl && (
+          <p className="mt-3 text-sm" style={{ color: MUTED }}>
+            La génération d&apos;image n&apos;était pas disponible au moment de l&apos;envoi.
           </p>
         )}
-        {preview.note && (
+
+        {label && (
+          <p className="mt-3 text-base" style={{ color: INK }}>
+            {label}
+          </p>
+        )}
+        {preview.note && preview.mode !== "painting" && (
           <p className="mt-3 text-sm italic" style={{ color: MUTED }}>
             « {preview.note} »
           </p>

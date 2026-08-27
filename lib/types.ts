@@ -268,13 +268,24 @@ export interface VenuePartner {
 //     quelque chose" and "💌 Écrire un petit mot" showed up independently
 //     as their own distinct relationship actions across the multi-AI
 //     review, not as a variant of "curated".
+//   - "painting": a real AI-generated illustration, not a mockup — reuses
+//     the same Fal.ai image-generation infrastructure already wired for
+//     app/api/ai-venue-mood/route.ts (honest 501 when FAL_API_KEY isn't
+//     configured, same as that route, never a fabricated image). Added
+//     2026-08-27 per direct feedback that a category picker with no real
+//     backend behind it "does not bring value" — this is the one mode
+//     that actually produces something the sender didn't have before.
 // `status` only ever tracks "the sender was notified/pointed somewhere,"
 // never "delivered" — this app has no real purchase/delivery API
 // partnership (see lib/gestureLinks.ts and
 // docs/three-fronts-and-gestures.md for why Amazon/Deliveroo/Uber Direct
 // specifically aren't it).
-export type GestureMode = "own" | "curated" | "suggested" | "message";
-export type CuratedGestureItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas";
+export type GestureMode = "own" | "curated" | "suggested" | "message" | "painting";
+// "autre" (2026-08-27): categories were flagged as too restrictive — this
+// is the escape hatch, paired with a required free-text `customItem`
+// rather than silently forcing a real, un-categorizable gesture into one
+// of the seven fixed buckets.
+export type CuratedGestureItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas" | "autre";
 export type GestureStatus = "sent";
 // The recipient's own reply on how to actually get a physical "own"/
 // "curated"/"suggested" gesture to them — captured on /geste/[gestureId]
@@ -283,6 +294,7 @@ export type GestureStatus = "sent";
 // leaving the sender to wonder whether anything happened after they
 // clicked send.
 export type GestureRecipientChoice = "address" | "in_person";
+export type PaintingStatus = "ready" | "failed";
 
 export interface Gesture {
   id: string;
@@ -294,7 +306,15 @@ export interface Gesture {
   mode: GestureMode;
   itemDescription?: string; // "own" mode: sender's free-text description of the object itself
   item?: CuratedGestureItem; // "curated"/"suggested" mode: which gesture type was picked
-  note?: string; // required content for "message" mode; optional flourish otherwise
+  customItem?: string; // required when item === "autre" — the sender's own free-text category
+  note?: string; // required content for "message" mode; optional flourish otherwise; also doubles as the painting prompt for "painting" mode
+  // "painting" mode: real generation result, not a placeholder. Absent
+  // paintingStatus on a "painting"-mode record predates this field or
+  // means generation is still the one in flight for this request (no
+  // background job queue — see the route's own comment for why this is
+  // a synchronous call, not a queue, at this scale).
+  paintingImageUrl?: string;
+  paintingStatus?: PaintingStatus;
   status: GestureStatus;
   createdAt: string;
   recipientChoice?: GestureRecipientChoice;

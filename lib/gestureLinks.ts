@@ -24,8 +24,13 @@ export const CURATED_ITEM_LABEL: Record<CuratedGestureItem, string> = {
   bougie: "Une bougie",
   papeterie: "Une jolie papeterie",
   repas: "Un repas livré",
+  autre: "Autre",
 };
 
+// Deliberately NOT including "autre" — it's an escape hatch for the
+// manual picker, paired with required free-text (see Gesture.customItem),
+// not a real category Ittsui could ever pick for someone in "suggested"
+// mode (there's nothing to suggest when the whole point is "you tell me").
 export const CURATED_ITEMS: CuratedGestureItem[] = ["fleurs", "livre", "chocolat", "plante", "bougie", "papeterie", "repas"];
 
 export function curatedItemExternalLink(item: CuratedGestureItem): { label: string; url: string } {
@@ -44,6 +49,11 @@ export function curatedItemExternalLink(item: CuratedGestureItem): { label: stri
       // four — genuinely the right kind of shop for this, not a
       // convenience fallback dressed up as four separate integrations.
       return { label: "Voir sur Nature & Découvertes", url: "https://www.natureetdecouvertes.com/" };
+    case "autre":
+      // No real merchant fits an arbitrary free-text category — an
+      // empty link here (checked by every caller before rendering) is
+      // the honest answer, not a guessed generic search URL.
+      return { label: "", url: "" };
   }
 }
 

@@ -1,21 +1,30 @@
 "use client";
 // /app/geste/nouveau/page.tsx
-// "Envoyer un geste" — a physical gesture (or just a note) as a distinct
-// relationship action alongside a rendez-vous, not an ecommerce
-// marketplace. Four modes (a broad multi-AI review of this feature
-// converged on this exact framing on 2026-08-27 — see
-// docs/three-fronts-and-gestures.md), shown as an equal-weight tab
-// alongside /request/new rather than a link buried in the dashboard:
+// "Envoyer un geste" — a physical gesture (or just a note, or a real
+// AI-generated illustration) as a distinct relationship action alongside
+// a rendez-vous, not an ecommerce marketplace. Five modes (a broad
+// multi-AI review of this feature converged on this exact framing on
+// 2026-08-27 — see docs/three-fronts-and-gestures.md), shown as an
+// equal-weight tab alongside /request/new rather than a link buried in
+// the dashboard:
 //   - "own": something the sender already has. Zero API, zero delivery
 //     arrangement — Ittsui only notifies the recipient; getting the
 //     object to them is the sender's own problem, same as it would be
 //     without this feature at all.
 //   - "curated": a small, deliberately non-Amazon list of gesture types
 //     (lib/gestureLinks.ts), each linking to one real merchant homepage.
+//     Includes a free-text "Autre" option — categories were flagged as
+//     too restrictive, so this is the escape hatch rather than forcing
+//     every real gesture into one of seven fixed buckets.
 //   - "suggested": Ittsui picks one curated item for the sender so they
 //     don't have to — reshuffleable, honest decision-load removal.
 //   - "message": no object at all, just a note — the zero-friction floor
 //     of the whole feature.
+//   - "painting": a REAL AI-generated illustration (not a mockup) —
+//     calls the same Fal.ai infrastructure already proven in
+//     app/api/ai-venue-mood/route.ts. This is the one mode that produces
+//     something the sender didn't have before, per direct feedback that
+//     a pure category picker "does not bring value" on its own.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -48,6 +57,7 @@ const MODES: { id: GestureMode; emoji: string; title: string; subtitle: string }
   { id: "curated", emoji: "🛍️", title: "Quelque chose à choisir", subtitle: "Choisissez un type de geste." },
   { id: "suggested", emoji: "✨", title: "Laissez Ittsui vous proposer", subtitle: "Une petite idée, sans avoir à réfléchir." },
   { id: "message", emoji: "💌", title: "Un mot doux", subtitle: "Juste leur faire savoir que vous pensez à eux." },
+  { id: "painting", emoji: "🎨", title: "Une peinture Ittsui", subtitle: "Une illustration générée par IA, rien que pour vous deux." },
 ];
 
 export default function NewGesturePage() {
@@ -62,10 +72,12 @@ export default function NewGesturePage() {
   const [mode, setMode] = useState<GestureMode | null>(null);
   const [itemDescription, setItemDescription] = useState("");
   const [item, setItem] = useState<CuratedGestureItem>(() => suggestCuratedItem());
+  const [customItem, setCustomItem] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [gestureUrl, setGestureUrl] = useState<string | null>(null);
+  const [paintingImageUrl, setPaintingImageUrl] = useState<string | null>(null);
 
   // Signed-in convenience only — this page stays fully usable with no
   // account (see the homepage's "sans créer de compte" link to it), the
@@ -94,9 +106,16 @@ export default function NewGesturePage() {
     setRecipientPhone(contact.phone ?? "");
   }
 
-  const externalLink = mode && mode !== "own" && mode !== "message" ? curatedItemExternalLink(item) : null;
+  const externalLink =
+    mode === "curated" || mode === "suggested" ? curatedItemExternalLink(item) : null;
   const canSubmit =
-    mode === "own" ? itemDescription.trim().length > 0 : mode === "message" ? notes.trim().length > 0 : true;
+    mode === "own"
+      ? itemDescription.trim().length > 0
+      : mode === "message"
+        ? notes.trim().length > 0
+        : mode === "curated" && item === "autre"
+          ? customItem.trim().length > 0
+          : true;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -116,12 +135,14 @@ export default function NewGesturePage() {
           mode,
           ...(mode === "own" ? { itemDescription } : {}),
           ...(mode === "curated" || mode === "suggested" ? { item } : {}),
+          ...(mode === "curated" && item === "autre" ? { customItem } : {}),
           ...(notes ? { notes } : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
       setGestureUrl(data.gestureUrl);
+      setPaintingImageUrl(data.paintingImageUrl ?? null);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
@@ -152,7 +173,25 @@ export default function NewGesturePage() {
           )}
           {(mode === "curated" || mode === "suggested") && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
-              Il ne reste plus qu&apos;à finaliser {CURATED_ITEM_LABEL[item].toLowerCase()} vous-même.
+              Il ne reste plus qu&apos;à finaliser {(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.
+            </p>
+          )}
+          {mode === "painting" && paintingImageUrl && (
+            <div className="relative mt-5 overflow-hidden rounded-2xl text-left" style={{ border: `1px solid ${BORDER}` }}>
+              <span
+                className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                style={{ backgroundColor: "rgba(0,0,0,0.72)" }}
+              >
+                Illustration générée par IA
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={paintingImageUrl} alt="Peinture générée par IA" className="block w-full" />
+            </div>
+          )}
+          {mode === "painting" && !paintingImageUrl && (
+            <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              La génération IA n&apos;est pas encore configurée sur Ittsui — votre mot a bien été envoyé à{" "}
+              {recipientName} à la place.
             </p>
           )}
           {externalLink && externalLink.url && (
@@ -285,7 +324,33 @@ export default function NewGesturePage() {
                       {CURATED_ITEM_LABEL[c]}
                     </button>
                   ))}
+                  {/* Free-text escape hatch — categories were flagged as
+                      too restrictive; this doesn't force every gesture
+                      into one of the seven fixed buckets. */}
+                  <button
+                    type="button"
+                    onClick={() => setItem("autre")}
+                    className="rounded-full border px-3.5 py-2 text-sm transition-colors"
+                    style={
+                      item === "autre"
+                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                        : { borderColor: BORDER, color: INK }
+                    }
+                  >
+                    Autre
+                  </button>
                 </div>
+                {item === "autre" && (
+                  <input
+                    type="text"
+                    required
+                    value={customItem}
+                    onChange={(e) => setCustomItem(e.target.value)}
+                    placeholder="Deux places de cinéma, une bouteille de vin..."
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                    style={{ borderColor: BORDER }}
+                  />
+                )}
               </div>
             )}
 
@@ -303,6 +368,25 @@ export default function NewGesturePage() {
                 >
                   Une autre idée
                 </button>
+              </div>
+            )}
+
+            {mode === "painting" && (
+              <div>
+                <label className="block text-sm font-medium">
+                  Un mot pour inspirer l&apos;illustration{" "}
+                  <span className="font-normal" style={{ color: MUTED }}>
+                    (optionnel)
+                  </span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Notre après-midi au Jardin du Luxembourg..."
+                  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                  style={{ borderColor: BORDER }}
+                />
               </div>
             )}
 
@@ -393,24 +477,26 @@ export default function NewGesturePage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium">
-                {mode === "message" ? "Votre mot" : "Un mot"}{" "}
-                {mode !== "message" && (
-                  <span className="font-normal" style={{ color: MUTED }}>
-                    (optionnel)
-                  </span>
-                )}
-              </label>
-              <textarea
-                required={mode === "message"}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={mode === "message" ? 4 : 2}
-                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                style={{ borderColor: BORDER }}
-              />
-            </div>
+            {mode !== "painting" && (
+              <div>
+                <label className="block text-sm font-medium">
+                  {mode === "message" ? "Votre mot" : "Un mot"}{" "}
+                  {mode !== "message" && (
+                    <span className="font-normal" style={{ color: MUTED }}>
+                      (optionnel)
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  required={mode === "message"}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={mode === "message" ? 4 : 2}
+                  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                  style={{ borderColor: BORDER }}
+                />
+              </div>
+            )}
 
             {error && (
               <p className="text-sm" style={{ color: ACCENT }}>
@@ -424,7 +510,11 @@ export default function NewGesturePage() {
               className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              {status === "submitting" ? "Envoi..." : "Prévenir " + (recipientName || "la personne")}
+              {status === "submitting"
+                ? mode === "painting"
+                  ? "Création de votre peinture..."
+                  : "Envoi..."
+                : "Prévenir " + (recipientName || "la personne")}
             </button>
           </form>
         )}
