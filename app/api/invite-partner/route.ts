@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
 
 const PENDING_EXPIRY_DAYS = 14;
 
@@ -154,6 +155,7 @@ export async function POST(request: Request) {
           `Pour l'activer, connectez-vous ici : ${inviteUrl}\n\n` +
           `Si vous ne souhaitez pas être lié, ignorez ce message ou déclinez ici : ${inviteUrl}?decline=1\n` +
           `Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.`,
+        html: inviteEmailHtml({ inviterName, inviteUrl, cadence: cadence ?? "weekly" }),
       })
     : undefined;
 
@@ -192,7 +194,49 @@ export async function POST(request: Request) {
   });
 }
 
-async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }): Promise<boolean> {
+// Real HTML template with a hosted mascot header image, replacing the
+// plain-text-only invite email — direct product feedback: "plain blue
+// links and unstyled text" was the actual state before this. Pika ("The
+// Messenger — fast, diligent, always on the move, delivers with care")
+// is the on-brand choice for an email whose whole job is delivering an
+// invitation.
+function inviteEmailHtml({
+  inviterName,
+  inviteUrl,
+  cadence,
+}: {
+  inviterName: string;
+  inviteUrl: string;
+  cadence: "weekly" | "monthly" | "yearly";
+}): string {
+  const safeName = escapeHtml(inviterName);
+  return emailShell({
+    mascotName: "pika",
+    title: `${safeName} vous invite sur Ittsui`,
+    bodyHtml: `
+      <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
+        ${safeName} a proposé de protéger un rendez-vous ${CADENCE_INVITE_ADJ[cadence]} avec vous.
+      </p>
+      ${emailButton(inviteUrl, "Activer l&rsquo;invitation")}
+      <p style="font-size: 13px; color: #565049; text-align: center;">
+        Si vous ne souhaitez pas être lié(e), <a href="${inviteUrl}?decline=1" style="color: #565049;">déclinez ici</a>.
+        Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.
+      </p>
+    `,
+  });
+}
+
+async function sendEmail({
+  to,
+  subject,
+  text,
+  html,
+}: {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}): Promise<boolean> {
   if (!to) {
     console.warn("sendEmail: skipped, no recipient");
     return false;
@@ -204,7 +248,7 @@ async function sendEmail({ to, subject, text }: { to: string; subject: string; t
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text, ...(html ? { html } : {}) }),
   });
 
   if (!res.ok) {

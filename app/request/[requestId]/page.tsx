@@ -20,7 +20,9 @@ import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { Mascot } from "@/app/components/Mascot";
 import { buildICSContent, downloadICSFile } from "@/lib/icsFile";
+import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import type { VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -83,10 +85,17 @@ function Shell({ children }: { children: React.ReactNode }) {
 function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
   return (
     <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-      {preview.venueType && (
-        <div className="mb-3 h-28 w-full overflow-hidden rounded-xl">
+      {/* Collapses to nothing rather than an empty box when there's no
+          real photo to show — the blank top area a real tester hit
+          live was exactly this rendering with no image at all. */}
+      {preview.venueType && VENUE_PHOTOS[preview.venueType] && (
+        <div className="mb-3 h-[120px] w-full overflow-hidden rounded-xl">
           <DiscoveryTileButton
-            tile={{ value: preview.venueType, label: VENUE_TYPE_LABEL[preview.venueType] ?? "" }}
+            tile={{
+              value: preview.venueType,
+              label: VENUE_TYPE_LABEL[preview.venueType] ?? "",
+              image: VENUE_PHOTOS[preview.venueType],
+            }}
             active={false}
             onClick={() => {}}
           />
@@ -424,11 +433,16 @@ export default function RequestResponsePage() {
 
       {preview && <VenuePreviewCard preview={preview} />}
 
+      {errorMsg && errorMsg.includes("ne correspond pas") && (
+        <div className="mt-4 flex justify-center">
+          <Mascot name="kokoro" variant="confused" size="lg" />
+        </div>
+      )}
       {errorMsg && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>
           {errorMsg}
           {errorMsg.includes("ne correspond pas") &&
-            " Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu la demande."}
+            ". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu la demande."}
         </p>
       )}
 

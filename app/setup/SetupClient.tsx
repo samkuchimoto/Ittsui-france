@@ -62,6 +62,7 @@ import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { OriginStorySheet } from "@/app/components/OriginStorySheet";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -98,26 +99,20 @@ const VENUE_TYPES: { value: VenueType; label: string }[] = [
   { value: "museum", label: "Musée / lieu culturel" },
 ];
 
-// Visual tile grid, real photography for all four now. Restaurant/Culture
-// use general-mood Unsplash stock (verified reachable, real JPEGs, before
-// wiring in) rather than the AI mood illustration path — these are
-// licensed real photographs, a strictly better match for "high-resolution
-// photo tile" than a generated illustration would be, and the AI path
-// stays reserved for categories with neither a real photo nor a stock
-// option.
+// Visual tile grid, real photography for all four now — image sources
+// live in lib/venuePhotos.ts, shared with the request flow's own venue
+// tiles so a photo swap can't drift out of sync between the two places a
+// venue type is picked. Restaurant/Culture use general-mood Unsplash
+// stock (verified reachable, real JPEGs, before wiring in) rather than
+// the AI mood illustration path — these are licensed real photographs, a
+// strictly better match for "high-resolution photo tile" than a
+// generated illustration would be, and the AI path stays reserved for
+// categories with neither a real photo nor a stock option.
 const DISCOVERY_TILES: DiscoveryTile[] = [
-  { value: "cafe", label: "Café", image: "/friends-cafe-terrace.jpg" },
-  { value: "park", label: "Parc", image: "/grandmother-granddaughter-park.jpg" },
-  {
-    value: "restaurant",
-    label: "Restaurant",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    value: "museum",
-    label: "Culture",
-    image: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
-  },
+  { value: "cafe", label: "Café", image: VENUE_PHOTOS.cafe },
+  { value: "park", label: "Parc", image: VENUE_PHOTOS.park },
+  { value: "restaurant", label: "Restaurant", image: VENUE_PHOTOS.restaurant },
+  { value: "museum", label: "Culture", image: VENUE_PHOTOS.museum },
 ];
 // "sam" typed into the name field shouldn't render lowercase in CTA copy
 // downstream ("Créer notre rituel avec sam") — capitalizes each name part,

@@ -10,6 +10,19 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import type { VenueType } from "@/lib/types";
 import { ACCENT, BORDER } from "@/lib/theme";
+import { MascotAvatar } from "./MascotAvatar";
+import type { CharacterId } from "@/lib/mascots.config";
+
+// Interactive mascot reaction on selection — a per-venue-type character
+// chosen for a real thematic fit (Sora already drinks coffee in her own
+// portrait, Nami's the outdoorsy one, etc.), not an arbitrary assignment.
+const VENUE_MASCOT: Partial<Record<VenueType, CharacterId>> = {
+  cafe: "sora",
+  restaurant: "mochi",
+  park: "nami",
+  museum: "chika",
+  home: "kumachan",
+};
 
 export interface DiscoveryTile {
   value: VenueType;
@@ -128,7 +141,7 @@ export function DiscoveryTileButton({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 380, damping: 22 }}
-      className="relative aspect-[4/3] overflow-hidden rounded-2xl border text-left"
+      className="relative aspect-[4/3] max-h-[130px] overflow-hidden rounded-2xl border text-left"
       style={{ borderColor: active ? ACCENT : BORDER, borderWidth: active ? 2 : 1 }}
     >
       {tile.video ? (
@@ -218,22 +231,29 @@ export function DiscoveryTileButton({
       </span>
 
       {active && (
-        <span
-          className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full text-white"
-          style={{ backgroundColor: ACCENT }}
+        <motion.span
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full shadow-sm"
+          style={{ backgroundColor: "white", border: `2px solid ${ACCENT}` }}
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3.5 w-3.5"
-          >
-            <path d="M20 6L9 17l-5-5" />
-          </svg>
-        </span>
+          {VENUE_MASCOT[tile.value] ? (
+            <MascotAvatar characterId={VENUE_MASCOT[tile.value]!} variant="bust" size={22} />
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={ACCENT}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          )}
+        </motion.span>
       )}
     </motion.button>
   );

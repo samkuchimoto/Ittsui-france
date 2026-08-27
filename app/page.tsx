@@ -327,6 +327,10 @@ export default function Home() {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        .hero-photo-frame { max-height: 320px; }
+        @media (min-width: 1024px) {
+          .hero-photo-frame { max-height: 520px; }
+        }
       `}</style>
 
       {/* Nav */}
@@ -405,12 +409,12 @@ export default function Home() {
 
           <Reveal className="mx-auto mt-12 max-w-3xl lg:mx-0 lg:mt-0 lg:max-w-none">
             <div
-              className="relative h-[50vh] w-full overflow-hidden rounded-3xl border sm:h-[60vh] lg:h-[32rem]"
-              style={{ borderColor: BORDER }}
+              className="hero-photo-frame relative w-full overflow-hidden rounded-3xl border"
+              style={{ borderColor: BORDER, aspectRatio: "3 / 2" }}
             >
               <Image
-                src="/couple-living-room.jpg"
-                alt="Un couple qui discute, installé chez eux"
+                src="/hero.jpg"
+                alt="Mère et fille au café"
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"

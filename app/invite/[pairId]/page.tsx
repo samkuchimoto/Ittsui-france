@@ -16,6 +16,7 @@ import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { Mascot } from "@/app/components/Mascot";
 import { dayLabel } from "@/lib/dayLabel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -276,11 +277,16 @@ export default function InvitePage() {
       <p className="mt-3 text-sm" style={{ color: MUTED }}>
         Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à activer le lien.
       </p>
+      {errorMsg && errorMsg.includes("ne correspond pas") && (
+        <div className="mt-4 flex justify-center">
+          <Mascot name="kokoro" variant="confused" size="lg" />
+        </div>
+      )}
       {errorMsg && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>
           {errorMsg}
           {errorMsg.includes("ne correspond pas") &&
-            " Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation."}
+            ". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation."}
         </p>
       )}
       <button

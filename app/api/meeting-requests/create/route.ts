@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
+import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -119,13 +120,23 @@ export async function POST(request: Request) {
         `Pour accepter ou décliner, connectez-vous ici : ${requestUrl}\n` +
         `Ajouter à Google Agenda (dès maintenant, avant même de répondre) : ${calendarUrl}\n\n` +
         `Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.`,
-      html:
-        `<p>${escapeHtml(senderName)} vous propose de vous retrouver :</p>` +
-        `<p><strong>Lieu :</strong> ${escapeHtml(venueName)} (${escapeHtml(venueAddress)})<br>` +
-        `<strong>Date :</strong> ${escapeHtml(date)} à ${escapeHtml(time)}</p>` +
-        `<p><a href="${requestUrl}">Accepter ou décliner</a></p>` +
-        `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)</p>` +
-        `<p style="color:#8A8378;font-size:12px">Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.</p>`,
+      html: emailShell({
+        mascotName: "pika",
+        title: `${escapeHtml(senderName)} vous propose un rendez-vous`,
+        bodyHtml: `
+          <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
+            <strong style="color: #1C1917;">${escapeHtml(venueName)}</strong> (${escapeHtml(venueAddress)})<br>
+            ${escapeHtml(date)} à ${escapeHtml(time)}
+          </p>
+          ${emailButton(requestUrl, "Accepter ou décliner")}
+          <p style="text-align: center; font-size: 13px;">
+            <a href="${calendarUrl}" style="color: #565049;">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)
+          </p>
+          <p style="font-size: 12px; color: #8A8378; text-align: center;">
+            Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.
+          </p>
+        `,
+      }),
     });
 
     // Persisted, not just returned in this one response — same reasoning as
@@ -141,10 +152,8 @@ export async function POST(request: Request) {
 // URLs) into hand-built HTML strings above — not user-supplied markup
 // rendered as-is, but the values themselves ARE user-supplied text (a
 // venue name, a contact's name), so this is the actual XSS boundary, not
-// a formality.
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
+// a formality — escapeHtml now lives in lib/emailTemplates.ts, shared
+// with invite-partner's own HTML email.
 
 async function sendEmail({
   to,

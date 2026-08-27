@@ -13,6 +13,8 @@ import type { MeetingRequest, MeetingRequestStatus } from "@/lib/types";
 import { MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
+import { Mascot } from "@/app/components/Mascot";
+import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -59,7 +61,11 @@ function RequestRow({ request, perspective }: { request: MeetingRequest; perspec
           {request.venueType && (
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
               <DiscoveryTileButton
-                tile={{ value: request.venueType, label: VENUE_TYPE_LABEL[request.venueType] ?? "" }}
+                tile={{
+                  value: request.venueType,
+                  label: VENUE_TYPE_LABEL[request.venueType] ?? "",
+                  image: VENUE_PHOTOS[request.venueType],
+                }}
                 active={false}
                 onClick={() => {}}
               />
@@ -72,7 +78,14 @@ function RequestRow({ request, perspective }: { request: MeetingRequest; perspec
             </p>
           </div>
         </div>
-        <StatusPill status={request.status} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/* Yuki, "The Cheerleader — encouraging, supportive, positive":
+              a small reaction specifically for the good-news status, not
+              every row — a badge next to every pending/declined request
+              too would just be noise, not warmth. */}
+          {request.status === "accepted" && <Mascot name="yuki" size="sm" />}
+          <StatusPill status={request.status} />
+        </div>
       </div>
       {request.status === "accepted" && (
         <a

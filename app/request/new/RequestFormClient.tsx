@@ -31,8 +31,9 @@ import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { SHARED_TEXT_KEY } from "@/app/components/ShareTargetListener";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
-import { MascotPair } from "@/app/components/MascotPair";
 import { MascotAvatar } from "@/app/components/MascotAvatar";
+import { Mascot } from "@/app/components/Mascot";
+import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -90,12 +91,18 @@ function extractNameFromVoiceTranscript(transcript: string): string {
 // user's onboarding preferences), so every tile falls back to
 // DiscoveryGrid's own AI-mood-illustration-or-tinted-block behavior,
 // badge included, exactly as already proven there.
+// Real gap found live in production (2026-08-27): this tile set never
+// had `image`/`video` set for any entry, unlike SetupClient's own
+// DISCOVERY_TILES — so every tile here depended entirely on the AI mood
+// illustration fallback, which has no FAL_API_KEY configured (see
+// app/api/ai-venue-mood/route.ts's own honest 501), meaning all five
+// tiles have always rendered as a blank tinted block in production.
 const VENUE_TYPE_TILES: DiscoveryTile[] = [
-  { value: "cafe", label: "Café" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "park", label: "Parc" },
-  { value: "museum", label: "Musée" },
-  { value: "home", label: "Chez vous" },
+  { value: "cafe", label: "Café", image: VENUE_PHOTOS.cafe },
+  { value: "restaurant", label: "Restaurant", image: VENUE_PHOTOS.restaurant },
+  { value: "park", label: "Parc", image: VENUE_PHOTOS.park },
+  { value: "museum", label: "Musée", image: VENUE_PHOTOS.museum },
+  { value: "home", label: "Chez vous", image: VENUE_PHOTOS.home },
 ];
 
 const fraunces = Fraunces({
@@ -689,8 +696,12 @@ export default function RequestFormClient() {
 
         {sentTo ? (
           <div className="mt-8">
+            {/* Pika, "The Messenger — fast, diligent, always on the
+                move, delivers with care": a genuinely well-matched
+                single-character choice for "your request just went out",
+                closer to the moment than a generic pair. */}
             <div className="mb-4 flex justify-center">
-              <MascotPair size={44} nod mood="success" />
+              <Mascot name="pika" animation="bounce" size="lg" />
             </div>
             {sentTo.hasEmail && (
               <p className="text-sm" style={{ color: MUTED }}>

@@ -36,14 +36,15 @@ import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { MascotPair } from "@/app/components/MascotPair";
-import { RELATIONSHIP_PAIR, type MascotPairId } from "@/lib/mascots.config";
-import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { RELATIONSHIP_PAIR } from "@/lib/mascots.config";
+import { Mascot } from "@/app/components/Mascot";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
 import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } from "@/lib/passkeyClient";
 import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -60,36 +61,32 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-function Shell({ children, pairId }: { children: React.ReactNode; pairId?: MascotPairId }) {
+// The small dual bear/rabbit header thumbnail was removed here per
+// direct product feedback — this page already has purposeful, larger
+// mascot moments (the empty state's xl Mochi, the confirmed-moment nod,
+// list-row status badges), so a redundant small pair at the very top
+// added noise rather than warmth. Other pages that have no bigger
+// mascot moment of their own keep PageMascotHeader.
+function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <div className="mx-auto max-w-md px-6 py-12">
-        <PageMascotHeader pairId={pairId} />
-        {children}
-      </div>
+      <div className="mx-auto max-w-md px-6 py-12">{children}</div>
     </main>
   );
 }
 
-// Real photos for every venue type — any week from before venueType
-// existed, or sourced from the RAG tier which doesn't return one, falls
-// back to a plain tinted block rather than a mismatched photo, same
-// honesty rule as DiscoveryTile on the discovery-grid branch. Restaurant
-// and museum used to be the two exceptions with no photo at all here
-// (real tester feedback: "les petites images café/resto") — fixed by
-// reusing the same two Unsplash URLs the setup page's own DiscoveryGrid
-// already uses for its Step 3 preview tiles, so the same venue type looks
-// the same across both surfaces.
-const VENUE_PHOTOS: Partial<Record<VenueType, string>> = {
-  cafe: "/friends-cafe-terrace.jpg",
-  park: "/grandmother-granddaughter-park.jpg",
-  home: "/couple-living-room.jpg",
-  restaurant: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-  museum: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
-};
+// Any week from before venueType existed, or sourced from the RAG tier
+// which doesn't return one, falls back to a plain tinted block rather
+// than a mismatched photo — same honesty rule as DiscoveryTile on the
+// discovery-grid branch. VENUE_PHOTOS itself now lives in
+// lib/venuePhotos.ts, shared with RequestFormClient and VenuePreviewCard
+// (a third, independent copy of this exact mapping was found to have
+// never been written at all, silently depending on the AI-mood
+// illustration fallback with no API key configured — sharing one source
+// closes that drift risk for good).
 
 function VenuePhoto({ venueType }: { venueType?: VenueType }) {
   const src = venueType ? VENUE_PHOTOS[venueType] : undefined;
@@ -405,7 +402,7 @@ export default function DashboardClient() {
   const myResponse = week && myId ? week.responses[myId] : null;
 
   return (
-    <Shell pairId={pair.relationshipKind ? RELATIONSHIP_PAIR[pair.relationshipKind] : undefined}>
+    <Shell>
       <div className="flex items-center justify-between">
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{cadenceHeading(pair.cadence)}</h1>
         <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
@@ -456,12 +453,12 @@ export default function DashboardClient() {
 
       {!week && (
         <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
-          <MascotPair
-            pairId={pair?.relationshipKind ? RELATIONSHIP_PAIR[pair.relationshipKind] : undefined}
-            size={44}
-            mood="empty"
-            className={pair?.paused ? "opacity-40" : undefined}
-          />
+          {/* Single large hero character — Mochi's "little joy, full of
+              wonder" fits the waiting mood itself, independent of which
+              relationship this pair is. Gentle idle float since this is
+              exactly the kind of contained, occasional hero moment worth
+              the motion, unlike a bust icon or a header mark. */}
+          <Mascot name="mochi" size="xl" float className={pair?.paused ? "opacity-40" : undefined} />
           <p className="text-sm" style={{ color: MUTED }}>
             {pair?.paused
               ? "En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris."
