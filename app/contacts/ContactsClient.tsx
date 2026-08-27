@@ -18,6 +18,7 @@ import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -185,6 +186,7 @@ export default function ContactsClient() {
             Tableau de bord
           </Link>
         </div>
+        <PageMascotHeader />
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
           Mes contacts
         </h1>

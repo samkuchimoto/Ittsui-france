@@ -10,6 +10,7 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { INK, MUTED, BORDER } from "@/lib/theme";
 import DownloadClient from "./DownloadClient";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 
 export const metadata = {
   title: "Télécharger Ittsui",
@@ -48,6 +49,7 @@ export default async function DownloadPage() {
           ← Retour
         </Link>
 
+        <PageMascotHeader />
         <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "2rem" }}>
           Télécharger Ittsui
         </h1>

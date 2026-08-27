@@ -15,6 +15,7 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { dayLabel } from "@/lib/dayLabel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -41,7 +42,10 @@ function Shell({ children }: { children: React.ReactNode }) {
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <PageMascotHeader />
+        {children}
+      </div>
     </main>
   );
 }

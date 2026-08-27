@@ -19,6 +19,7 @@ import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { buildICSContent, downloadICSFile } from "@/lib/icsFile";
 import type { VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
@@ -71,7 +72,10 @@ type Status = "checking" | "ready" | "not_found" | "declining" | "declined" | "a
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
-      <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <PageMascotHeader />
+        {children}
+      </div>
     </main>
   );
 }

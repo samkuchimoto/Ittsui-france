@@ -119,7 +119,7 @@ type CardState = "default" | "swapped" | "confirmed";
 
 const OPTION_A = {
   name: "Café de Flore · Paris 6e",
-  img: "/friends-cafe-terrace.jpg",
+  img: "/couple-parisian-cafe.jpg",
   alt: "Café de Flore, Paris 6e",
 };
 const OPTION_B = {
@@ -326,7 +326,8 @@ export default function Home() {
 
       {/* Nav */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
+          <MascotAvatar characterId="kokoro" variant="bust" size={32} />
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem" }}>Ittsui</span>
           <span className="text-sm" style={{ color: MUTED }}>一対</span>
         </div>

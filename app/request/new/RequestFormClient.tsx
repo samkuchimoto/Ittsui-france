@@ -30,6 +30,7 @@ import { mostRecentByCreatedAt } from "@/lib/sort";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { SHARED_TEXT_KEY } from "@/app/components/ShareTargetListener";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -679,6 +680,7 @@ export default function RequestFormClient() {
             Mode simple {simpleMode ? "activé" : ""}
           </button>
         </div>
+        <PageMascotHeader />
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: simpleMode ? "2rem" : "1.75rem" }}>
           Proposer un rendez-vous
         </h1>

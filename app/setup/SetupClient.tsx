@@ -61,6 +61,7 @@ import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { OriginStorySheet } from "@/app/components/OriginStorySheet";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -215,7 +216,10 @@ function Shell({ children }: { children: React.ReactNode }) {
       style={{ color: INK }}
     >
       <OriginStorySheet />
-      <div className="mx-auto max-w-md px-6 py-14">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-14">
+        <PageMascotHeader />
+        {children}
+      </div>
     </main>
   );
 }

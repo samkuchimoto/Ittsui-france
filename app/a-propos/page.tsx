@@ -10,6 +10,7 @@
 import { Fraunces, Work_Sans } from "next/font/google";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -48,6 +49,7 @@ export default function AProposPage() {
           ← Retour
         </Link>
 
+        <PageMascotHeader />
         <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2rem, 4vw, 2.5rem)" }}>
           Pourquoi Ittsui existe.
         </h1>

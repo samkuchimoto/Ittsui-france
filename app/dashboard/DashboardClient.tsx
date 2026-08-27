@@ -36,7 +36,8 @@ import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { MascotPair } from "@/app/components/MascotPair";
-import { RELATIONSHIP_PAIR } from "@/lib/mascots.config";
+import { RELATIONSHIP_PAIR, type MascotPairId } from "@/lib/mascots.config";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
@@ -59,13 +60,16 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, pairId }: { children: React.ReactNode; pairId?: MascotPairId }) {
   return (
     <main
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <div className="mx-auto max-w-md px-6 py-12">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-12">
+        <PageMascotHeader pairId={pairId} />
+        {children}
+      </div>
     </main>
   );
 }
@@ -401,7 +405,7 @@ export default function DashboardClient() {
   const myResponse = week && myId ? week.responses[myId] : null;
 
   return (
-    <Shell>
+    <Shell pairId={pair.relationshipKind ? RELATIONSHIP_PAIR[pair.relationshipKind] : undefined}>
       <div className="flex items-center justify-between">
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{cadenceHeading(pair.cadence)}</h1>
         <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
@@ -460,8 +464,8 @@ export default function DashboardClient() {
           />
           <p className="text-sm" style={{ color: MUTED }}>
             {pair?.paused
-              ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
-              : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
+              ? "En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris."
+              : "Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu."}
           </p>
         </div>
       )}

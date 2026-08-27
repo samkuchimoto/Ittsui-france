@@ -26,6 +26,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
+import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
@@ -54,7 +55,10 @@ function Shell({ children }: { children: React.ReactNode }) {
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <div className="mx-auto max-w-md px-6 py-14 text-center">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <PageMascotHeader />
+        {children}
+      </div>
     </main>
   );
 }
