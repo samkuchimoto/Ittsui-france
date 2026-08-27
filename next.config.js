@@ -82,6 +82,7 @@ const nextConfig = {
     return [
       { source: "/m/r/:id", destination: "/request/:id", permanent: false },
       { source: "/m/p/:id", destination: "/invite/:id", permanent: false },
+      { source: "/m/g/:id", destination: "/cadeau/:id", permanent: false },
     ];
   },
   async headers() {

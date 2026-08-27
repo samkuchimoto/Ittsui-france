@@ -242,6 +242,29 @@ export interface VenuePartner {
   createdAt: string;
 }
 
+// "Envoyer un geste" — a real, distinct relationship touchpoint from the
+// meeting-request flow: a physical gift/gesture instead of a rendez-vous.
+// Deliberately NOT a live purchase/delivery system — this app has no
+// real API partnership with Amazon/Deliveroo/Uber/a florist (see
+// lib/giftLinks.ts), so `status` only ever tracks "the sender was
+// pointed at a real external service," never "delivered". Claiming
+// automated fulfillment without a real integration would mean promising
+// a recipient something no external service actually agreed to do.
+export type GiftCategory = "repas" | "objet" | "fleurs" | "autre";
+export type GiftGestureStatus = "sent";
+
+export interface GiftGesture {
+  id: string;
+  senderName: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  category: GiftCategory;
+  note?: string;
+  status: GiftGestureStatus;
+  createdAt: string;
+}
+
 export type VenueBookingStatus = "confirmed" | "cancelled";
 
 export interface VenueBooking {

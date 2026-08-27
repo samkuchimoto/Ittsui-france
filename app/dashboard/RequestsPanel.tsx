@@ -200,6 +200,12 @@ export function RequestsPanel() {
           Nouvelle demande
         </Link>
       </div>
+      {/* Secondary, deliberately quiet — a fallback gesture for a week a
+          rendez-vous doesn't happen, not a second storefront competing
+          with the primary action above. */}
+      <Link href="/cadeau/nouveau" className="mt-1 inline-block text-[11px]" style={{ color: MUTED }}>
+        Pas le temps cette semaine ? Envoyer un geste à la place →
+      </Link>
 
       {received && received.length > 0 && (
         <div className="mt-3">
