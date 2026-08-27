@@ -5,15 +5,18 @@
 // phone number, not their email), and the same honesty boundary as
 // lib/giftLinks.ts: this never claims the gift was purchased or
 // delivered, only that the sender was pointed at a real external
-// service to finish it themselves.
+// service (or, for "own" mode, at nothing — that's on them) to finish
+// it themselves.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
-import { GIFT_CATEGORY_LABEL } from "@/lib/giftLinks";
+import { CURATED_ITEM_LABEL } from "@/lib/giftLinks";
+import type { CuratedGiftItem } from "@/lib/types";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const CURATED_ITEM_VALUES = ["fleurs", "livre", "chocolat", "plante", "bougie", "papeterie", "repas"] as const;
 
 const bodySchema = z
   .object({
@@ -27,17 +30,21 @@ const bodySchema = z
       .max(30)
       .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
       .optional(),
-    category: z.enum(["repas", "objet", "fleurs", "autre"]),
+    mode: z.enum(["own", "curated", "suggested"]),
+    itemDescription: z.string().trim().min(1).max(200).optional(),
+    item: z.enum(CURATED_ITEM_VALUES).optional(),
     notes: z.string().trim().max(500).optional(),
   })
-  .refine((data) => data.recipientEmail || data.recipientPhone, { message: "e-mail ou téléphone requis" });
+  .refine((data) => data.recipientEmail || data.recipientPhone, { message: "e-mail ou téléphone requis" })
+  .refine((data) => data.mode !== "own" || !!data.itemDescription, { message: "description de l'objet requise" })
+  .refine((data) => data.mode === "own" || !!data.item, { message: "type de geste requis" });
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
-  const { senderName, recipientName, recipientEmail, recipientPhone, category, notes } = parsed.data;
+  const { senderName, recipientName, recipientEmail, recipientPhone, mode, itemDescription, item, notes } = parsed.data;
 
   const ref = adminDb.collection("giftGestures").doc();
   await ref.set({
@@ -45,23 +52,26 @@ export async function POST(request: Request) {
     recipientName,
     ...(recipientEmail ? { recipientEmail } : {}),
     ...(recipientPhone ? { recipientPhone } : {}),
-    category,
+    mode,
+    ...(itemDescription ? { itemDescription } : {}),
+    ...(item ? { item } : {}),
     ...(notes ? { note: notes } : {}),
     status: "sent",
     createdAt: new Date().toISOString(),
   });
 
   const giftUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/g/${ref.id}`;
+  const whatLine = mode === "own" ? itemDescription! : CURATED_ITEM_LABEL[item as CuratedGiftItem];
 
   const recipientEmailSent = recipientEmail
     ? await sendEmail({
         to: recipientEmail,
         subject: `${senderName} a pensé à vous`,
-        text: `${senderName} vous envoie : ${GIFT_CATEGORY_LABEL[category]}.${notes ? ` "${notes}"` : ""}\n\n${giftUrl}`,
+        text: `${senderName} vous envoie : ${whatLine}.${notes ? ` "${notes}"` : ""}\n\n${giftUrl}`,
         html: emailShell({
           mascotName: "mochi",
           title: `${escapeHtml(senderName)} a pensé à vous`,
-          bodyHtml: `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(GIFT_CATEGORY_LABEL[category])}${notes ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>`,
+          bodyHtml: `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(whatLine)}${notes ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>`,
         }),
       })
     : undefined;

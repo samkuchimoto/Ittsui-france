@@ -69,12 +69,33 @@ section 1 above for how to read the list.
 
 ## 4. "Envoyer un geste" (the gift feature) — what shipped and what a fuller version needs
 
-**What's live today:** a deliberately honest v1. Someone fills in a recipient + picks a
-category (repas / objet / fleurs / autre) at `/cadeau/nouveau`, Ittsui records it, notifies
-the recipient by email or a shareable link (`/cadeau/[giftId]`), and then hands the *sender*
-a real link to Uber Eats, Amazon's search, or Interflora to actually finish the gesture
-themselves. Ittsui never claims to have purchased, shipped, or tracked anything — `status` on
-a `GiftGesture` is only ever `"sent"`, because that's the only thing actually true.
+**What's live today** follows the framing the four-way AI review converged on hardest: this
+is "send something," one relationship action alongside a café or a walk — not a shop. At
+`/cadeau/nouveau` the sender picks one of three modes, not a product category:
+
+- **🎁 Quelque chose que vous avez** — something the sender already owns (a book, an object
+  with history). Zero API, zero delivery arrangement: Ittsui only notifies the recipient;
+  getting the object to them is the sender's own problem, exactly as it would be without this
+  feature. This is the mode every reviewer flagged as the most emotionally distinct from
+  "I bought you something" — deliberately kept that way rather than routed through a courier
+  API it doesn't need yet (see the Stuart note below for when that might change).
+- **🛍️ Quelque chose à choisir** — a small, curated list of gesture *types* (fleurs, livre,
+  chocolat, plante, bougie, papeterie, repas — `lib/giftLinks.ts`), each linking to one real
+  merchant homepage to finish it. Capped at 7 on purpose — not an attempt at a catalog.
+- **✨ Laissez Ittsui vous proposer** — Ittsui picks one of the seven for the sender
+  (reshuffleable). This is genuinely just decision-load removal, the same honesty principle
+  as `weekly-propose`'s venue ranking: a plain deterministic pick, never a claim that Ittsui
+  knows something personal about the recipient it has no actual data for.
+
+Ittsui never claims to have purchased, shipped, or tracked anything — `status` on a
+`GiftGesture` is only ever `"sent"`, because that's the only thing actually true.
+
+**Amazon is deliberately not in the curated list at all** — not just deprioritized. Every one
+of the four AI reviews flagged the same risk independently: centering Amazon risks Ittsui
+reading as "Amazon with friends," which fights the app's own premium/relational positioning
+head-on. The curated list uses Interflora (fleurs), Uber Eats (repas), Fnac (livre), and
+Nature & Découvertes (chocolat/plante/bougie/papeterie) instead — real, well-known French
+merchants that fit "petites attentions" conceptually, not just technically.
 
 This was scoped narrowly on purpose, and it's worth being explicit about why the more
 ambitious version (Ittsui as a real broker to Amazon/Deliveroo/Uber, picking and paying for
@@ -109,11 +130,15 @@ a Goody business account (their own signup, not something I can request on your 
 no courier/merchant partnership beyond that.
 
 **Recommended sequencing**, in order of what's real and available now:
-1. Ship v1 as-is (done) and see whether people actually use "envoyer un geste" at all — it
-   costs nothing extra to find out.
-2. If it gets used, integrate Goody's API for the "objet" category specifically — real
-   catalog, real fulfillment, no logistics for Ittsui to own.
-3. Delivery-of-an-object-you-already-have (Stuart) is a distinct, smaller feature from
-   gifting-a-purchased-object — worth its own validation later, not bundled into v1.
+1. Ship v1 as-is (done) and see whether people actually use "envoyer un geste" at all, and
+   which of the three modes they reach for — that behavioral signal is worth more right now
+   than any integration would be.
+2. If "curated" usage justifies it, integrate Goody's API behind that mode specifically —
+   real catalog, real fulfillment, no logistics for Ittsui to own, without touching the
+   "own"/"suggested" modes at all.
+3. If "own" mode gets real usage, Stuart is the one worth evaluating for actually moving the
+   object — a distinct, smaller feature from gifting a purchased item, worth its own
+   validation before being bundled in.
 4. Skip Amazon/Deliveroo/Uber Direct as direct integrations; none of them offer the
-   order-on-someone's-behalf primitive this feature actually needs.
+   order-on-someone's-behalf primitive this feature actually needs, and Amazon specifically
+   is excluded from the curated list on strategic grounds too (see above), not just technical.

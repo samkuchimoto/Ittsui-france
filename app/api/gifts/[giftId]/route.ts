@@ -18,7 +18,9 @@ export async function GET(_request: Request, { params }: { params: { giftId: str
   return NextResponse.json({
     senderName: data.senderName,
     recipientName: data.recipientName,
-    category: data.category,
+    mode: data.mode,
+    itemDescription: data.itemDescription ?? null,
+    item: data.item ?? null,
     note: data.note ?? null,
     createdAt: data.createdAt,
   });

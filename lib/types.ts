@@ -243,14 +243,30 @@ export interface VenuePartner {
 }
 
 // "Envoyer un geste" — a real, distinct relationship touchpoint from the
-// meeting-request flow: a physical gift/gesture instead of a rendez-vous.
-// Deliberately NOT a live purchase/delivery system — this app has no
-// real API partnership with Amazon/Deliveroo/Uber/a florist (see
-// lib/giftLinks.ts), so `status` only ever tracks "the sender was
-// pointed at a real external service," never "delivered". Claiming
-// automated fulfillment without a real integration would mean promising
-// a recipient something no external service actually agreed to do.
-export type GiftCategory = "repas" | "objet" | "fleurs" | "autre";
+// meeting-request flow: a physical gesture instead of a rendez-vous.
+// Framed deliberately as "send something", not "gift shop" — one
+// relationship action alongside a café or a walk, not a storefront.
+// Three modes, not a product category:
+//   - "own": something the sender already has (a book, an object with
+//     history) — Ittsui arranges nothing, this is pure zero-API intent
+//     capture; delivery is the sender's own problem to solve (hand it
+//     over, mail it themselves), same honesty boundary as the rest of
+//     this feature.
+//   - "curated": a small, deliberately non-Amazon list of gesture types
+//     (see lib/giftLinks.ts's CURATED_ITEM_LABEL) — each links out to one
+//     real, well-known French merchant homepage to finish the gesture,
+//     never a fabricated specific-product deep link.
+//   - "suggested": Ittsui picks one curated item for the sender instead
+//     of asking them to choose — genuinely just decision-load removal
+//     (a deterministic pick, reshuffleable), not a claim that Ittsui
+//     knows anything personal about the recipient it doesn't actually
+//     have data for.
+// `status` only ever tracks "the sender was notified/pointed somewhere,"
+// never "delivered" — this app has no real purchase/delivery API
+// partnership (see lib/giftLinks.ts and docs/three-fronts-and-gifting.md
+// for why Amazon/Deliveroo/Uber Direct specifically aren't it).
+export type GiftMode = "own" | "curated" | "suggested";
+export type CuratedGiftItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas";
 export type GiftGestureStatus = "sent";
 
 export interface GiftGesture {
@@ -259,7 +275,9 @@ export interface GiftGesture {
   recipientName: string;
   recipientEmail?: string;
   recipientPhone?: string;
-  category: GiftCategory;
+  mode: GiftMode;
+  itemDescription?: string; // "own" mode: sender's free-text description of the object itself
+  item?: CuratedGiftItem; // "curated"/"suggested" mode: which gesture type was picked
   note?: string;
   status: GiftGestureStatus;
   createdAt: string;

@@ -13,8 +13,8 @@ import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { Mascot } from "@/app/components/Mascot";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
-import { GIFT_CATEGORY_LABEL } from "@/lib/giftLinks";
-import type { GiftCategory } from "@/lib/types";
+import { CURATED_ITEM_LABEL } from "@/lib/giftLinks";
+import type { GiftMode, CuratedGiftItem } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -35,7 +35,9 @@ const workSans = Work_Sans({
 interface GiftPreview {
   senderName: string;
   recipientName: string;
-  category: GiftCategory;
+  mode: GiftMode;
+  itemDescription: string | null;
+  item: CuratedGiftItem | null;
   note: string | null;
 }
 
@@ -106,7 +108,7 @@ export default function GiftPage() {
           {preview.senderName} a pensé à vous
         </h1>
         <p className="mt-3 text-base" style={{ color: INK }}>
-          {GIFT_CATEGORY_LABEL[preview.category]}
+          {preview.mode === "own" ? preview.itemDescription : CURATED_ITEM_LABEL[preview.item!]}
         </p>
         {preview.note && (
           <p className="mt-3 text-sm italic" style={{ color: MUTED }}>
