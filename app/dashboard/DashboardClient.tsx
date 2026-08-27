@@ -34,6 +34,7 @@ import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
+import { MascotPair } from "@/app/components/MascotPair";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
@@ -443,11 +444,14 @@ export default function DashboardClient() {
       )}
 
       {!week && (
-        <p className="mt-6 text-sm" style={{ color: MUTED }}>
-          {pair?.paused
-            ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
-            : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
+          <MascotPair size={44} className={pair?.paused ? "opacity-40" : undefined} />
+          <p className="text-sm" style={{ color: MUTED }}>
+            {pair?.paused
+              ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
+              : "Rien de proposé pour l&apos;instant. Ça arrive automatiquement le jour convenu."}
+          </p>
+        </div>
       )}
 
       {week && !week.optionB && (

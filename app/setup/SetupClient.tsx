@@ -49,6 +49,8 @@ import { signInWithPasskey } from "@/lib/passkeyClient";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
+import { MascotAvatar } from "@/app/components/MascotAvatar";
+import { RELATIONSHIP_PAIR, MASCOT_PAIRS } from "@/lib/mascots.config";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
@@ -788,21 +790,25 @@ export default function SetupClient() {
             <div>
               <label className="block text-sm font-medium">C&apos;est qui, pour vous ?</label>
               <div className="mt-2 flex flex-wrap gap-2">
-                {DUO_TYPES.map((d) => (
-                  <button
-                    type="button"
-                    key={d.value}
-                    onClick={() => setDuoType(d.value)}
-                    className="rounded-full border px-3.5 py-2 text-sm transition-colors"
-                    style={
-                      duoType === d.value
-                        ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
-                        : { borderColor: BORDER, color: INK }
-                    }
-                  >
-                    {d.label}
-                  </button>
-                ))}
+                {DUO_TYPES.map((d) => {
+                  const [repCharacter] = MASCOT_PAIRS[RELATIONSHIP_PAIR[d.value]];
+                  return (
+                    <button
+                      type="button"
+                      key={d.value}
+                      onClick={() => setDuoType(d.value)}
+                      className="flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3.5 text-sm transition-colors"
+                      style={
+                        duoType === d.value
+                          ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
+                          : { borderColor: BORDER, color: INK }
+                      }
+                    >
+                      <MascotAvatar characterId={repCharacter} variant="bust" size={22} className="shrink-0" />
+                      {d.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
