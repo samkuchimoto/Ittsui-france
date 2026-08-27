@@ -51,7 +51,16 @@ const CSP = [
   // need it.
   "script-src 'self' 'unsafe-inline' https://apis.google.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // https://*.giphy.com: GIPHY's real, well-documented media CDN
+  // pattern (media0-4.giphy.com, i.giphy.com) — needed for the GIF
+  // picker in "message"-mode gestures (app/api/gestures/gif-search),
+  // added 2026-08-28. NOTE: Fal.ai-generated images (the "painting"
+  // gesture mode, app/api/ai-venue-mood) have this same class of gap —
+  // their exact CDN domain wasn't verified with confidence and FAL_API_KEY
+  // isn't configured in production yet, so it's dormant, not fixed here;
+  // verify the real domain before FAL_API_KEY ever gets set, or those
+  // images will silently fail to load under this CSP.
+  "img-src 'self' data: blob: https://*.giphy.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de",
   "frame-src 'self' https://*.firebaseapp.com https://apis.google.com",

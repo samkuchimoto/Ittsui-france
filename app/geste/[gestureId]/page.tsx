@@ -49,10 +49,10 @@ interface GesturePreview {
   item: CuratedGestureItem | null;
   customItem: string | null;
   note: string | null;
+  gifUrl: string | null;
   recipientChoice: GestureRecipientChoice | null;
   paintingImageUrl: string | null;
   paintingStatus: PaintingStatus | null;
-  rewardStatus: "sent" | "failed" | null;
   courierStatus: "dispatched" | "failed" | null;
   courierTrackingUrl: string | null;
 }
@@ -199,10 +199,9 @@ export default function GesturePage() {
             « {preview.note} »
           </p>
         )}
-        {(preview.mode === "curated" || preview.mode === "suggested") && preview.rewardStatus === "sent" && (
-          <p className="mt-3 text-sm font-medium" style={{ color: "#1E7A4C" }}>
-            Un vrai chèque-cadeau vous a été envoyé par e-mail (regardez aussi vos spams).
-          </p>
+        {preview.gifUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview.gifUrl} alt="" className="mx-auto mt-4 h-40 rounded-xl" />
         )}
 
         {isPhysical && (
@@ -291,7 +290,7 @@ export default function GesturePage() {
           </div>
         )}
 
-        {preview.rewardStatus !== "sent" && preview.courierStatus !== "dispatched" && (
+        {preview.courierStatus !== "dispatched" && (
           <div className="mt-6 rounded-2xl border p-4 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
             Ittsui n&apos;a rien livré ni acheté automatiquement — {preview.senderName} vous a simplement fait
             savoir qu&apos;iel pense à vous, et s&apos;occupe du reste de son côté.

@@ -308,6 +308,11 @@ export interface Gesture {
   item?: CuratedGestureItem; // "curated"/"suggested" mode: which gesture type was picked
   customItem?: string; // required when item === "autre" — the sender's own free-text category
   note?: string; // required content for "message" mode; optional flourish otherwise; also doubles as the painting prompt for "painting" mode
+  // "message" mode only: an optional real GIF (a real GIPHY URL the
+  // sender picked, via app/api/gestures/gif-search) attached alongside
+  // the note. Never present when GIPHY_API_KEY isn't configured — the
+  // picker itself doesn't render, so there's nothing to attach.
+  gifUrl?: string;
   // "painting" mode: real generation result, not a placeholder. Absent
   // paintingStatus on a "painting"-mode record predates this field or
   // means generation is still the one in flight for this request (no
@@ -315,13 +320,6 @@ export interface Gesture {
   // a synchronous call, not a queue, at this scale).
   paintingImageUrl?: string;
   paintingStatus?: PaintingStatus;
-  // Real fulfillment, not a link-out — set when TREMENDOUS_API_KEY is
-  // configured (see lib/tremendous.ts) and mode is "curated"/"suggested"
-  // with a real item (never "autre" — there's no product to fund).
-  // Absent means either not configured or item === "autre", exactly the
-  // same "quietly skip" posture as the painting mode's Fal.ai call.
-  rewardOrderId?: string;
-  rewardStatus?: "sent" | "failed";
   // "own" mode only: the sender's own pickup address, collected at
   // creation specifically so a real courier dispatch (lib/stuartCourier.ts)
   // is possible once the recipient supplies their own address via PATCH —

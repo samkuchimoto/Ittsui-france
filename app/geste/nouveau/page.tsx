@@ -76,11 +76,29 @@ export default function NewGesturePage() {
   const [notes, setNotes] = useState("");
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifResults, setGifResults] = useState<{ id: string; url: string; previewUrl: string }[]>([]);
+  const [gifSearching, setGifSearching] = useState(false);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [gestureUrl, setGestureUrl] = useState<string | null>(null);
   const [paintingImageUrl, setPaintingImageUrl] = useState<string | null>(null);
-  const [rewardStatus, setRewardStatus] = useState<"sent" | "failed" | null>(null);
+
+  async function searchGifs(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gifQuery.trim()) return;
+    setGifSearching(true);
+    try {
+      const res = await fetch(`/api/gestures/gif-search?q=${encodeURIComponent(gifQuery.trim())}`);
+      const data = await res.json();
+      setGifResults(res.ok ? (data.results ?? []) : []);
+    } catch {
+      setGifResults([]);
+    } finally {
+      setGifSearching(false);
+    }
+  }
 
   // Signed-in convenience only — this page stays fully usable with no
   // account (see the homepage's "sans créer de compte" link to it), the
@@ -142,13 +160,13 @@ export default function NewGesturePage() {
           ...(mode === "curated" || mode === "suggested" ? { item } : {}),
           ...(mode === "curated" && item === "autre" ? { customItem } : {}),
           ...(notes ? { notes } : {}),
+          ...(mode === "message" && gifUrl ? { gifUrl } : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
       setGestureUrl(data.gestureUrl);
       setPaintingImageUrl(data.paintingImageUrl ?? null);
-      setRewardStatus(data.rewardStatus ?? null);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
@@ -174,16 +192,17 @@ export default function NewGesturePage() {
             </p>
           )}
           {mode === "message" && (
-            <p className="mt-2 text-sm" style={{ color: MUTED }}>
-              Votre mot est parti, rien d&apos;autre à faire.
-            </p>
+            <>
+              <p className="mt-2 text-sm" style={{ color: MUTED }}>
+                Votre mot est parti, rien d&apos;autre à faire.
+              </p>
+              {gifUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={gifUrl} alt="" className="mx-auto mt-4 h-32 rounded-xl" />
+              )}
+            </>
           )}
-          {(mode === "curated" || mode === "suggested") && rewardStatus === "sent" && (
-            <p className="mt-2 text-sm font-medium" style={{ color: "#1E7A4C" }}>
-              Un vrai chèque-cadeau a été envoyé à {recipientName} par e-mail, via Tremendous.
-            </p>
-          )}
-          {(mode === "curated" || mode === "suggested") && rewardStatus !== "sent" && (
+          {(mode === "curated" || mode === "suggested") && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               Il ne reste plus qu&apos;à finaliser {(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.
             </p>
@@ -535,6 +554,68 @@ export default function NewGesturePage() {
                   className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
                   style={{ borderColor: BORDER }}
                 />
+              </div>
+            )}
+
+            {mode === "message" && (
+              <div>
+                <label className="block text-sm font-medium">
+                  Ajouter un GIF <span className="font-normal" style={{ color: MUTED }}>(optionnel)</span>
+                </label>
+                {gifUrl ? (
+                  <div className="relative mt-2 inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={gifUrl} alt="" className="h-32 rounded-xl border" style={{ borderColor: BORDER }} />
+                    <button
+                      type="button"
+                      onClick={() => setGifUrl(null)}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: ACCENT }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <form onSubmit={searchGifs} className="mt-2 flex gap-2">
+                      <input
+                        type="text"
+                        value={gifQuery}
+                        onChange={(e) => setGifQuery(e.target.value)}
+                        placeholder="Chercher un GIF (ex: câlin, merci...)"
+                        className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                        style={{ borderColor: BORDER }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={gifSearching}
+                        className="shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
+                        style={{ borderColor: BORDER, color: INK }}
+                      >
+                        {gifSearching ? "..." : "Chercher"}
+                      </button>
+                    </form>
+                    {gifResults.length > 0 && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {gifResults.map((gif) => (
+                          <button
+                            key={gif.id}
+                            type="button"
+                            onClick={() => {
+                              setGifUrl(gif.url);
+                              setGifResults([]);
+                            }}
+                            className="overflow-hidden rounded-lg border"
+                            style={{ borderColor: BORDER }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={gif.previewUrl} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

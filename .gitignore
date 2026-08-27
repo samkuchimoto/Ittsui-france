@@ -12,3 +12,5 @@ firebase-key.json
 /playwright/.cache/
 
 *.zip
+
+.env*

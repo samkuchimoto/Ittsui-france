@@ -13,9 +13,9 @@
 // creation) and the recipient's own dropoff (collected via
 // /api/gestures/[gestureId]'s PATCH) — Ittsui never has both before
 // that second step, so this is called from the PATCH handler, not the
-// creation route. Same honest-fallback posture as Tremendous/Fal.ai:
-// missing configuration returns "not_configured", never a fabricated
-// dispatch.
+// creation route. Same honest-fallback posture as the Fal.ai painting
+// call: missing configuration returns "not_configured", never a
+// fabricated dispatch.
 
 const SANDBOX_BASE = "https://api.sandbox.stuart.com";
 const PRODUCTION_BASE = "https://api.stuart.com";

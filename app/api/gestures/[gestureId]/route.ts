@@ -39,11 +39,11 @@ export async function GET(_request: Request, { params }: { params: { gestureId: 
     item: data.item ?? null,
     customItem: data.customItem ?? null,
     note: data.note ?? null,
+    gifUrl: data.gifUrl ?? null,
     createdAt: data.createdAt,
     recipientChoice: data.recipientChoice ?? null,
     paintingImageUrl: data.paintingImageUrl ?? null,
     paintingStatus: data.paintingStatus ?? null,
-    rewardStatus: data.rewardStatus ?? null,
     courierStatus: data.courierStatus ?? null,
     courierTrackingUrl: data.courierTrackingUrl ?? null,
   });

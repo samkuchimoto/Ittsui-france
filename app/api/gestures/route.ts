@@ -4,30 +4,37 @@
 // meeting-requests/create (real people overwhelmingly know a friend's
 // phone number, not their email).
 //
-// Three modes now trigger a REAL backend action, not just a link-out or
-// a stored intent:
+// Modes that trigger a REAL backend action, not just a link-out or a
+// stored intent:
 //   - "painting": calls the same Fal.ai image-generation infrastructure
 //     already wired for app/api/ai-venue-mood/route.ts.
-//   - "curated"/"suggested" (any real item, never "autre"): calls
-//     Tremendous (lib/tremendous.ts) to actually issue a redeemable
-//     digital gift card to the recipient's email, verified against
-//     Tremendous's own current API reference on 2026-08-27.
 //   - "own": collects the sender's own pickup address here so a real
 //     Stuart courier (lib/stuartCourier.ts) can be dispatched later,
 //     from /api/gestures/[gestureId]'s PATCH, once the recipient
 //     supplies their own dropoff address — Ittsui never has both
 //     addresses before that second step.
-// All three share the same honest-fallback posture: missing
-// configuration (env vars unset) means the gesture still sends and the
-// recipient is still notified, just without that real action attached
-// — never a fabricated success.
+//   - "message": can carry a real GIF the sender picked via
+//     GET /api/gestures/gif-search (a thin GIPHY proxy) — validated
+//     here to actually be a giphy.com media URL, not an arbitrary
+//     client-supplied image URL embedded in an email.
+// All share the same honest-fallback posture: missing configuration
+// (env vars unset) means the gesture still sends and the recipient is
+// still notified, just without that real action attached — never a
+// fabricated success.
+//
+// Two other real integrations for "curated"/"suggested" gestures were
+// built and then deliberately abandoned 2026-08-28 per direct product
+// decisions — Tremendous (digital gift cards) and Goody (physical gift
+// orders, verified against a real request/response the user ran
+// themselves, then dropped anyway — "abandon goody"). Neither mode
+// currently has a real fulfillment path; see
+// docs/three-fronts-and-gestures.md for what was evaluated and why.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
-import { sendTremendousReward } from "@/lib/tremendous";
 import type { CuratedGestureItem, PaintingStatus } from "@/lib/types";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
@@ -62,12 +69,23 @@ const bodySchema = z
       .max(30)
       .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
       .optional(),
+    // "message" mode only — must actually be a GIPHY media URL, never
+    // an arbitrary client-supplied image URL that would otherwise get
+    // embedded straight into the recipient's notification email.
+    gifUrl: z
+      .string()
+      .trim()
+      .url()
+      .max(500)
+      .refine((url) => new URL(url).hostname.endsWith("giphy.com"), { message: "GIF invalide" })
+      .optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, { message: "e-mail ou téléphone requis" })
   .refine((data) => data.mode !== "own" || !!data.itemDescription, { message: "description de l'objet requise" })
   .refine((data) => data.mode !== "message" || !!data.notes, { message: "un mot est requis pour ce type de geste" })
   .refine((data) => !["curated", "suggested"].includes(data.mode) || !!data.item, { message: "type de geste requis" })
-  .refine((data) => data.item !== "autre" || !!data.customItem, { message: "précisez de quoi il s'agit" });
+  .refine((data) => data.item !== "autre" || !!data.customItem, { message: "précisez de quoi il s'agit" })
+  .refine((data) => data.mode === "message" || !data.gifUrl, { message: "un GIF n'est disponible que pour ce type de geste" });
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
@@ -87,6 +105,7 @@ export async function POST(request: Request) {
     notes,
     pickupAddress,
     pickupPhone,
+    gifUrl,
   } = parsed.data;
 
   let paintingImageUrl: string | undefined;
@@ -96,23 +115,7 @@ export async function POST(request: Request) {
     paintingStatus = paintingImageUrl ? "ready" : "failed";
   }
 
-  let rewardOrderId: string | undefined;
-  let rewardStatus: "sent" | "failed" | undefined;
   const ref = adminDb.collection("gestures").doc();
-  if ((mode === "curated" || mode === "suggested") && item !== "autre" && item && recipientEmail) {
-    const reward = await sendTremendousReward({
-      externalId: ref.id,
-      recipientEmail,
-      recipientName,
-      senderName,
-      message: notes || `${senderName} vous envoie : ${CURATED_ITEM_LABEL[item]}`,
-    });
-    if (reward.status !== "not_configured") {
-      rewardStatus = reward.status;
-      if (reward.status === "sent") rewardOrderId = reward.orderId;
-    }
-  }
-
   await ref.set({
     senderName,
     ...(senderEmail ? { senderEmail } : {}),
@@ -124,12 +127,11 @@ export async function POST(request: Request) {
     ...(item ? { item } : {}),
     ...(customItem ? { customItem } : {}),
     ...(notes ? { note: notes } : {}),
+    ...(gifUrl ? { gifUrl } : {}),
     ...(pickupAddress ? { pickupAddress } : {}),
     ...(pickupPhone ? { pickupPhone } : {}),
     ...(paintingImageUrl ? { paintingImageUrl } : {}),
     ...(paintingStatus ? { paintingStatus } : {}),
-    ...(rewardOrderId ? { rewardOrderId } : {}),
-    ...(rewardStatus ? { rewardStatus } : {}),
     status: "sent",
     createdAt: new Date().toISOString(),
   });
@@ -146,16 +148,11 @@ export async function POST(request: Request) {
             ? customItem!
             : CURATED_ITEM_LABEL[item as CuratedGestureItem];
 
-  const rewardLine =
-    rewardStatus === "sent"
-      ? `<p style="font-size:13px;color:#1E7A4C;text-align:center;font-weight:600;">Un vrai chèque-cadeau a été envoyé à cette adresse par e-mail.</p>`
-      : "";
-
   const recipientEmailSent = recipientEmail
     ? await sendEmail({
         to: recipientEmail,
         subject: `${senderName} a pensé à vous`,
-        text: `${senderName} vous envoie : ${whatLine}.${notes && mode !== "painting" ? ` "${notes}"` : ""}${rewardStatus === "sent" ? " Un vrai chèque-cadeau vous a été envoyé par e-mail." : ""}\n\n${gestureUrl}`,
+        text: `${senderName} vous envoie : ${whatLine}.${notes && mode !== "painting" ? ` "${notes}"` : ""}\n\n${gestureUrl}`,
         html: emailShell({
           mascotName: "mochi",
           title: `${escapeHtml(senderName)} a pensé à vous`,
@@ -163,7 +160,7 @@ export async function POST(request: Request) {
             mode === "painting" && paintingImageUrl
               ? `<p style="font-size:11px;font-weight:600;text-align:center;color:#565049;text-transform:uppercase;letter-spacing:0.04em;">Illustration générée par IA</p>
                  <img src="${paintingImageUrl}" alt="Peinture générée par IA" width="480" style="display:block;width:100%;height:auto;border-radius:12px;margin:8px 0;" />`
-              : `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(whatLine)}${notes && mode !== "painting" ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>${rewardLine}`,
+              : `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(whatLine)}${notes && mode !== "painting" ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>${gifUrl ? `<img src="${gifUrl}" alt="" width="320" style="display:block;width:100%;max-width:320px;height:auto;border-radius:12px;margin:12px auto 0;" />` : ""}`,
         }),
       })
     : undefined;
@@ -177,7 +174,7 @@ export async function POST(request: Request) {
     gestureUrl,
     recipientEmailSent: recipientEmailSent ?? null,
     ...(mode === "painting" ? { paintingImageUrl: paintingImageUrl ?? null, paintingStatus } : {}),
-    ...(rewardStatus ? { rewardStatus, rewardOrderId: rewardOrderId ?? null } : {}),
+    ...(gifUrl ? { gifUrl } : {}),
   });
 }
 
