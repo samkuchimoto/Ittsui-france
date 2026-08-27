@@ -116,7 +116,7 @@ type CardState = "default" | "swapped" | "confirmed";
 
 const OPTION_A = {
   name: "Café de Flore · Paris 6e",
-  img: "/couple-parisian-cafe.jpg",
+  img: "/friends-cafe-terrace.jpg",
   alt: "Café de Flore, Paris 6e",
 };
 const OPTION_B = {
@@ -403,8 +403,8 @@ export default function Home() {
               style={{ borderColor: BORDER }}
             >
               <Image
-                src="/mother-daughter-cafe.jpg"
-                alt="Mère et fille au café"
+                src="/couple-living-room.jpg"
+                alt="Un couple qui discute, installé chez eux"
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -501,7 +501,7 @@ export default function Home() {
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Un lieu, un horaire. Vous dites oui, ou vous changez d&apos;avis en un geste — sans négociation,
-                  sans fil de discussion.
+                  sans fil de discussion à relancer vous-même comme avec un texto classique.
                 </p>
               </div>
             </li>
@@ -569,6 +569,9 @@ export default function Home() {
       <footer className="flex flex-col items-center gap-2 px-6 pb-10 text-center text-sm" style={{ color: `${MUTED}99` }}>
         <span>© 2026 Ittsui France. Conçu avec retenue.</span>
         <span className="flex items-center gap-3">
+          <Link href="/a-propos" className="underline underline-offset-4">
+            À propos
+          </Link>
           <Link href="/confidentialite" className="underline underline-offset-4">
             Confidentialité
           </Link>
