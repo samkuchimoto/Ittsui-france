@@ -200,11 +200,19 @@ async function generatePainting(inspiration: string | undefined): Promise<string
       body: JSON.stringify({ prompt, image_size: "square_hd", num_images: 1 }),
       signal: controller.signal,
     });
-    if (!res.ok) return undefined;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`gestures: fal-ai/fast-sdxl failed (${res.status}) ${body}`);
+      return undefined;
+    }
     const data = await res.json();
     const imageUrl: unknown = data?.images?.[0]?.url;
+    if (typeof imageUrl !== "string") {
+      console.error(`gestures: fal-ai/fast-sdxl unexpected response shape: ${JSON.stringify(data).slice(0, 500)}`);
+    }
     return typeof imageUrl === "string" ? imageUrl : undefined;
-  } catch {
+  } catch (err) {
+    console.error("gestures: fal-ai/fast-sdxl request threw", err);
     return undefined;
   } finally {
     clearTimeout(timeout);
