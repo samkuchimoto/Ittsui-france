@@ -703,6 +703,9 @@ export default function Home() {
           <Link href="/a-propos" className="underline underline-offset-4">
             À propos
           </Link>
+          <Link href="/partenaires" className="underline underline-offset-4">
+            Partenaires
+          </Link>
           <Link href="/confidentialite" className="underline underline-offset-4">
             Confidentialité
           </Link>

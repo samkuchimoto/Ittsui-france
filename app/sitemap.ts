@@ -11,7 +11,15 @@ import type { MetadataRoute } from "next";
 const BASE_URL = "https://www.ittsui.fr";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPaths = ["", "/a-propos", "/download", "/confidentialite", "/conditions-utilisation", "/mentions-legales"];
+  const staticPaths = [
+    "",
+    "/a-propos",
+    "/partenaires",
+    "/download",
+    "/confidentialite",
+    "/conditions-utilisation",
+    "/mentions-legales",
+  ];
   return staticPaths.map((path) => ({
     url: `${BASE_URL}${path}`,
     lastModified: new Date(),
