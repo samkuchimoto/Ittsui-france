@@ -558,9 +558,9 @@ export default function Home() {
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {[
-              { quote: "C'est rapide, fluide… SMS c'est clean.", from: "Testeur, Paris" },
-              { quote: "Permet de trouver un contact rapidement.", from: "Testeur, Paris" },
-              { quote: "UI is nice… Intuitive.", from: "Testeuse, Paris" },
+              { quote: "C'est rapide, fluide… SMS c'est clean.", from: "Testeur parisien, 27 août 2026" },
+              { quote: "Permet de trouver un contact rapidement.", from: "Testeur parisien, 27 août 2026" },
+              { quote: "UI is nice… Intuitive.", from: "Étudiante américaine à Paris, 27 août 2026" },
             ].map((t) => (
               <div key={t.quote} className="rounded-xl border p-4 text-sm" style={{ borderColor: BORDER, backgroundColor: "white" }}>
                 <p style={{ color: INK }}>&ldquo;{t.quote}&rdquo;</p>
