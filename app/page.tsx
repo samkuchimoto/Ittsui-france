@@ -280,7 +280,12 @@ function FridayCard() {
       {cardState !== "confirmed" && (
         <div className="mt-4 text-center" style={{ minHeight: "1.25rem" }}>
           {skipped ? (
-            <p className="text-xs" style={{ color: MUTED }}>Pas de pression. On se retrouve la semaine prochaine.</p>
+            <div className="flex flex-col items-center gap-2">
+              <MascotPair size={30} />
+              <p className="text-xs" style={{ color: MUTED }}>
+                Pas de pression cette semaine. On s&apos;occupe du reste — à la semaine prochaine.
+              </p>
+            </div>
           ) : (
             <button
               type="button"

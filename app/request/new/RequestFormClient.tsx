@@ -32,6 +32,7 @@ import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { SHARED_TEXT_KEY } from "@/app/components/ShareTargetListener";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { MascotPair } from "@/app/components/MascotPair";
+import { MascotAvatar } from "@/app/components/MascotAvatar";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -760,6 +761,19 @@ export default function RequestFormClient() {
                   >
                     Snapchat, Messenger, ou une autre appli...
                   </button>
+                </div>
+
+                {/* The "Why not just SMS?" touchpoint, on the actual
+                    invitation flow this time (the landing page has its
+                    own copy of this for a first-time visitor) — the real
+                    moment someone might wonder why not just text them
+                    directly instead of sending this link. */}
+                <div className="mt-4 flex items-start gap-3 rounded-xl border p-3 text-left" style={{ borderColor: BORDER }}>
+                  <MascotAvatar characterId="hikari" variant="bust" size={28} className="shrink-0" />
+                  <p className="text-xs" style={{ color: MUTED }}>
+                    Ce lien peut voyager par SMS, WhatsApp ou ailleurs — mais une fois ouvert, plus besoin de
+                    négocier un horaire par message : {sentTo.name} n&apos;a qu&apos;à dire oui.
+                  </p>
                 </div>
               </>
             )}

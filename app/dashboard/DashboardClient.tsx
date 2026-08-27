@@ -476,7 +476,12 @@ export default function DashboardClient() {
           <p className="text-base font-medium">{week.confirmationText}</p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
-          <ConfirmedMascotMoment status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} relationshipKind={pair.relationshipKind} />
+          <ConfirmedMascotMoment
+            status={isLapsed(week) ? "cancelled" : week.status}
+            lapsed={isLapsed(week)}
+            relationshipKind={pair.relationshipKind}
+            venueType={confirmedVenueType(week)}
+          />
           <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
@@ -520,7 +525,12 @@ export default function DashboardClient() {
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
-          <ConfirmedMascotMoment status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} relationshipKind={pair.relationshipKind} />
+          <ConfirmedMascotMoment
+            status={isLapsed(week) ? "cancelled" : week.status}
+            lapsed={isLapsed(week)}
+            relationshipKind={pair.relationshipKind}
+            venueType={confirmedVenueType(week)}
+          />
           <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
@@ -735,19 +745,42 @@ function HitbonenutPause({
 // comes straight from the real Pair document when present (see
 // lib/types.ts) so this genuinely varies by category instead of always
 // showing the default pair.
+// Real composited "mascot holding a venue icon" art doesn't exist (no
+// image-gen tool available), so the venue association is a small emoji
+// badge riding along next to the pair instead — an honest approximation
+// of "the mascot duo + where you're going" rather than a literal claim
+// this is bespoke illustration.
+const VENUE_EMOJI: Partial<Record<VenueType, string>> = {
+  cafe: "☕",
+  restaurant: "🍽️",
+  home: "🏠",
+  park: "🌳",
+  museum: "🖼️",
+};
+
 function ConfirmedMascotMoment({
   status,
   lapsed,
   relationshipKind,
+  venueType,
 }: {
   status: Week["status"];
   lapsed: boolean;
   relationshipKind?: Pair["relationshipKind"];
+  venueType?: VenueType;
 }) {
   if (status !== "confirmed" || lapsed) return null;
+  const emoji = venueType ? VENUE_EMOJI[venueType] : undefined;
   return (
     <div className="mt-3 flex items-center gap-2">
-      <MascotPair pairId={relationshipKind ? RELATIONSHIP_PAIR[relationshipKind] : undefined} size={32} nod mood="success" />
+      <span className="relative inline-flex">
+        <MascotPair pairId={relationshipKind ? RELATIONSHIP_PAIR[relationshipKind] : undefined} size={32} nod mood="success" />
+        {emoji && (
+          <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] shadow-sm">
+            {emoji}
+          </span>
+        )}
+      </span>
       <p className="text-xs" style={{ color: MUTED }}>Rendez-vous calé. On se tait jusqu&apos;à la prochaine fois.</p>
     </div>
   );
