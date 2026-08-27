@@ -21,6 +21,7 @@ const CURATED_ITEM_VALUES = ["fleurs", "livre", "chocolat", "plante", "bougie", 
 const bodySchema = z
   .object({
     senderName: z.string().trim().min(1).max(200),
+    senderEmail: z.string().trim().toLowerCase().email().max(320).optional(),
     recipientName: z.string().trim().min(1).max(200),
     recipientEmail: z.string().trim().toLowerCase().email().max(320).optional(),
     recipientPhone: z
@@ -30,25 +31,27 @@ const bodySchema = z
       .max(30)
       .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
       .optional(),
-    mode: z.enum(["own", "curated", "suggested"]),
+    mode: z.enum(["own", "curated", "suggested", "message"]),
     itemDescription: z.string().trim().min(1).max(200).optional(),
     item: z.enum(CURATED_ITEM_VALUES).optional(),
     notes: z.string().trim().max(500).optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, { message: "e-mail ou téléphone requis" })
   .refine((data) => data.mode !== "own" || !!data.itemDescription, { message: "description de l'objet requise" })
-  .refine((data) => data.mode === "own" || !!data.item, { message: "type de geste requis" });
+  .refine((data) => data.mode !== "message" || !!data.notes, { message: "un mot est requis pour ce type de geste" })
+  .refine((data) => !["curated", "suggested"].includes(data.mode) || !!data.item, { message: "type de geste requis" });
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
-  const { senderName, recipientName, recipientEmail, recipientPhone, mode, itemDescription, item, notes } = parsed.data;
+  const { senderName, senderEmail, recipientName, recipientEmail, recipientPhone, mode, itemDescription, item, notes } = parsed.data;
 
   const ref = adminDb.collection("giftGestures").doc();
   await ref.set({
     senderName,
+    ...(senderEmail ? { senderEmail } : {}),
     recipientName,
     ...(recipientEmail ? { recipientEmail } : {}),
     ...(recipientPhone ? { recipientPhone } : {}),
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   });
 
   const giftUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/g/${ref.id}`;
-  const whatLine = mode === "own" ? itemDescription! : CURATED_ITEM_LABEL[item as CuratedGiftItem];
+  const whatLine = mode === "own" ? itemDescription! : mode === "message" ? "un petit mot" : CURATED_ITEM_LABEL[item as CuratedGiftItem];
 
   const recipientEmailSent = recipientEmail
     ? await sendEmail({

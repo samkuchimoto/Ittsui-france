@@ -690,6 +690,27 @@ export default function RequestFormClient() {
           </button>
         </div>
         <PageMascotHeader />
+        {/* Both relationship actions shown as equal-weight tabs, not one
+            primary flow with a gesture link buried three screens deep —
+            real feedback: someone landing directly on this page had no way
+            to discover "envoyer un geste" existed at all. */}
+        {!sentTo && (
+          <div className="mt-4 flex gap-2">
+            <span
+              className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-medium text-white"
+              style={{ backgroundColor: ACCENT }}
+            >
+              ☕ Se voir
+            </span>
+            <Link
+              href="/cadeau/nouveau"
+              className="flex-1 rounded-full border px-4 py-2.5 text-center text-sm font-medium"
+              style={{ borderColor: BORDER, color: INK }}
+            >
+              🎁 Envoyer un geste
+            </Link>
+          </div>
+        )}
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: simpleMode ? "2rem" : "1.75rem" }}>
           Proposer un rendez-vous
         </h1>

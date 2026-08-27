@@ -481,6 +481,13 @@ export default function Home() {
               <Link href="/request/new" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
                 Ou proposez un seul rendez-vous d&apos;abord, sans créer de compte →
               </Link>
+              {/* "Envoyer un geste" made visible from the very first page a
+                  visitor lands on, not buried three clicks deep in the
+                  dashboard — real feedback: the feature existed but nobody
+                  could discover it without already being a signed-in user. */}
+              <Link href="/cadeau/nouveau" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
+                Ou envoyer un petit geste à quelqu&apos;un, sans créer de compte →
+              </Link>
             </div>
           </Reveal>
 
@@ -554,6 +561,55 @@ export default function Home() {
 
         <Reveal className="mt-12">
           <FridayCard />
+        </Reveal>
+      </section>
+
+      {/* "Envoyer un geste" — a distinct relationship action alongside the
+          weekly rendez-vous, given its own scroll section rather than
+          staying a small link buried in the dashboard (2026-08-27: real
+          feedback that the feature existed but was undiscoverable). No
+          photography here on purpose — real, well-known third-party stock
+          photos surfaced during art-direction research come from small
+          commercial sites (a florist's own catalog shop, a gift-wrap
+          tutorial blog) with no license granted to Ittsui, and this app's
+          CSP/next.config.js only allowlists images.unsplash.com as a
+          remote image host regardless. Simple icon tiles instead, same
+          restrained treatment as the "Comment ça marche" steps below. */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            🎁 Envoyer une attention
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm" style={{ color: MUTED }}>
+            Parce qu&apos;une relation se nourrit aussi de petites choses, pas seulement de rendez-vous.
+          </p>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-3">
+          {[
+            { emoji: "🎁", title: "Un objet qui vient de vous", body: "Envoyez quelque chose que vous avez déjà et qui vous fait penser à cette personne." },
+            { emoji: "🛍️", title: "Une petite attention", body: "Choisissez un type de geste — fleurs, livre, chocolat — et faites-le livrer." },
+            { emoji: "✨", title: "Laissez Ittsui trouver l'idée", body: "Une suggestion toute faite, pour ne pas avoir à réfléchir." },
+          ].map((tile) => (
+            <div key={tile.title} className="rounded-2xl border bg-white p-5 text-left" style={{ borderColor: BORDER }}>
+              <span className="text-2xl">{tile.emoji}</span>
+              <p className="mt-3 text-sm font-medium">{tile.title}</p>
+              <p className="mt-1 text-xs" style={{ color: MUTED }}>
+                {tile.body}
+              </p>
+            </div>
+          ))}
+        </Reveal>
+
+        <Reveal className="mt-8 text-center">
+          <Link
+            href="/cadeau/nouveau"
+            className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-transform hover:scale-[1.02]"
+            style={{ borderColor: ACCENT, color: ACCENT }}
+          >
+            Envoyer un geste
+            <IconArrowRight className="h-4 w-4" />
+          </Link>
         </Reveal>
       </section>
 

@@ -246,7 +246,7 @@ export interface VenuePartner {
 // meeting-request flow: a physical gesture instead of a rendez-vous.
 // Framed deliberately as "send something", not "gift shop" — one
 // relationship action alongside a café or a walk, not a storefront.
-// Three modes, not a product category:
+// Four modes, not a product category:
 //   - "own": something the sender already has (a book, an object with
 //     history) — Ittsui arranges nothing, this is pure zero-API intent
 //     capture; delivery is the sender's own problem to solve (hand it
@@ -261,26 +261,41 @@ export interface VenuePartner {
 //     (a deterministic pick, reshuffleable), not a claim that Ittsui
 //     knows anything personal about the recipient it doesn't actually
 //     have data for.
+//   - "message": no object at all — just a note. The zero-friction floor
+//     of this whole feature: added 2026-08-27 after both a "🎁 Envoyer
+//     quelque chose" and "💌 Écrire un petit mot" showed up independently
+//     as their own distinct relationship actions across the multi-AI
+//     review, not as a variant of "curated".
 // `status` only ever tracks "the sender was notified/pointed somewhere,"
 // never "delivered" — this app has no real purchase/delivery API
 // partnership (see lib/giftLinks.ts and docs/three-fronts-and-gifting.md
 // for why Amazon/Deliveroo/Uber Direct specifically aren't it).
-export type GiftMode = "own" | "curated" | "suggested";
+export type GiftMode = "own" | "curated" | "suggested" | "message";
 export type CuratedGiftItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas";
 export type GiftGestureStatus = "sent";
+// The recipient's own reply on how to actually get a physical "own"/
+// "curated"/"suggested" gesture to them — captured on /cadeau/[giftId]
+// (see /api/gifts/[giftId]'s PATCH) and, when the sender left an email,
+// relayed back to them so the loop actually closes instead of leaving
+// the sender to wonder whether anything happened after they clicked send.
+export type GiftRecipientChoice = "address" | "in_person";
 
 export interface GiftGesture {
   id: string;
   senderName: string;
+  senderEmail?: string; // optional — only collected so the recipient's address/choice can be relayed back
   recipientName: string;
   recipientEmail?: string;
   recipientPhone?: string;
   mode: GiftMode;
   itemDescription?: string; // "own" mode: sender's free-text description of the object itself
   item?: CuratedGiftItem; // "curated"/"suggested" mode: which gesture type was picked
-  note?: string;
+  note?: string; // required content for "message" mode; optional flourish otherwise
   status: GiftGestureStatus;
   createdAt: string;
+  recipientChoice?: GiftRecipientChoice;
+  recipientAddress?: string; // only present when recipientChoice === "address"
+  recipientRespondedAt?: string; // ISO date
 }
 
 export type VenueBookingStatus = "confirmed" | "cancelled";

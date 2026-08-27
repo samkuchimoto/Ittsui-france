@@ -69,9 +69,12 @@ section 1 above for how to read the list.
 
 ## 4. "Envoyer un geste" (the gift feature) — what shipped and what a fuller version needs
 
-**What's live today** follows the framing the four-way AI review converged on hardest: this
+**What's live today** follows the framing the multi-AI review converged on hardest: this
 is "send something," one relationship action alongside a café or a walk — not a shop. At
-`/cadeau/nouveau` the sender picks one of three modes, not a product category:
+`/cadeau/nouveau` (surfaced as an equal-weight tab next to `/request/new`, on the homepage
+hero, and as a real button on the dashboard — not a link buried in small text, per direct
+2026-08-27 feedback that it existed but nobody could find it) the sender picks one of four
+modes, not a product category:
 
 - **🎁 Quelque chose que vous avez** — something the sender already owns (a book, an object
   with history). Zero API, zero delivery arrangement: Ittsui only notifies the recipient;
@@ -86,6 +89,15 @@ is "send something," one relationship action alongside a café or a walk — not
   (reshuffleable). This is genuinely just decision-load removal, the same honesty principle
   as `weekly-propose`'s venue ranking: a plain deterministic pick, never a claim that Ittsui
   knows something personal about the recipient it has no actual data for.
+- **💌 Un mot doux** — no object at all, added after both a physical gesture and a pure note
+  showed up as their *own* distinct relationship actions across the review, not as variants of
+  each other. The zero-friction floor of the whole feature.
+
+The recipient's page (`/cadeau/[giftId]`) lets them reply with how they'd actually like to
+receive a physical gesture — an address, or in person next time — via a `PATCH` that's relayed
+back to the sender by email if they left one. That's the one piece of real interactivity this
+feature needed to not be a dead end: the sender finding out *something* happened after they
+hit send, without Ittsui ever claiming it arranged delivery itself.
 
 Ittsui never claims to have purchased, shipped, or tracked anything — `status` on a
 `GiftGesture` is only ever `"sent"`, because that's the only thing actually true.

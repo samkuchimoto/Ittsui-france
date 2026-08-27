@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
 import type { MeetingRequest, MeetingRequestStatus } from "@/lib/types";
-import { MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 import { Mascot } from "@/app/components/Mascot";
@@ -192,20 +192,28 @@ export function RequestsPanel() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-          Demandes de rendez-vous
-        </p>
-        <Link href="/request/new" className="text-xs font-medium underline underline-offset-4" style={{ color: ACCENT }}>
-          Nouvelle demande
+      <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
+        Demandes de rendez-vous
+      </p>
+      {/* Two equal-weight relationship actions, not one primary flow with
+          a gesture link buried as small text underneath — real feedback:
+          the link was there but too quiet to actually be discovered. */}
+      <div className="mt-2 flex gap-2">
+        <Link
+          href="/request/new"
+          className="flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium"
+          style={{ borderColor: ACCENT, color: ACCENT }}
+        >
+          ☕ Nouvelle demande
+        </Link>
+        <Link
+          href="/cadeau/nouveau"
+          className="flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium"
+          style={{ borderColor: BORDER, color: INK }}
+        >
+          🎁 Envoyer un geste
         </Link>
       </div>
-      {/* Secondary, deliberately quiet — a fallback gesture for a week a
-          rendez-vous doesn't happen, not a second storefront competing
-          with the primary action above. */}
-      <Link href="/cadeau/nouveau" className="mt-1 inline-block text-[11px]" style={{ color: MUTED }}>
-        Pas le temps cette semaine ? Envoyer un geste à la place →
-      </Link>
 
       {received && received.length > 0 && (
         <div className="mt-3">

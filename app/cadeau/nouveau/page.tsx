@@ -1,26 +1,31 @@
 "use client";
 // /app/cadeau/nouveau/page.tsx
-// "Envoyer un geste" — a physical gesture as a distinct relationship
-// action alongside a rendez-vous, not an ecommerce marketplace. Three
-// modes (a broad multi-AI review of this feature converged on this
-// exact framing on 2026-08-27 — see docs/three-fronts-and-gifting.md):
+// "Envoyer un geste" — a physical gesture (or just a note) as a distinct
+// relationship action alongside a rendez-vous, not an ecommerce
+// marketplace. Four modes (a broad multi-AI review of this feature
+// converged on this exact framing on 2026-08-27 — see
+// docs/three-fronts-and-gifting.md), shown as an equal-weight tab
+// alongside /request/new rather than a link buried in the dashboard:
 //   - "own": something the sender already has. Zero API, zero delivery
 //     arrangement — Ittsui only notifies the recipient; getting the
 //     object to them is the sender's own problem, same as it would be
 //     without this feature at all.
 //   - "curated": a small, deliberately non-Amazon list of gesture types
 //     (lib/giftLinks.ts), each linking to one real merchant homepage.
-//   - "suggested": Ittsui picks one curated item so the sender doesn't
-//     have to — reshuffleable, and honestly just decision-load removal,
-//     not a claim of personal knowledge about the recipient.
+//   - "suggested": Ittsui picks one curated item for the sender so they
+//     don't have to — reshuffleable, honest decision-load removal.
+//   - "message": no object at all, just a note — the zero-friction floor
+//     of the whole feature.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fraunces, Work_Sans } from "next/font/google";
+import type { User } from "firebase/auth";
+import { watchAuthState } from "@/lib/firebase";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { CURATED_ITEM_LABEL, CURATED_ITEMS, curatedItemExternalLink, suggestCuratedItem } from "@/lib/giftLinks";
-import type { GiftMode, CuratedGiftItem } from "@/lib/types";
+import type { GiftMode, CuratedGiftItem, Contact } from "@/lib/types";
 import { shareLink } from "@/lib/shareLink";
 
 const fraunces = Fraunces({
@@ -42,11 +47,15 @@ const MODES: { id: GiftMode; emoji: string; title: string; subtitle: string }[] 
   { id: "own", emoji: "🎁", title: "Quelque chose que vous avez", subtitle: "Un objet qui vous appartient déjà." },
   { id: "curated", emoji: "🛍️", title: "Quelque chose à choisir", subtitle: "Choisissez un type de geste." },
   { id: "suggested", emoji: "✨", title: "Laissez Ittsui vous proposer", subtitle: "Une petite idée, sans avoir à réfléchir." },
+  { id: "message", emoji: "💌", title: "Un mot doux", subtitle: "Juste leur faire savoir que vous pensez à eux." },
 ];
 
 export default function NewGiftPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | false | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
@@ -58,8 +67,36 @@ export default function NewGiftPage() {
   const [error, setError] = useState<string | null>(null);
   const [giftUrl, setGiftUrl] = useState<string | null>(null);
 
-  const externalLink = mode !== "own" ? curatedItemExternalLink(item) : null;
-  const canSubmit = mode === "own" ? itemDescription.trim().length > 0 : true;
+  // Signed-in convenience only — this page stays fully usable with no
+  // account (see the homepage's "sans créer de compte" link to it), the
+  // same "show the full value first" boundary /request/new already
+  // draws: only a saved contacts list requires being signed in, nothing
+  // about actually sending a gesture does.
+  useEffect(() => {
+    return watchAuthState((u) => setUser(u ?? false));
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/contacts", { headers: { Authorization: `Bearer ${idToken}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(data.contacts ?? []);
+      }
+    })();
+  }, [user]);
+
+  function pickContact(contact: Contact) {
+    setRecipientName(contact.name);
+    setRecipientEmail(contact.email ?? "");
+    setRecipientPhone(contact.phone ?? "");
+  }
+
+  const externalLink = mode && mode !== "own" && mode !== "message" ? curatedItemExternalLink(item) : null;
+  const canSubmit =
+    mode === "own" ? itemDescription.trim().length > 0 : mode === "message" ? notes.trim().length > 0 : true;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,11 +109,13 @@ export default function NewGiftPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           senderName,
+          ...(senderEmail ? { senderEmail } : {}),
           recipientName,
           ...(recipientEmail ? { recipientEmail } : {}),
           ...(recipientPhone ? { recipientPhone } : {}),
           mode,
-          ...(mode === "own" ? { itemDescription } : { item }),
+          ...(mode === "own" ? { itemDescription } : {}),
+          ...(mode === "curated" || mode === "suggested" ? { item } : {}),
           ...(notes ? { notes } : {}),
         }),
       });
@@ -100,12 +139,18 @@ export default function NewGiftPage() {
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
             {recipientName} a été prévenu(e)
           </h1>
-          {mode === "own" ? (
+          {mode === "own" && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               Ittsui n&apos;organise pas la remise — à vous de voir avec {recipientName} comment le lui faire
               parvenir.
             </p>
-          ) : (
+          )}
+          {mode === "message" && (
+            <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              Votre mot est parti, rien d&apos;autre à faire.
+            </p>
+          )}
+          {(mode === "curated" || mode === "suggested") && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               Il ne reste plus qu&apos;à finaliser {CURATED_ITEM_LABEL[item].toLowerCase()} vous-même.
             </p>
@@ -153,6 +198,24 @@ export default function NewGiftPage() {
         <Link href="/" className="text-sm" style={{ color: MUTED }}>
           ← Ittsui
         </Link>
+
+        {/* Same two-tab framing as /request/new, mirrored — either page is
+            a legitimate front door, not a hidden alternate path. */}
+        <div className="mt-4 flex gap-2">
+          <Link
+            href="/request/new"
+            className="flex-1 rounded-full border px-4 py-2.5 text-center text-sm font-medium"
+            style={{ borderColor: BORDER, color: INK }}
+          >
+            ☕ Se voir
+          </Link>
+          <span
+            className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-medium text-white"
+            style={{ backgroundColor: ACCENT }}
+          >
+            🎁 Envoyer un geste
+          </span>
+        </div>
 
         <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
           Envoyer quelque chose
@@ -255,8 +318,51 @@ export default function NewGiftPage() {
               />
             </div>
 
+            {mode !== "message" && (
+              <div>
+                <label className="block text-sm font-medium">
+                  Votre e-mail <span className="font-normal" style={{ color: MUTED }}>(optionnel — pour être prévenu de sa réponse)</span>
+                </label>
+                <input
+                  type="email"
+                  value={senderEmail}
+                  onChange={(e) => setSenderEmail(e.target.value)}
+                  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                  style={{ borderColor: BORDER }}
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium">Pour qui ?</label>
+              {/* Signed-in users with saved contacts get to tap someone
+                  they already know instead of retyping a name every time
+                  — the same chip row /request/new already uses, capped
+                  at 5 with a link to the rest. */}
+              {contacts.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {contacts.slice(0, 5).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => pickContact(c)}
+                      className="rounded-full border px-3 py-1.5 text-xs"
+                      style={
+                        recipientName === c.name
+                          ? { borderColor: ACCENT, backgroundColor: `${ACCENT}1A`, color: ACCENT }
+                          : { borderColor: BORDER, color: INK }
+                      }
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                  {contacts.length > 5 && (
+                    <Link href="/contacts" className="flex items-center px-1 text-xs underline underline-offset-4" style={{ color: MUTED }}>
+                      Voir tous ({contacts.length}) →
+                    </Link>
+                  )}
+                </div>
+              )}
               <input
                 type="text"
                 required
@@ -289,12 +395,18 @@ export default function NewGiftPage() {
 
             <div>
               <label className="block text-sm font-medium">
-                Un mot <span className="font-normal" style={{ color: MUTED }}>(optionnel)</span>
+                {mode === "message" ? "Votre mot" : "Un mot"}{" "}
+                {mode !== "message" && (
+                  <span className="font-normal" style={{ color: MUTED }}>
+                    (optionnel)
+                  </span>
+                )}
               </label>
               <textarea
+                required={mode === "message"}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={2}
+                rows={mode === "message" ? 4 : 2}
                 className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
                 style={{ borderColor: BORDER }}
               />

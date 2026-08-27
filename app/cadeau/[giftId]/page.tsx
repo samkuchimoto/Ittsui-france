@@ -6,6 +6,11 @@
 // create). Deliberately shows no delivery/tracking state — see
 // lib/giftLinks.ts: this app never claims to have purchased or shipped
 // anything, only that the sender wanted them to know.
+//
+// For a physical gesture (any mode but "message"), the recipient can
+// reply with how they'd like to actually receive it — an address, or
+// in person next time — via PATCH /api/gifts/[giftId]. Relayed back to
+// the sender by email if they left one at send time.
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -14,7 +19,7 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import { Mascot } from "@/app/components/Mascot";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CURATED_ITEM_LABEL } from "@/lib/giftLinks";
-import type { GiftMode, CuratedGiftItem } from "@/lib/types";
+import type { GiftMode, CuratedGiftItem, GiftRecipientChoice } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -39,6 +44,7 @@ interface GiftPreview {
   itemDescription: string | null;
   item: CuratedGiftItem | null;
   note: string | null;
+  recipientChoice: GiftRecipientChoice | null;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -62,6 +68,9 @@ export default function GiftPage() {
   const giftId = params?.giftId as string;
   const [preview, setPreview] = useState<GiftPreview | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [addressMode, setAddressMode] = useState(false);
+  const [address, setAddress] = useState("");
+  const [replying, setReplying] = useState(false);
 
   useEffect(() => {
     if (!giftId) return;
@@ -76,6 +85,25 @@ export default function GiftPage() {
       })
       .catch(() => setStatus("error"));
   }, [giftId]);
+
+  async function sendChoice(choice: GiftRecipientChoice, addr?: string) {
+    setReplying(true);
+    try {
+      const res = await fetch(`/api/gifts/${giftId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ choice, ...(addr ? { address: addr } : {}) }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setPreview((current) => (current ? { ...current, recipientChoice: choice } : current));
+    } catch {
+      // Silent — the recipient's own read-only view is more important
+      // than a retry loop for a nice-to-have reply; the sender's email
+      // notification simply won't fire, no data was lost or corrupted.
+    } finally {
+      setReplying(false);
+    }
+  }
 
   if (status === "loading") {
     return (
@@ -100,6 +128,8 @@ export default function GiftPage() {
     );
   }
 
+  const isPhysical = preview.mode !== "message";
+
   return (
     <Shell>
       <div className="mt-10 text-center">
@@ -107,15 +137,79 @@ export default function GiftPage() {
         <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
           {preview.senderName} a pensé à vous
         </h1>
-        <p className="mt-3 text-base" style={{ color: INK }}>
-          {preview.mode === "own" ? preview.itemDescription : CURATED_ITEM_LABEL[preview.item!]}
-        </p>
+        {isPhysical && (
+          <p className="mt-3 text-base" style={{ color: INK }}>
+            {preview.mode === "own" ? preview.itemDescription : CURATED_ITEM_LABEL[preview.item!]}
+          </p>
+        )}
         {preview.note && (
           <p className="mt-3 text-sm italic" style={{ color: MUTED }}>
             « {preview.note} »
           </p>
         )}
-        <div className="mt-8 rounded-2xl border p-4 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
+
+        {isPhysical && (
+          <div className="mt-8 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER }}>
+            {preview.recipientChoice ? (
+              <p className="text-sm" style={{ color: MUTED }}>
+                {preview.recipientChoice === "address"
+                  ? `Vous avez transmis une adresse à ${preview.senderName}.`
+                  : `Vous avez prévenu ${preview.senderName} que vous préférez le recevoir en main propre.`}
+              </p>
+            ) : addressMode ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (address.trim()) sendChoice("address", address.trim());
+                }}
+              >
+                <label className="block text-sm font-medium">Votre adresse</label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                  style={{ borderColor: BORDER }}
+                />
+                <button
+                  type="submit"
+                  disabled={replying}
+                  className="mt-3 w-full rounded-full py-3 text-sm font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Envoyer mon adresse à {preview.senderName}
+                </button>
+              </form>
+            ) : (
+              <>
+                <p className="text-sm font-medium">Comment préférez-vous le recevoir ?</p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddressMode(true)}
+                    className="w-full rounded-full py-3 text-sm font-medium text-white"
+                    style={{ backgroundColor: ACCENT }}
+                  >
+                    Entrer mon adresse
+                  </button>
+                  <button
+                    type="button"
+                    disabled={replying}
+                    onClick={() => sendChoice("in_person")}
+                    className="w-full rounded-full border py-3 text-sm font-medium disabled:opacity-50"
+                    style={{ borderColor: BORDER, color: INK }}
+                  >
+                    En main propre, au prochain rendez-vous
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="mt-6 rounded-2xl border p-4 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
           Ittsui n&apos;a rien livré ni acheté automatiquement — {preview.senderName} vous a simplement fait
           savoir qu&apos;iel pense à vous, et s&apos;occupe du reste de son côté.
         </div>
