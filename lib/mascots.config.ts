@@ -4,14 +4,14 @@
 // full 2D illustrated cast, by explicit product decision, not a
 // code-drawn abstraction.
 //
-// IMPORTANT — image assets are not yet in this repo. `imageSrc` below
-// points at where each character's exported cutout must be placed
-// (`/public/images/mascots/{id}.png` or `.png`/`.webp`, transparent
-// background, consistent canvas size) for <MascotAvatar> to render it.
-// Nothing currently exists at those paths — per explicit direction, this
-// stays a plain <Image>, with no code-drawn placeholder shape standing in
-// for the real character art, so a page using this today will show a
-// broken image until the actual file is dropped in at the path below.
+// Real character art landed 2026-08-27 for every character except Ren:
+// the only "ren" render provided shows an Apple laptop with a fully
+// visible logo — real trademark exposure to ship in a commercial app's
+// asset bundle, not a style nitpick — so Ren's imageSrc intentionally
+// points at a file that doesn't exist yet and falls back to the plain-
+// initial convention (see MascotAvatar) until a version without that
+// logo is provided. Every other character's `imageSrc` is a real file at
+// `/public/images/mascots/{id}.png`.
 
 export type CharacterId =
   | "kokoro"

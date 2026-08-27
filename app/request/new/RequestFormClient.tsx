@@ -31,6 +31,7 @@ import { useUserLocation } from "@/app/hooks/useUserLocation";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { SHARED_TEXT_KEY } from "@/app/components/ShareTargetListener";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { MascotPair } from "@/app/components/MascotPair";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
@@ -687,6 +688,9 @@ export default function RequestFormClient() {
 
         {sentTo ? (
           <div className="mt-8">
+            <div className="mb-4 flex justify-center">
+              <MascotPair size={44} nod mood="success" />
+            </div>
             {sentTo.hasEmail && (
               <p className="text-sm" style={{ color: MUTED }}>
                 Demande envoyée à {sentTo.name}. Vous serez notifié(e) par e-mail dès qu&apos;elle répond.

@@ -3,9 +3,10 @@
 // Renders one character from lib/mascots.config.ts as a real 2D
 // illustrated cutout — no code-drawn placeholder shape stands in for
 // missing art (explicit direction: brand assets are never substituted
-// with basic shapes or glyphs). Until real files exist at each
-// character's imageSrc (see that file's header), this will show a broken
-// image rather than a fake stand-in — an honest state, not a bug.
+// with basic shapes or glyphs). Real art exists for every character
+// except Ren as of 2026-08-27 (see that config file's header for why);
+// for any character with no file yet, this falls back to plain initials
+// rather than a broken image or a fake stand-in.
 //
 // `nod`: the "cozy nod on 1-click validation" micro-reaction from the
 // mascot motion framework — a one-off spring animation that plays when
