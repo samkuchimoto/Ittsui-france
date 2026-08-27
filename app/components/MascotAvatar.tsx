@@ -24,12 +24,13 @@
 // (Slack, Gmail, etc.), not a design substitute — it disappears on its
 // own the moment a real file is dropped in, no code change needed.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { MASCOTS, type CharacterId } from "@/lib/mascots.config";
 
 export type MascotAvatarVariant = "full" | "bust";
+export type MascotMood = "idle" | "success" | "empty";
 
 const NOD_ANIMATION = { rotate: [0, -8, 6, -3, 0], y: [0, -4, 0, -2, 0] };
 
@@ -39,15 +40,32 @@ export function MascotAvatar({
   size = 64,
   className,
   nod = false,
+  mood = "idle",
 }: {
   characterId: CharacterId;
   variant?: MascotAvatarVariant;
   size?: number;
   className?: string;
   nod?: boolean;
+  // Static-asset "conditional image swap" per mood, in place of a Rive/
+  // Lottie state machine — see lib/mascots.config.ts's MascotConfig.states.
+  // No mood-specific art exists yet (only the base imageSrc), so this
+  // resolves to that same base image for every character today; it starts
+  // working the instant a `states` entry is added for a character, no
+  // other code change needed.
+  mood?: MascotMood;
 }) {
   const character = MASCOTS[characterId];
+  const src = character.states?.[mood] ?? character.imageSrc;
   const [imageFailed, setImageFailed] = useState(false);
+
+  // Without this, an already-mounted instance whose characterId or mood
+  // changes (e.g. a future edit-relationship-kind UI) would keep showing
+  // the PREVIOUS image's failure state — stale initials, or a stale
+  // initial letter, instead of trying to load the new source.
+  useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
 
   return (
     <motion.span
@@ -75,7 +93,8 @@ export function MascotAvatar({
         </span>
       ) : (
         <Image
-          src={character.imageSrc}
+          key={src}
+          src={src}
           alt={character.name}
           fill
           sizes={`${size}px`}

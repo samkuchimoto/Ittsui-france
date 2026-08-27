@@ -70,18 +70,15 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Real photos for venue types with a confident match in /public — same
-// assets already used elsewhere in the app, not new stock. Restaurant and
-// museum (and any week from before venueType existed, or sourced from the
-// RAG tier which doesn't return one) fall back to a plain tinted block
-// rather than a mismatched photo — same honesty rule as DiscoveryTile on
-// the discovery-grid branch.
-// Real tester feedback ("les petites images café/resto") landed on a real
-// gap: restaurant/museum had no photo here at all, unlike every other
-// venue type — the setup page's own DiscoveryGrid already solved this for
-// its Step 3 preview tiles with the same two Unsplash URLs, reused here
-// rather than sourcing new ones so the same venue type looks the same
-// across both surfaces.
+// Real photos for every venue type — any week from before venueType
+// existed, or sourced from the RAG tier which doesn't return one, falls
+// back to a plain tinted block rather than a mismatched photo, same
+// honesty rule as DiscoveryTile on the discovery-grid branch. Restaurant
+// and museum used to be the two exceptions with no photo at all here
+// (real tester feedback: "les petites images café/resto") — fixed by
+// reusing the same two Unsplash URLs the setup page's own DiscoveryGrid
+// already uses for its Step 3 preview tiles, so the same venue type looks
+// the same across both surfaces.
 const VENUE_PHOTOS: Partial<Record<VenueType, string>> = {
   cafe: "/friends-cafe-terrace.jpg",
   park: "/grandmother-granddaughter-park.jpg",
@@ -458,6 +455,7 @@ export default function DashboardClient() {
           <MascotPair
             pairId={pair?.relationshipKind ? RELATIONSHIP_PAIR[pair.relationshipKind] : undefined}
             size={44}
+            mood="empty"
             className={pair?.paused ? "opacity-40" : undefined}
           />
           <p className="text-sm" style={{ color: MUTED }}>
@@ -745,7 +743,7 @@ function ConfirmedMascotMoment({
   if (status !== "confirmed" || lapsed) return null;
   return (
     <div className="mt-3 flex items-center gap-2">
-      <MascotPair pairId={relationshipKind ? RELATIONSHIP_PAIR[relationshipKind] : undefined} size={32} nod />
+      <MascotPair pairId={relationshipKind ? RELATIONSHIP_PAIR[relationshipKind] : undefined} size={32} nod mood="success" />
       <p className="text-xs" style={{ color: MUTED }}>Rendez-vous calé. On se tait jusqu&apos;à la prochaine fois.</p>
     </div>
   );

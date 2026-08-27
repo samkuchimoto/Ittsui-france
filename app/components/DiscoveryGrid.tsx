@@ -131,33 +131,6 @@ export function DiscoveryTileButton({
       className="relative aspect-[4/3] overflow-hidden rounded-2xl border text-left"
       style={{ borderColor: active ? ACCENT : BORDER, borderWidth: active ? 2 : 1 }}
     >
-      {/* Mascot-motion-framework "steam effect over coffee icons" —
-          purely decorative, CSS-only, no character art needed, so it
-          renders today rather than waiting on real mascot files. */}
-      {tile.value === "cafe" && (
-        <>
-          <style jsx>{`
-            @media (prefers-reduced-motion: no-preference) {
-              .steam-wisp {
-                animation: steamRise 3.6s ease-in-out infinite;
-              }
-              .steam-wisp:nth-child(2) {
-                animation-delay: 1.1s;
-              }
-            }
-            @keyframes steamRise {
-              0% { transform: translateY(0) scaleX(1); opacity: 0; }
-              20% { opacity: 0.55; }
-              100% { transform: translateY(-16px) scaleX(1.4); opacity: 0; }
-            }
-          `}</style>
-          <div className="absolute right-3 top-3 z-[1] h-6 w-8">
-            <span className="steam-wisp absolute bottom-0 left-1 h-4 w-1.5 rounded-full bg-white/70 blur-[1px]" />
-            <span className="steam-wisp absolute bottom-0 left-4 h-4 w-1.5 rounded-full bg-white/70 blur-[1px]" />
-          </div>
-        </>
-      )}
-
       {tile.video ? (
         <video
           ref={videoRef}
@@ -185,6 +158,38 @@ export function DiscoveryTileButton({
         <img src={aiMoodUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <div className="absolute inset-0" style={{ backgroundColor: `${ACCENT}14` }} />
+      )}
+
+      {/* Mascot-motion-framework "steam effect over coffee icons" —
+          purely decorative, CSS-only, no character art needed, so it
+          renders today rather than waiting on real mascot files. Placed
+          in DOM order (not forced via z-index) between the base photo and
+          the gradient/label/checkmark layers, and in the top-left corner
+          — the only corner never shared with the top-right active
+          checkmark or the bottom-left label — so it can never render on
+          top of either. */}
+      {tile.value === "cafe" && (
+        <>
+          <style jsx>{`
+            @media (prefers-reduced-motion: no-preference) {
+              .steam-wisp {
+                animation: steamRise 3.6s ease-in-out infinite;
+              }
+              .steam-wisp:nth-child(2) {
+                animation-delay: 1.1s;
+              }
+            }
+            @keyframes steamRise {
+              0% { transform: translateY(0) scaleX(1); opacity: 0; }
+              20% { opacity: 0.55; }
+              100% { transform: translateY(-16px) scaleX(1.4); opacity: 0; }
+            }
+          `}</style>
+          <div className="absolute left-3 top-3 h-6 w-8">
+            <span className="steam-wisp absolute bottom-0 left-1 h-4 w-1.5 rounded-full bg-white/70 blur-[1px]" />
+            <span className="steam-wisp absolute bottom-0 left-4 h-4 w-1.5 rounded-full bg-white/70 blur-[1px]" />
+          </div>
+        </>
       )}
 
       {/* Mandatory, high-contrast, on every AI-generated tile without

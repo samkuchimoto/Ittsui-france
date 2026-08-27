@@ -846,11 +846,13 @@ export default function SetupClient() {
               <label className="block text-sm font-medium">À quelle fréquence ?</label>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {CADENCE_OPTIONS.map((c) => (
-                  <button
+                  <motion.button
                     type="button"
                     key={c.value}
                     onClick={() => setCadence(c.value)}
-                    className="rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors sm:text-sm"
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className="rounded-xl border px-2 py-2.5 text-xs font-medium sm:text-sm"
                     style={
                       cadence === c.value
                         ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
@@ -858,7 +860,7 @@ export default function SetupClient() {
                     }
                   >
                     {c.label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -867,11 +869,13 @@ export default function SetupClient() {
               <label className="block text-sm font-medium">Quand, {CADENCE_ADVERB[cadence]} ?</label>
               <div className="mt-2 grid grid-cols-1 gap-2">
                 {TIME_PRESETS.map((p) => (
-                  <button
+                  <motion.button
                     type="button"
                     key={p.label}
                     onClick={() => applyPreset(p)}
-                    className="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className="rounded-xl border px-4 py-3 text-left text-sm"
                     style={
                       !customTime && activePreset === p.label
                         ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
@@ -879,7 +883,7 @@ export default function SetupClient() {
                     }
                   >
                     {p.label}
-                  </button>
+                  </motion.button>
                 ))}
                 <button
                   type="button"
@@ -998,10 +1002,12 @@ export default function SetupClient() {
                   onToggle={(value) => toggle(venueTypes, value, setVenueTypes)}
                 />
               </div>
-              <button
+              <motion.button
                 type="button"
                 onClick={() => toggle(venueTypes, SECONDARY_VENUE.value, setVenueTypes)}
-                className="mt-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors"
+                whileTap={{ scale: 0.94 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="mt-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs"
                 style={
                   venueTypes.includes(SECONDARY_VENUE.value)
                     ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D`, color: ACCENT }
@@ -1010,7 +1016,7 @@ export default function SetupClient() {
               >
                 <span>{SECONDARY_VENUE.emoji}</span>
                 {SECONDARY_VENUE.label}
-              </button>
+              </motion.button>
             </div>
 
             <div>
@@ -1082,11 +1088,13 @@ export default function SetupClient() {
               </label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {DIETARY_OPTIONS.map((f) => (
-                  <button
+                  <motion.button
                     type="button"
                     key={f}
                     onClick={() => toggle(dietaryFilters, f, setDietaryFilters)}
-                    className="rounded-full border px-3 py-1.5 text-xs capitalize transition-colors"
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className="rounded-full border px-3 py-1.5 text-xs capitalize"
                     style={
                       dietaryFilters.includes(f)
                         ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D`, color: ACCENT }
@@ -1094,7 +1102,7 @@ export default function SetupClient() {
                     }
                   >
                     {f}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>

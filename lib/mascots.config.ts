@@ -43,6 +43,13 @@ export interface MascotConfig {
   category: "core" | "extended";
   imageSrc: string;
   palette: MascotPalette;
+  // Optional per-mood art (idle/success/empty) — the "conditional image
+  // swap" alternative to a Rive/Lottie state machine, per explicit
+  // direction to stay static-assets-only. No character has any of these
+  // yet; MascotAvatar already falls back to `imageSrc` for any mood with
+  // no entry here, so this is purely additive whenever art for a specific
+  // mood actually exists.
+  states?: Partial<Record<"idle" | "success" | "empty", string>>;
 }
 
 export const MASCOTS: Record<CharacterId, MascotConfig> = {

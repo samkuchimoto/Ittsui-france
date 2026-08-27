@@ -28,6 +28,14 @@ const SLIDES = [
     quote: "« Le problème, ce n'est pas qu'on n'a pas envie de voir les gens. C'est qu'on n'a pas le temps. »",
     body: "C'est ce constat, pas une idée de départ, qui a donné à Ittsui sa forme : une seule proposition, une seule décision, puis le silence jusqu'à la prochaine fois.",
   },
+  {
+    body: "Concrètement, ça ressemble à ça chaque semaine :",
+    // Static scenario preview — the "demonstrate the mechanic" onboarding
+    // stage, built with plain markup instead of a real interactive demo
+    // (that one already exists on the landing page's Friday card) since
+    // this sheet has no specific venue chosen yet to show a real photo of.
+    scenario: true,
+  },
 ];
 
 export function OriginStorySheet() {
@@ -68,6 +76,24 @@ export function OriginStorySheet() {
           )}
           {current.body}
         </p>
+
+        {"scenario" in current && (
+          <div className="mt-3 rounded-xl border p-4 text-left" style={{ borderColor: BORDER }}>
+            <p className="text-xs" style={{ color: MUTED }}>Exemple — Samedi 15h30</p>
+            <p className="mt-1 text-sm font-medium">Le Café des Tilleuls</p>
+            <div className="mt-3 flex gap-2">
+              <span
+                className="flex-1 rounded-full py-2 text-center text-xs font-medium text-white"
+                style={{ backgroundColor: ACCENT }}
+              >
+                Oui
+              </span>
+              <span className="flex-1 rounded-full border py-2 text-center text-xs font-medium" style={{ borderColor: BORDER }}>
+                Non
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 flex items-center justify-center gap-1.5">
           {SLIDES.map((_, i) => (

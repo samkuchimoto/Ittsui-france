@@ -554,7 +554,7 @@ export default function Home() {
             {[
               { quote: "C'est rapide, fluide… SMS c'est clean.", from: "Testeur, Paris" },
               { quote: "Permet de trouver un contact rapidement.", from: "Testeur, Paris" },
-              { quote: "UI is nice… Intuitive.", from: "Testeuse, New York" },
+              { quote: "UI is nice… Intuitive.", from: "Testeuse, Paris" },
             ].map((t) => (
               <div key={t.quote} className="rounded-xl border p-4 text-sm" style={{ borderColor: BORDER, backgroundColor: "white" }}>
                 <p style={{ color: INK }}>&ldquo;{t.quote}&rdquo;</p>

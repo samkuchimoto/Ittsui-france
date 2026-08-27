@@ -1,5 +1,5 @@
 // /app/a-propos/page.tsx
-// Real early testers (in Paris and in New York) independently asked for
+// Real early testers (both met in Paris) independently asked for
 // this: "what's the background," "what's the context," "why does this
 // exist." The founder's own account below is the honest answer — this
 // page exists because that specific, repeated feedback asked for it, not
@@ -107,7 +107,7 @@ export default function AProposPage() {
 
           <p>
             Le projet reste jeune, construit par une seule personne, et continue d&apos;évoluer au contact
-            de vraies conversations avec de vrais premiers utilisateurs, à Paris comme à New York. Cette
+            de vraies conversations avec de vrais premiers utilisateurs, rencontrés directement à Paris. Cette
             page existe parce que plusieurs d&apos;entre eux ont posé la même question, honnêtement : «
             c&apos;est quoi, le contexte ? » — la voici.
           </p>
