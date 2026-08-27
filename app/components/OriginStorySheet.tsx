@@ -38,22 +38,33 @@ const SLIDES = [
   },
 ];
 
-export function OriginStorySheet() {
+// onOpenChange lets the page hide its own header mascot mark while this
+// sheet is up — real feedback (confirmed live): the small header pair and
+// this sheet's own, larger pair rendered on screen at the same time,
+// duplicating the same graphic and eating vertical space on mobile.
+export function OriginStorySheet({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) {
   const [open, setOpen] = useState(false);
   const [slide, setSlide] = useState(0);
 
   useEffect(() => {
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) setOpen(true);
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        setOpen(true);
+        onOpenChange?.(true);
+      }
     } catch {
       // localStorage unavailable (private mode, blocked) — just skip the
       // sheet rather than risk showing it every visit with no way to
       // remember it was dismissed.
     }
+    // Only ever checked once, on mount — onOpenChange is a stable setter
+    // from useState, not something that should re-run this check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function dismiss() {
     setOpen(false);
+    onOpenChange?.(false);
     try {
       localStorage.setItem(STORAGE_KEY, "1");
     } catch {}

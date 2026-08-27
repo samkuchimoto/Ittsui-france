@@ -205,14 +205,25 @@ function StepDots({ step }: { step: 1 | 2 | 3 }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  // Hides the small header mascot mark while the origin story sheet is
+  // open — its own pair is already on screen, larger; showing both at
+  // once duplicated the same graphic (confirmed live, and flagged
+  // independently in the Gemini audit as "redundant branding").
+  const [storySheetOpen, setStorySheetOpen] = useState(false);
   return (
     <main
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <OriginStorySheet />
+      <OriginStorySheet onOpenChange={setStorySheetOpen} />
       <div className="mx-auto max-w-md px-6 py-14">
-        <PageMascotHeader />
+        {/* One-tap way back to the homepage from any step/state on this
+            page — real feedback: there was no way out of some screens
+            short of the browser's own back button. */}
+        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+          ← Ittsui
+        </Link>
+        {!storySheetOpen && <PageMascotHeader />}
         {children}
       </div>
     </main>

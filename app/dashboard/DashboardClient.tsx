@@ -73,7 +73,15 @@ function Shell({ children }: { children: React.ReactNode }) {
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <div className="mx-auto max-w-md px-6 py-12">{children}</div>
+      <div className="mx-auto max-w-md px-6 py-12">
+        {/* One-tap way back to the homepage from any state on this page —
+            real feedback: some screens had no way out short of the
+            browser's own back button. */}
+        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+          ← Ittsui
+        </Link>
+        {children}
+      </div>
     </main>
   );
 }

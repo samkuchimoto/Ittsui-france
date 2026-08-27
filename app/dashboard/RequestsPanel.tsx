@@ -29,6 +29,7 @@ const STATUS_LABEL: Record<MeetingRequestStatus, string> = {
   accepted: "Accepté",
   declined: "Décliné",
   expired: "Expiré",
+  cancelled: "Annulée",
 };
 
 // Semantic status coding, not brand chrome — same reasoning DashboardClient
@@ -38,6 +39,7 @@ const STATUS_COLOR: Record<MeetingRequestStatus, string> = {
   accepted: "#1E7A4C",
   declined: "#8A8378",
   expired: "#8A8378",
+  cancelled: "#8A8378",
 };
 
 function StatusPill({ status }: { status: MeetingRequestStatus }) {
@@ -52,11 +54,48 @@ function StatusPill({ status }: { status: MeetingRequestStatus }) {
   );
 }
 
-function RequestRow({ request, perspective }: { request: MeetingRequest; perspective: "sent" | "received" }) {
+// "27 août" instead of a raw "2026-08-27" — real feedback: a bare ISO
+// string getting mid-cut by an ellipsis on narrow screens read as an
+// unfinished dev placeholder rather than a designed empty state.
+function formatFrenchDate(iso: string): string {
+  const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  const [, month, day] = iso.split("-").map(Number);
+  if (!month || !day) return iso;
+  return `${day} ${MONTHS[month - 1]}`;
+}
+
+function RequestRow({
+  request,
+  perspective,
+  onCancelled,
+}: {
+  request: MeetingRequest;
+  perspective: "sent" | "received";
+  onCancelled: () => void;
+}) {
   const otherParty = perspective === "sent" ? request.recipientName : request.senderName;
+  const [cancelling, setCancelling] = useState(false);
+
+  async function handleCancel() {
+    const user = auth.currentUser;
+    if (!user) return;
+    setCancelling(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/meeting-requests/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+      if (res.ok) onCancelled();
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   return (
     <li className="py-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {request.venueType && (
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg">
@@ -71,10 +110,18 @@ function RequestRow({ request, perspective }: { request: MeetingRequest; perspec
               />
             </div>
           )}
+          {/* Venue name can truncate on a narrow screen — the date/time
+              never does, on its own line now: real feedback (confirmed
+              live) was that a single truncated line was cutting off the
+              date/time itself, the one thing this row can't afford to
+              hide. */}
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{otherParty}</p>
             <p className="truncate text-xs" style={{ color: MUTED }}>
-              {request.venueName} · {request.date} à {request.time}
+              {request.venueName}
+            </p>
+            <p className="text-xs" style={{ color: MUTED }}>
+              {formatFrenchDate(request.date)} à {request.time}
             </p>
           </div>
         </div>
@@ -103,6 +150,22 @@ function RequestRow({ request, perspective }: { request: MeetingRequest; perspec
         >
           Ajouter à Google Agenda
         </a>
+      )}
+      {/* Real gap found live: a sent request stuck in "En attente" had no
+          way to be withdrawn at all — an accumulating list of stale
+          proposals to the same person was the only possible outcome,
+          directly contradicting "une seule proposition, une seule
+          décision, puis le silence". */}
+      {perspective === "sent" && request.status === "pending" && (
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="mt-1.5 text-xs underline underline-offset-4 disabled:opacity-50"
+          style={{ color: MUTED }}
+        >
+          {cancelling ? "Annulation..." : "Annuler cette demande"}
+        </button>
       )}
     </li>
   );
@@ -145,7 +208,7 @@ export function RequestsPanel() {
           </p>
           <ul className="divide-y" style={{ borderColor: BORDER }}>
             {received.map((r) => (
-              <RequestRow key={r.id} request={r} perspective="received" />
+              <RequestRow key={r.id} request={r} perspective="received" onCancelled={refresh} />
             ))}
           </ul>
         </div>
@@ -158,7 +221,7 @@ export function RequestsPanel() {
           </p>
           <ul className="divide-y" style={{ borderColor: BORDER }}>
             {sent.map((r) => (
-              <RequestRow key={r.id} request={r} perspective="sent" />
+              <RequestRow key={r.id} request={r} perspective="sent" onCancelled={refresh} />
             ))}
           </ul>
         </div>

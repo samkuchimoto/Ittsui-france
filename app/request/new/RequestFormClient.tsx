@@ -914,9 +914,15 @@ export default function RequestFormClient() {
                   triggerStyle={{ borderColor: BORDER, color: INK }}
                 />
               )}
+              {/* Real feedback: this list only ever grows (every contact
+                  ever added stays here forever), and on a well-used
+                  account it becomes a long, cluttered row — cap to the 5
+                  most recently added/used (already the API's own sort
+                  order) with a link to the full list on /contacts rather
+                  than trying to fit everyone here. */}
               {!browsingPhoneContacts && contacts.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
-                  {contacts.map((c) => {
+                  {contacts.slice(0, 5).map((c) => {
                     // A contact can have an email, a phone, or both (see
                     // pickContact, which now sets both draft fields from
                     // whatever the contact record has) — match on EITHER
@@ -942,6 +948,15 @@ export default function RequestFormClient() {
                       </button>
                     );
                   })}
+                  {contacts.length > 5 && (
+                    <Link
+                      href="/contacts"
+                      className="flex items-center rounded-full px-3 py-1.5 text-xs underline underline-offset-4"
+                      style={{ color: MUTED }}
+                    >
+                      Voir tous ({contacts.length}) →
+                    </Link>
+                  )}
                 </div>
               )}
               {browsingPhoneContacts ? null : simpleMode ? (

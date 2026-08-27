@@ -154,7 +154,12 @@ export interface Contact {
   createdAt: string; // ISO date
 }
 
-export type MeetingRequestStatus = "pending" | "accepted" | "declined" | "expired";
+// "cancelled" added 2026-08-27 — real feedback: a sender had no way to
+// withdraw a pending request at all, so an accumulating list of stale
+// "en attente" proposals to the same person was the only possible state,
+// directly contradicting the product's own "one proposal, one decision"
+// promise (see /api/meeting-requests/cancel/route.ts).
+export type MeetingRequestStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled";
 
 // A one-off rendezvous proposal sent to a contact by email — the ad-hoc
 // counterpart to Pair's permanent, recurring weekly bond. Same

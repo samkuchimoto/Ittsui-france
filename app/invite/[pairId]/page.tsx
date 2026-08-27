@@ -44,6 +44,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+          ← Ittsui
+        </Link>
         <PageMascotHeader />
         {children}
       </div>

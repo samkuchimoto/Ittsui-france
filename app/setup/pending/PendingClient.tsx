@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
@@ -56,6 +57,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       style={{ color: INK }}
     >
       <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+          ← Ittsui
+        </Link>
         <PageMascotHeader />
         {children}
       </div>

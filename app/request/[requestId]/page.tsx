@@ -75,6 +75,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
       <div className="mx-auto max-w-md px-6 py-14 text-center">
+        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+          ← Ittsui
+        </Link>
         <PageMascotHeader />
         {children}
       </div>
@@ -182,13 +185,26 @@ export default function RequestResponsePage() {
   // accepts just because a session happens to exist — accepting is a
   // deliberate tap on "Oui, je viens" below, not something that fires
   // silently the moment Firebase resolves an unrelated signed-in session.
+  //
+  // Real login-lockout bug found live: this used to stop watching `user`
+  // entirely once status became "error" (the guard only allowed
+  // "checking"/"ready"). That meant switching to the correct Google
+  // account after a wrong-account 403 never re-attempted accept() at
+  // all — the retry button's own sign-in would succeed, but nothing ever
+  // called accept() again with the new account. Re-including "error"
+  // here (paired with the handleAcceptTap fix below, which stops
+  // reusing the stale wrong-account `user` instead of actually opening
+  // the account picker) makes the retry path work end to end. No
+  // infinite-loop risk: this effect only re-runs when `user` itself
+  // changes (a genuinely different signed-in account), not on every
+  // status change, since status isn't in the dependency array.
   useEffect(() => {
     if (user === null || !preview) return;
-    if (status !== "checking" && status !== "ready") return;
+    if (status !== "checking" && status !== "ready" && status !== "error") return;
     if (preview.requiresLogin) {
       if (user) accept(user);
-      else setStatus("ready");
-    } else {
+      else if (status !== "error") setStatus("ready");
+    } else if (status !== "error") {
       setStatus("ready");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,7 +268,14 @@ export default function RequestResponsePage() {
     // reopens it, which looks like the account chooser inexplicably
     // reappearing (confirmed via real testing 2026-08-25)
     setErrorMsg(null);
-    if (user) {
+    // Real login-lockout bug found live: this button reads "Se connecter
+    // avec un autre compte" once errorMsg is set (see the JSX below), but
+    // `user` is still the SAME already-known-wrong Firebase Auth session
+    // — Google sign-in hadn't actually run yet. Short-circuiting to
+    // accept(user) here just re-failed with the same wrong account,
+    // silently, with no account picker ever appearing. Only take this
+    // shortcut on a genuinely fresh attempt (no prior error yet).
+    if (user && !errorMsg) {
       accept(user);
       return;
     }
