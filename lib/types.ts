@@ -201,3 +201,60 @@ export interface MeetingRequest {
   respondedAt?: string; // ISO date
   recipientEmailSent?: boolean; // real delivery record, not an assumption
 }
+
+// Ittsui Partenaires — real booking infrastructure for venues that
+// directly onboard (see app/partenaires/page.tsx), deliberately NOT
+// modeled as recurring weekly windows (like Pair's agreedDay/
+// agreedWindowStart/agreedWindowEnd) — a recurring slot would need
+// separate tracking of which specific date-instance of "every Tuesday
+// 15h-17h" is already taken, which is real complexity for no real
+// benefit at this scale. A flat list of specific, one-off open slots
+// makes "is this slot already booked" an unambiguous yes/no with no
+// extra bookkeeping.
+export type VenuePartnerStatus = "pending_review" | "active" | "rejected";
+export type VenuePartnerCategory = "cafe" | "restaurant" | "museum" | "autre";
+
+export interface VenuePartnerSlot {
+  id: string; // stable per-slot id — how a booking references exactly which slot it filled
+  date: string; // "YYYY-MM-DD"
+  time: string; // "HH:MM"
+  booked: boolean;
+}
+
+export interface VenuePartner {
+  id: string;
+  venueName: string;
+  category: VenuePartnerCategory;
+  address: string;
+  postalCode?: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  notes?: string;
+  status: VenuePartnerStatus;
+  // Only ever set once, at approval — the bearer secret for this
+  // venue's own "manage my availability" link (app/partenaires/[id]/gerer),
+  // same trust model as every other bearer link in this app (an
+  // unguessable token IS the authorization, no separate login system
+  // for venue owners).
+  manageToken?: string;
+  slots?: VenuePartnerSlot[];
+  createdAt: string;
+}
+
+export type VenueBookingStatus = "confirmed" | "cancelled";
+
+export interface VenueBooking {
+  id: string;
+  venuePartnerId: string;
+  venueName: string;
+  venueAddress: string;
+  slotId: string;
+  date: string;
+  time: string;
+  requesterName: string;
+  requesterEmail?: string;
+  requesterPhone?: string;
+  status: VenueBookingStatus;
+  createdAt: string;
+}

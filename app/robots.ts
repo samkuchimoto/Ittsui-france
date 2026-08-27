@@ -14,7 +14,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/setup", "/dashboard", "/request/", "/invite/", "/contacts", "/api/"],
+      disallow: [
+        "/setup",
+        "/dashboard",
+        "/request/",
+        "/invite/",
+        "/contacts",
+        "/api/",
+        // The venue's own bearer-link management page — a private
+        // credential in the URL itself, same reasoning meeting-request
+        // and invite bearer links are already excluded above.
+        "/partenaires/*/gerer",
+      ],
     },
     sitemap: "https://www.ittsui.fr/sitemap.xml",
   };

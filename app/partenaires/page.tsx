@@ -44,6 +44,7 @@ export default function PartenairesPage() {
   const [venueName, setVenueName] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]["value"]>("cafe");
   const [address, setAddress] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -63,6 +64,7 @@ export default function PartenairesPage() {
           venueName,
           category,
           address,
+          ...(postalCode ? { postalCode } : {}),
           contactName,
           contactEmail,
           ...(contactPhone ? { contactPhone } : {}),
@@ -93,13 +95,17 @@ export default function PartenairesPage() {
         </h1>
         <p className="mt-3 text-[17px] leading-relaxed" style={{ color: MUTED }}>
           Chaque semaine, Ittsui propose un lieu à deux personnes qui se retrouvent. L&apos;idée : que votre
-          café, votre restaurant ou votre lieu puisse être ce lieu-là directement — et qu&apos;à terme,
-          la réservation se fasse depuis Ittsui plutôt que par un appel.
+          café, votre restaurant ou votre lieu puisse être ce lieu-là directement, réservable sans appel.
         </p>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          C&apos;est un tout premier pas : aujourd&apos;hui, ce formulaire ne fait que recueillir votre
-          intérêt — il n&apos;y a pas encore de réservation en direct ni de calendrier de disponibilité.
-          On vous recontacte personnellement pour la suite.
+          Une fois votre candidature validée, vous recevez votre propre lien pour ouvrir les créneaux où
+          vous pouvez accueillir une rencontre — le reste (trouver le bon créneau, confirmer, prévenir tout
+          le monde) se fait depuis Ittsui.
+        </p>
+        <p className="mt-4 text-sm">
+          <Link href="/partenaires/rechercher" className="underline underline-offset-4" style={{ color: ACCENT }}>
+            Vous cherchez plutôt un lieu déjà partenaire à réserver ? →
+          </Link>
         </p>
 
         {status === "done" ? (
@@ -151,6 +157,19 @@ export default function PartenairesPage() {
                 required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
+                style={{ borderColor: BORDER }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium">Code postal</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="75004"
                 className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
                 style={{ borderColor: BORDER }}
               />
