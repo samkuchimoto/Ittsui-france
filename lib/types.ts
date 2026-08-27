@@ -44,6 +44,13 @@ export interface Pair {
   // gets a new proposal, via weekly-propose/route.ts's isCadenceDue(),
   // not a separate calendar-date schedule.
   cadence?: "weekly" | "monthly" | "yearly";
+  // Set from the "C'est qui, pour vous ?" picker in setup — was local-only
+  // UI state until the mascot pair needed to know which relationship this
+  // actually is (see lib/mascots.config.ts's RELATIONSHIP_PAIR). Optional:
+  // absent on any pair created before this field existed, or if a future
+  // caller genuinely doesn't know — MascotPair falls back to the default
+  // pair rather than requiring it.
+  relationshipKind?: "ami" | "partenaire" | "famille";
   // Days before agreedDay that the weekly proposal notification should go
   // out. Optional, defaults to 0 (same day) read-side — lets e.g. a
   // Saturday-afternoon meeting notify on Thursday instead of Saturday,

@@ -14,17 +14,19 @@ export function MascotPair({
   variant = "full",
   size = 56,
   className,
+  nod = false,
 }: {
   pairId?: MascotPairId;
   variant?: MascotAvatarVariant;
   size?: number;
   className?: string;
+  nod?: boolean;
 }) {
   const [a, b] = pairId ? MASCOT_PAIRS[pairId] : DEFAULT_PAIR;
   return (
     <span className={className} style={{ display: "inline-flex", alignItems: "flex-end", gap: size * 0.12 }}>
-      <MascotAvatar characterId={a} variant={variant} size={size} />
-      <MascotAvatar characterId={b} variant={variant} size={size} />
+      <MascotAvatar characterId={a} variant={variant} size={size} nod={nod} />
+      <MascotAvatar characterId={b} variant={variant} size={size} nod={nod} />
     </span>
   );
 }

@@ -10,10 +10,13 @@
 // how-it-works, footer) is unchanged.
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { MascotAvatar } from "@/app/components/MascotAvatar";
+import { MascotPair } from "@/app/components/MascotPair";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -129,13 +132,21 @@ const SWIPE_THRESHOLD = 76; // px before a drag commits to an action
 
 function FridayCard() {
   const [cardState, setCardState] = useState<CardState>("default");
-  const [dragX, setDragX] = useState(0);
   const [skipped, setSkipped] = useState(false);
   const [, startTransition] = useTransition();
 
-  const draggingRef = useRef(false);
-  const startXRef = useRef(0);
   const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Spring physics via framer-motion instead of a hand-rolled
+  // pointer/touch tracker — the AGENTS.md "no animation library" stance
+  // this replaced was a conscious, explicit product call (tester
+  // feedback: too formal next to Duolingo/Alan), not a quiet workaround.
+  // dragConstraints at {0,0} + dragElastic lets the card move freely
+  // under a finger/pointer but spring back to center on release unless a
+  // swipe crosses SWIPE_THRESHOLD, at which point the state change below
+  // takes over instead of letting it settle back.
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-140, 140], [-8, 8]);
 
   useEffect(() => {
     return () => {
@@ -143,27 +154,12 @@ function FridayCard() {
     };
   }, []);
 
-  function beginDrag(clientX: number) {
-    if (cardState === "confirmed") return;
-    draggingRef.current = true;
-    startXRef.current = clientX;
-  }
-
-  function moveDrag(clientX: number) {
-    if (!draggingRef.current) return;
-    const delta = clientX - startXRef.current;
-    setDragX(Math.max(-140, Math.min(140, delta)));
-  }
-
-  function endDrag() {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    if (dragX > SWIPE_THRESHOLD) {
+  function handleDragEnd(_event: unknown, info: { offset: { x: number } }) {
+    if (info.offset.x > SWIPE_THRESHOLD) {
       confirmCard();
-    } else if (dragX < -SWIPE_THRESHOLD) {
+    } else if (info.offset.x < -SWIPE_THRESHOLD) {
       swapCard();
     }
-    setDragX(0);
   }
 
   function swapCard() {
@@ -195,33 +191,22 @@ function FridayCard() {
   }
 
   const option = cardState === "swapped" ? OPTION_B : OPTION_A;
-  const rotation = dragX / 26;
 
   return (
     <div className="mx-auto max-w-sm">
-      <div
+      <motion.div
         className="touch-pan-y select-none overflow-hidden rounded-3xl border bg-white shadow-sm"
-        style={{
-          borderColor: BORDER,
-          transform: `translateX(${dragX}px) rotate(${rotation}deg)`,
-          transition: draggingRef.current ? "none" : "transform 0.35s cubic-bezier(0.22,1,0.36,1)",
-        }}
-        onTouchStart={(e) => beginDrag(e.touches[0].clientX)}
-        onTouchMove={(e) => moveDrag(e.touches[0].clientX)}
-        onTouchEnd={endDrag}
-        onPointerDown={(e) => beginDrag(e.clientX)}
-        onPointerMove={(e) => moveDrag(e.clientX)}
-        onPointerUp={endDrag}
-        onPointerLeave={() => draggingRef.current && endDrag()}
+        style={{ borderColor: BORDER, x, rotate }}
+        drag={cardState === "confirmed" ? false : "x"}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.9}
+        dragTransition={{ bounceStiffness: 320, bounceDamping: 22 }}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ scale: 1.03 }}
       >
         {cardState === "confirmed" ? (
           <div className="flex flex-col items-center px-6 py-14 text-center">
-            <span
-              className="flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ backgroundColor: `${ACCENT}1A` }}
-            >
-              <IconCheck className="h-6 w-6" style={{ color: ACCENT }} />
-            </span>
+            <MascotPair size={44} nod />
             <h3 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
               Rendez-vous verrouillé !
             </h3>
@@ -265,28 +250,37 @@ function FridayCard() {
             <div className="px-5 py-4">
               <p className="text-sm font-medium">{option.name}</p>
               <div className="mt-4 flex items-center justify-between text-xs">
-                <button type="button" onClick={swapCard} className="transition-colors" style={{ color: MUTED }}>
+                <motion.button
+                  type="button"
+                  onClick={swapCard}
+                  whileTap={{ scale: 0.94 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="transition-colors"
+                  style={{ color: MUTED }}
+                >
                   ← {cardState === "swapped" ? "Option initiale" : "Échanger"}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
                   onClick={confirmCard}
+                  whileTap={{ scale: 0.94 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   className="flex items-center gap-1 font-medium transition-colors"
                   style={{ color: ACCENT }}
                 >
                   <IconCheck className="h-3.5 w-3.5" />
                   Valider →
-                </button>
+                </motion.button>
               </div>
             </div>
           </>
         )}
-      </div>
+      </motion.div>
 
       {cardState !== "confirmed" && (
         <div className="mt-4 text-center" style={{ minHeight: "1.25rem" }}>
           {skipped ? (
-            <p className="text-xs" style={{ color: MUTED }}>D&apos;accord. On se retrouve la semaine prochaine.</p>
+            <p className="text-xs" style={{ color: MUTED }}>Pas de pression. On se retrouve la semaine prochaine.</p>
           ) : (
             <button
               type="button"
@@ -299,6 +293,12 @@ function FridayCard() {
           )}
         </div>
       )}
+
+      <p className="mt-3 text-center text-xs">
+        <Link href="/a-propos" className="underline underline-offset-4" style={{ color: MUTED }}>
+          Pourquoi on a créé Ittsui →
+        </Link>
+      </p>
     </div>
   );
 }
@@ -367,10 +367,10 @@ export default function Home() {
               Protégez vos relations précieuses contre l&apos;érosion du quotidien.
             </h1>
             <p className="mx-auto mt-5 max-w-md text-[17px] lg:mx-0" style={{ color: MUTED }}>
-              Entre la charge de travail et le manque de temps, on finit par perdre de vue les gens qui
-              comptent — sans jamais l&apos;avoir décidé. Ittsui l&apos;empêche : une proposition unique par
-              semaine, pour un(e) proche, un(e) partenaire ou la famille, validable en un clic, sans aucun
-              agenda à gérer ni charge mentale supplémentaire.
+              Chaque semaine, Ittsui propose un lieu et un horaire pour un(e) proche, un(e) partenaire ou
+              la famille — vous dites oui en un clic, sans agenda à gérer. Entre la charge de travail et
+              le manque de temps, c&apos;est ce qui empêche de perdre de vue les gens qui comptent, sans
+              jamais l&apos;avoir décidé.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
               <Link
@@ -526,6 +526,42 @@ export default function Home() {
               </div>
             </li>
           </ol>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-12 max-w-xl">
+          <div className="flex items-start gap-4 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+            <MascotAvatar characterId="kokoro" variant="bust" size={40} className="shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Pourquoi pas juste un texto ?</p>
+              <p className="mt-1 text-sm" style={{ color: MUTED }}>
+                Un SMS demande à quelqu&apos;un de proposer, relancer, caler l&apos;horaire — la charge
+                mentale reste entière. Ittsui prend cette décision à votre place chaque semaine ; vous,
+                vous dites juste oui.
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Real, unedited quotes from early testers — never fabricated,
+            never a star rating or a fake name. See AGENTS.md's standing
+            position on this: authentic-but-anonymous beats persuasive but
+            invented every time. */}
+        <Reveal className="mx-auto mt-10 max-w-2xl">
+          <p className="text-center text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
+            Premiers retours
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { quote: "C'est rapide, fluide… SMS c'est clean.", from: "Testeur, Paris" },
+              { quote: "Permet de trouver un contact rapidement.", from: "Testeur, Paris" },
+              { quote: "UI is nice… Intuitive.", from: "Testeuse, New York" },
+            ].map((t) => (
+              <div key={t.quote} className="rounded-xl border p-4 text-sm" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+                <p style={{ color: INK }}>&ldquo;{t.quote}&rdquo;</p>
+                <p className="mt-2 text-xs" style={{ color: MUTED }}>— {t.from}</p>
+              </div>
+            ))}
+          </div>
         </Reveal>
       </section>
 

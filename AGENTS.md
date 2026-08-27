@@ -111,11 +111,15 @@ like the Friday card) or `rounded-2xl` (grid cards), always with a
   browser; `firebase-admin` (^12) only inside `app/api/**/route.ts`
   handlers, via `lib/firebaseAdmin.ts`. Never import `firebase-admin` into
   a `"use client"` file — it will break the build (Node-only APIs).
-- No external gesture/animation library. The Friday card's swipe
-  interaction (`app/page.tsx`) is hand-rolled with `onTouchStart` /
-  `onTouchMove` / `onTouchEnd` (+ Pointer Events for desktop) and CSS
-  transforms. If a future interaction needs more than this, that's worth
-  raising explicitly rather than quietly adding `framer-motion`.
+- `framer-motion` is now a real dependency — added 2026-08-27 by explicit,
+  repeated product direction (tester feedback: the app read as "too
+  formal" next to Duolingo/Alan), consciously reopening the earlier
+  no-animation-library stance rather than quietly working around it. It's
+  used for spring-physics tap/drag feedback (Friday card swipe, the real
+  Oui/Non and Confirmer buttons in `app/dashboard/DashboardClient.tsx`)
+  and the mascot "nod" reaction (`MascotAvatar`'s `nod` prop). Keep new
+  uses to small, purposeful feedback moments like these, not decorative
+  motion for its own sake.
 
 ## Data model (`lib/types.ts`)
 

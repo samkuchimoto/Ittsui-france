@@ -55,6 +55,8 @@ const bodySchema = z
     // Optional, defaults to "weekly" server-side — see lib/types.ts's
     // Pair.cadence comment.
     cadence: z.enum(["weekly", "monthly", "yearly"]).optional(),
+    // Optional — see lib/types.ts's Pair.relationshipKind comment.
+    relationshipKind: z.enum(["ami", "partenaire", "famille"]).optional(),
     // Capped at 6: isDueToday() in weekly-propose/route.ts resolves this via
     // (meetingIndex - leadDays + 7) % 7, which silently produces a negative
     // array index — and therefore permanently breaks that pair's weekly
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
     agreedWindowStart,
     agreedWindowEnd,
     cadence,
+    relationshipKind,
     notifyDaysBefore,
     postalCode,
     preferences,
@@ -124,6 +127,7 @@ export async function POST(request: Request) {
     agreedWindowStart,
     agreedWindowEnd,
     ...(cadence && cadence !== "weekly" ? { cadence } : {}),
+    ...(relationshipKind ? { relationshipKind } : {}),
     notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
     ...(typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
     preferences,

@@ -25,15 +25,19 @@
 //     - Step 3's vibe pills map onto the existing VENUE_TYPES; "Chez l'un des
 //       deux" (home) is kept as a secondary pill so no venue option was
 //       dropped, it's just no longer one of the four headline pills.
-//     - "Duo type" selector in Step 1 (ami / partenaire / famille) is
-//       LOCAL-ONLY UI state for copy/tone — it is never sent to the API,
-//       so the invite-partner payload and Pair type stay exactly as they
-//       were. Wiring it into the backend would need a schema change, which
-//       is out of scope for a restyle.
+//     - "Duo type" selector in Step 1 (ami / partenaire / famille) was
+//       local-only UI state for copy/tone until the mascot system needed
+//       to know which relationship a pair actually is (see
+//       lib/mascots.config.ts) — now sent as `relationshipKind` and
+//       persisted on the Pair document (lib/types.ts, invite-partner
+//       route). Optional and additive: a pair created before this existed
+//       simply has no value, and every reader treats that as "use the
+//       default pair" rather than an error.
 //     - Design tokens applied throughout (see lib/theme.ts), Fraunces
 //       headlines, Work Sans body — matching app/page.tsx.
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
@@ -56,6 +60,7 @@ import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
+import { OriginStorySheet } from "@/app/components/OriginStorySheet";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
@@ -209,6 +214,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
+      <OriginStorySheet />
       <div className="mx-auto max-w-md px-6 py-14">{children}</div>
     </main>
   );
@@ -485,6 +491,7 @@ export default function SetupClient() {
           agreedWindowStart: windowStart,
           agreedWindowEnd: windowEnd,
           cadence,
+          ...(duoType ? { relationshipKind: duoType } : {}),
           notifyDaysBefore,
           postalCode: postalCode || undefined,
           preferences: { venueTypes, dietaryFilters },
@@ -793,11 +800,14 @@ export default function SetupClient() {
                 {DUO_TYPES.map((d) => {
                   const [repCharacter] = MASCOT_PAIRS[RELATIONSHIP_PAIR[d.value]];
                   return (
-                    <button
+                    <motion.button
                       type="button"
                       key={d.value}
                       onClick={() => setDuoType(d.value)}
-                      className="flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3.5 text-sm transition-colors"
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 22 }}
+                      className="flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3.5 text-sm"
                       style={
                         duoType === d.value
                           ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
@@ -806,7 +816,7 @@ export default function SetupClient() {
                     >
                       <MascotAvatar characterId={repCharacter} variant="bust" size={22} className="shrink-0" />
                       {d.label}
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>

@@ -24,6 +24,7 @@
 // elsewhere in the app.
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -35,6 +36,7 @@ import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CockpitStatus } from "@/app/components/CockpitStatus";
 import { MascotPair } from "@/app/components/MascotPair";
+import { RELATIONSHIP_PAIR } from "@/lib/mascots.config";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
@@ -74,10 +76,18 @@ function Shell({ children }: { children: React.ReactNode }) {
 // RAG tier which doesn't return one) fall back to a plain tinted block
 // rather than a mismatched photo — same honesty rule as DiscoveryTile on
 // the discovery-grid branch.
+// Real tester feedback ("les petites images café/resto") landed on a real
+// gap: restaurant/museum had no photo here at all, unlike every other
+// venue type — the setup page's own DiscoveryGrid already solved this for
+// its Step 3 preview tiles with the same two Unsplash URLs, reused here
+// rather than sourcing new ones so the same venue type looks the same
+// across both surfaces.
 const VENUE_PHOTOS: Partial<Record<VenueType, string>> = {
   cafe: "/friends-cafe-terrace.jpg",
   park: "/grandmother-granddaughter-park.jpg",
   home: "/couple-living-room.jpg",
+  restaurant: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+  museum: "https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=800&q=80",
 };
 
 function VenuePhoto({ venueType }: { venueType?: VenueType }) {
@@ -445,7 +455,11 @@ export default function DashboardClient() {
 
       {!week && (
         <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
-          <MascotPair size={44} className={pair?.paused ? "opacity-40" : undefined} />
+          <MascotPair
+            pairId={pair?.relationshipKind ? RELATIONSHIP_PAIR[pair.relationshipKind] : undefined}
+            size={44}
+            className={pair?.paused ? "opacity-40" : undefined}
+          />
           <p className="text-sm" style={{ color: MUTED }}>
             {pair?.paused
               ? "En pause — aucune proposition ne sera envoyée tant que ce n&apos;est pas repris."
@@ -460,27 +474,32 @@ export default function DashboardClient() {
           <p className="text-base font-medium">{week.confirmationText}</p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <ConfirmedMascotMoment status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} relationshipKind={pair.relationshipKind} />
           <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
           {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
             <div className="mt-5 flex gap-3">
-              <button
+              <motion.button
                 onClick={() => queueResponse("yes")}
                 disabled={responding}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className="min-h-[56px] flex-1 rounded-full text-lg font-medium text-white disabled:opacity-50"
                 style={{ backgroundColor: ACCENT }}
               >
                 Oui
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => queueResponse("no")}
                 disabled={responding}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className="min-h-[56px] flex-1 rounded-full border text-lg font-medium disabled:opacity-50"
                 style={{ borderColor: BORDER, color: INK }}
               >
                 Non
-              </button>
+              </motion.button>
             </div>
           )}
 
@@ -499,6 +518,7 @@ export default function DashboardClient() {
           </p>
 
           <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+          <ConfirmedMascotMoment status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} relationshipKind={pair.relationshipKind} />
           <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
           <NotificationTrail log={week.notificationLog} />
 
@@ -687,19 +707,46 @@ function HitbonenutPause({
           Un instant, avant de confirmer.
         </p>
         <p className="mt-1 text-base font-medium">{venueName}</p>
-        <button
+        <motion.button
           type="button"
           onClick={onConfirm}
           disabled={!ready || confirming}
+          whileTap={ready ? { scale: 0.96 } : undefined}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
           className="mt-6 min-h-[56px] w-full rounded-full text-lg font-medium text-white disabled:opacity-40"
           style={{ backgroundColor: ACCENT }}
         >
           {ready ? "Confirmer" : "…"}
-        </button>
+        </motion.button>
         <button type="button" onClick={onCancel} className="mt-3 text-xs underline underline-offset-4" style={{ color: MUTED }}>
           Annuler
         </button>
       </div>
+    </div>
+  );
+}
+
+// The "cozy nod on 1-click validation" touchpoint, for the real
+// confirmation (not just the landing-page demo). Only mounts once status
+// is actually "confirmed" — the nod plays once, on that mount, rather
+// than looping or re-triggering on every re-render. relationshipKind
+// comes straight from the real Pair document when present (see
+// lib/types.ts) so this genuinely varies by category instead of always
+// showing the default pair.
+function ConfirmedMascotMoment({
+  status,
+  lapsed,
+  relationshipKind,
+}: {
+  status: Week["status"];
+  lapsed: boolean;
+  relationshipKind?: Pair["relationshipKind"];
+}) {
+  if (status !== "confirmed" || lapsed) return null;
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <MascotPair pairId={relationshipKind ? RELATIONSHIP_PAIR[relationshipKind] : undefined} size={32} nod />
+      <p className="text-xs" style={{ color: MUTED }}>Rendez-vous calé. On se tait jusqu&apos;à la prochaine fois.</p>
     </div>
   );
 }
