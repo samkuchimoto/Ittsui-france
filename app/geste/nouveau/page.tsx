@@ -74,10 +74,13 @@ export default function NewGesturePage() {
   const [item, setItem] = useState<CuratedGestureItem>(() => suggestCuratedItem());
   const [customItem, setCustomItem] = useState("");
   const [notes, setNotes] = useState("");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupPhone, setPickupPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [gestureUrl, setGestureUrl] = useState<string | null>(null);
   const [paintingImageUrl, setPaintingImageUrl] = useState<string | null>(null);
+  const [rewardStatus, setRewardStatus] = useState<"sent" | "failed" | null>(null);
 
   // Signed-in convenience only — this page stays fully usable with no
   // account (see the homepage's "sans créer de compte" link to it), the
@@ -134,6 +137,8 @@ export default function NewGesturePage() {
           ...(recipientPhone ? { recipientPhone } : {}),
           mode,
           ...(mode === "own" ? { itemDescription } : {}),
+          ...(mode === "own" && pickupAddress ? { pickupAddress } : {}),
+          ...(mode === "own" && pickupPhone ? { pickupPhone } : {}),
           ...(mode === "curated" || mode === "suggested" ? { item } : {}),
           ...(mode === "curated" && item === "autre" ? { customItem } : {}),
           ...(notes ? { notes } : {}),
@@ -143,6 +148,7 @@ export default function NewGesturePage() {
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
       setGestureUrl(data.gestureUrl);
       setPaintingImageUrl(data.paintingImageUrl ?? null);
+      setRewardStatus(data.rewardStatus ?? null);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
@@ -162,8 +168,9 @@ export default function NewGesturePage() {
           </h1>
           {mode === "own" && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
-              Ittsui n&apos;organise pas la remise — à vous de voir avec {recipientName} comment le lui faire
-              parvenir.
+              {pickupAddress
+                ? `Dès que ${recipientName} indique son adresse, un coursier peut venir récupérer l'objet chez vous.`
+                : `Ittsui n'organise pas la remise — à vous de voir avec ${recipientName} comment le lui faire parvenir.`}
             </p>
           )}
           {mode === "message" && (
@@ -171,7 +178,12 @@ export default function NewGesturePage() {
               Votre mot est parti, rien d&apos;autre à faire.
             </p>
           )}
-          {(mode === "curated" || mode === "suggested") && (
+          {(mode === "curated" || mode === "suggested") && rewardStatus === "sent" && (
+            <p className="mt-2 text-sm font-medium" style={{ color: "#1E7A4C" }}>
+              Un vrai chèque-cadeau a été envoyé à {recipientName} par e-mail, via Tremendous.
+            </p>
+          )}
+          {(mode === "curated" || mode === "suggested") && rewardStatus !== "sent" && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               Il ne reste plus qu&apos;à finaliser {(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.
             </p>
@@ -291,17 +303,45 @@ export default function NewGesturePage() {
         {mode && (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {mode === "own" && (
-              <div>
-                <label className="block text-sm font-medium">Qu&apos;avez-vous envie de lui envoyer ?</label>
-                <input
-                  type="text"
-                  required
-                  value={itemDescription}
-                  onChange={(e) => setItemDescription(e.target.value)}
-                  placeholder="Un livre que j'ai déjà lu, une photo, un pull..."
-                  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                  style={{ borderColor: BORDER }}
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium">Qu&apos;avez-vous envie de lui envoyer ?</label>
+                  <input
+                    type="text"
+                    required
+                    value={itemDescription}
+                    onChange={(e) => setItemDescription(e.target.value)}
+                    placeholder="Un livre que j'ai déjà lu, une photo, un pull..."
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                    style={{ borderColor: BORDER }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Votre adresse{" "}
+                    <span className="font-normal" style={{ color: MUTED }}>
+                      (optionnel — permet à un coursier de venir le récupérer chez vous)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pickupAddress}
+                    onChange={(e) => setPickupAddress(e.target.value)}
+                    placeholder="12 rue de la Paix, 75002 Paris"
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                    style={{ borderColor: BORDER }}
+                  />
+                  {pickupAddress && (
+                    <input
+                      type="tel"
+                      value={pickupPhone}
+                      onChange={(e) => setPickupPhone(e.target.value)}
+                      placeholder="Votre numéro (pour le coursier)"
+                      className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                      style={{ borderColor: BORDER }}
+                    />
+                  )}
+                </div>
               </div>
             )}
 

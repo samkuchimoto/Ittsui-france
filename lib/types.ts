@@ -315,10 +315,30 @@ export interface Gesture {
   // a synchronous call, not a queue, at this scale).
   paintingImageUrl?: string;
   paintingStatus?: PaintingStatus;
+  // Real fulfillment, not a link-out — set when TREMENDOUS_API_KEY is
+  // configured (see lib/tremendous.ts) and mode is "curated"/"suggested"
+  // with a real item (never "autre" — there's no product to fund).
+  // Absent means either not configured or item === "autre", exactly the
+  // same "quietly skip" posture as the painting mode's Fal.ai call.
+  rewardOrderId?: string;
+  rewardStatus?: "sent" | "failed";
+  // "own" mode only: the sender's own pickup address, collected at
+  // creation specifically so a real courier dispatch (lib/stuartCourier.ts)
+  // is possible once the recipient supplies their own address via PATCH —
+  // Ittsui never has both addresses before that point.
+  pickupAddress?: string;
+  pickupPhone?: string;
+  courierJobId?: string;
+  courierTrackingUrl?: string;
+  courierStatus?: "dispatched" | "failed";
   status: GestureStatus;
   createdAt: string;
   recipientChoice?: GestureRecipientChoice;
   recipientAddress?: string; // only present when recipientChoice === "address"
+  // The recipient's OWN contact number for the courier, collected
+  // alongside recipientAddress — distinct from recipientPhone (given by
+  // the sender at creation, used only for the notification link).
+  recipientContactPhone?: string;
   recipientRespondedAt?: string; // ISO date
 }
 

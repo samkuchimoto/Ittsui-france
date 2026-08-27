@@ -158,34 +158,48 @@ This is the one worth prototyping first if/when the deep-link v1 shows real usag
 a Goody business account (their own signup, not something I can request on your behalf), but
 no courier/merchant partnership beyond that.
 
-**On the other providers named in the 2026-08-27 courier-integration proposal (Stuart,
-Sessile, C'est Cela, Cocolis, Tremendous):** the one that actually looks self-serve enough to
-plug in without a sales conversation first is **Tremendous** — API-key auth, a real developer
-portal, and it issues actual redeemable gift cards (Amazon, Fnac, Starbucks, prepaid Visa,
-etc.), which would give the "curated" mode a genuinely real fulfillment path for the first
-time instead of a link to a merchant's homepage.
-[developers.tremendous.com](https://developers.tremendous.com/) — sign up for a sandbox
-account there; hand me a test API key and I'll wire it the same honest-fallback way as Fal.ai
-above, not a fabricated integration ahead of having real credentials. Stuart, Sessile, and
-C'est Cela are real companies but their public docs don't show a pure self-serve signup the
-way Tremendous does — same "needs an actual conversation with them first" category as Uber
-Direct/Deliveroo above, not something a code change alone unlocks. Cocolis is a crowd-logistics
-marketplace (matching a delivery to a stranger already driving that route), which is a
-meaningfully different trust model from a courier company's own fleet — worth a distinct,
-later evaluation, not bundled into this pass.
+## 5. Real fulfillment — Tremendous and Stuart (wired 2026-08-27)
 
-**Recommended sequencing**, in order of what's real and available now:
-1. Ship v1 as-is (done) and see whether people actually use "envoyer un geste" at all, and
-   which of the five modes they reach for — that behavioral signal is worth more right now
-   than any integration would be. "Painting" already gives a real answer to "does this bring
-   actual value" without waiting on any external account.
-2. If "curated" usage justifies it, get a Tremendous sandbox key (fastest, most self-serve) or
-   pursue Goody (closer to the original "gift" ambition, needs their business signup) behind
-   that mode specifically — real catalog, real fulfillment, no logistics for Ittsui to own,
-   without touching the "own"/"suggested"/"message"/"painting" modes at all.
-3. If "own" mode gets real usage, Stuart is the one worth evaluating for actually moving the
-   object — a distinct, smaller feature from gifting a purchased item, worth its own
-   validation before being bundled in.
-4. Skip Amazon/Deliveroo/Uber Direct as direct integrations; none of them offer the
-   order-on-someone's-behalf primitive this feature actually needs, and Amazon specifically
-   is excluded from the curated list on strategic grounds too (see above), not just technical.
+Of the providers named in the 2026-08-27 courier-integration proposal (Stuart, Sessile,
+C'est Cela, Cocolis, Tremendous), two have real, verified, self-serve developer APIs — checked
+against their own current docs and open-source client libraries that day, not against the
+proposal's paraphrase of them. Both are now actually wired into the code, gated behind env
+vars (unset = the gesture behaves exactly as the v1 above, same honest-fallback posture as
+`FAL_API_KEY`):
+
+- **Tremendous** (`lib/tremendous.ts`) — a "curated"/"suggested" gesture with a real item
+  (never "autre") and a recipient email now triggers a REAL `POST /orders` call that issues an
+  actual redeemable digital gift card to the recipient's inbox, verified against
+  `developers.tremendous.com/reference/create-order`. This is real money once configured —
+  `TREMENDOUS_GESTURE_AMOUNT_CENTS` has no built-in default specifically so the amount is
+  always something a human explicitly set.
+- **Stuart** (`lib/stuartCourier.ts`) — for "own"-mode gestures, the sender's pickup address
+  is now collected at creation. Once the recipient replies with their own address via
+  `/geste/[gestureId]`'s form, `PATCH /api/gestures/[gestureId]` calls Stuart's real
+  `POST /v2/jobs` to dispatch an actual courier between the two addresses, verified against
+  Stuart's own open-source `stuart-client-js`/`stuart-client-php` (their marketing/help pages
+  describe the feature but don't republish the technical contract, so the source of truth here
+  is the literal requests their official clients send).
+
+**Env vars to add on Vercel** (see `.env.example` for the full comments) — nothing fires until
+these exist:
+
+| Var | Where to get it |
+|---|---|
+| `TREMENDOUS_API_KEY` | [tremendous.com](https://www.tremendous.com/) → Developers → API keys (sandbox first) |
+| `TREMENDOUS_CAMPAIGN_ID` | `GET /campaigns` on your Tremendous account |
+| `TREMENDOUS_FUNDING_SOURCE_ID` | `GET /funding_sources`, or literally `BALANCE` |
+| `TREMENDOUS_GESTURE_AMOUNT_CENTS` | your call — e.g. `1000` for €10 per gesture |
+| `TREMENDOUS_ENV` | `sandbox` (fake money) or `production` (real money) |
+| `STUART_CLIENT_ID` / `STUART_CLIENT_SECRET` | [stuart.com/developers](https://stuart.com/developers/) sandbox signup → credentials at `admin.sandbox.stuart.com/client/api` |
+| `STUART_ENV` | `sandbox` or `production` — sandbox needs a Stripe TEST card on file per Stuart's own getting-started guide |
+
+**Sessile, C'est Cela, and Cocolis were checked and explicitly not built against**, not
+skipped by oversight: Sessile and C'est Cela have no public developer API at all (checked
+2026-08-27 — consumer-facing sites only, no docs, no signup flow), the same "needs an actual
+business conversation first" category as Uber Direct/Deliveroo above. Cocolis does have a real
+API (`doc.cocolis.fr`) but is a crowd-logistics marketplace (matching a delivery to a stranger
+already driving that route) — a meaningfully different trust model from Stuart's own courier
+fleet, and it doesn't map onto an existing gesture mode the way Stuart maps onto "own." Worth a
+distinct future evaluation, not force-fit into this pass. Amazon/Deliveroo/Uber Direct remain
+out for the technical reasons in section 4 above.

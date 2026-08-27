@@ -2,27 +2,32 @@
 // Records a real "envoyer un geste" event and, when there's an email on
 // file, notifies the recipient — same phone-first shape as
 // meeting-requests/create (real people overwhelmingly know a friend's
-// phone number, not their email), and the same honesty boundary as
-// lib/gestureLinks.ts: this never claims the gesture was purchased or
-// delivered, only that the sender was pointed at a real external
-// service (or, for "own" mode, at nothing — that's on them) to finish
-// it themselves.
+// phone number, not their email).
 //
-// "painting" mode is the one exception to "no real backend action" —
-// it calls the same Fal.ai image-generation infrastructure already
-// wired for app/api/ai-venue-mood/route.ts, synchronously (no queue:
-// at this scale, one more `await` inside a single request is simpler
-// and more honest than a job system with nothing yet to justify it).
-// Same honest-501 posture as that route when FAL_API_KEY isn't
-// configured — generation failing never blocks the gesture itself from
-// being recorded and the recipient notified; `paintingStatus` just
-// reads "failed" instead of "ready", never a fabricated image URL.
+// Three modes now trigger a REAL backend action, not just a link-out or
+// a stored intent:
+//   - "painting": calls the same Fal.ai image-generation infrastructure
+//     already wired for app/api/ai-venue-mood/route.ts.
+//   - "curated"/"suggested" (any real item, never "autre"): calls
+//     Tremendous (lib/tremendous.ts) to actually issue a redeemable
+//     digital gift card to the recipient's email, verified against
+//     Tremendous's own current API reference on 2026-08-27.
+//   - "own": collects the sender's own pickup address here so a real
+//     Stuart courier (lib/stuartCourier.ts) can be dispatched later,
+//     from /api/gestures/[gestureId]'s PATCH, once the recipient
+//     supplies their own dropoff address — Ittsui never has both
+//     addresses before that second step.
+// All three share the same honest-fallback posture: missing
+// configuration (env vars unset) means the gesture still sends and the
+// recipient is still notified, just without that real action attached
+// — never a fabricated success.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
+import { sendTremendousReward } from "@/lib/tremendous";
 import type { CuratedGestureItem, PaintingStatus } from "@/lib/types";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
@@ -47,6 +52,16 @@ const bodySchema = z
     item: z.enum(CURATED_ITEM_VALUES).optional(),
     customItem: z.string().trim().min(1).max(120).optional(),
     notes: z.string().trim().max(500).optional(),
+    // "own" mode only — see the Stuart note above for why this is
+    // collected now instead of at dispatch time.
+    pickupAddress: z.string().trim().min(1).max(300).optional(),
+    pickupPhone: z
+      .string()
+      .trim()
+      .min(6)
+      .max(30)
+      .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
+      .optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, { message: "e-mail ou téléphone requis" })
   .refine((data) => data.mode !== "own" || !!data.itemDescription, { message: "description de l'objet requise" })
@@ -59,8 +74,20 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
-  const { senderName, senderEmail, recipientName, recipientEmail, recipientPhone, mode, itemDescription, item, customItem, notes } =
-    parsed.data;
+  const {
+    senderName,
+    senderEmail,
+    recipientName,
+    recipientEmail,
+    recipientPhone,
+    mode,
+    itemDescription,
+    item,
+    customItem,
+    notes,
+    pickupAddress,
+    pickupPhone,
+  } = parsed.data;
 
   let paintingImageUrl: string | undefined;
   let paintingStatus: PaintingStatus | undefined;
@@ -69,7 +96,23 @@ export async function POST(request: Request) {
     paintingStatus = paintingImageUrl ? "ready" : "failed";
   }
 
+  let rewardOrderId: string | undefined;
+  let rewardStatus: "sent" | "failed" | undefined;
   const ref = adminDb.collection("gestures").doc();
+  if ((mode === "curated" || mode === "suggested") && item !== "autre" && item && recipientEmail) {
+    const reward = await sendTremendousReward({
+      externalId: ref.id,
+      recipientEmail,
+      recipientName,
+      senderName,
+      message: notes || `${senderName} vous envoie : ${CURATED_ITEM_LABEL[item]}`,
+    });
+    if (reward.status !== "not_configured") {
+      rewardStatus = reward.status;
+      if (reward.status === "sent") rewardOrderId = reward.orderId;
+    }
+  }
+
   await ref.set({
     senderName,
     ...(senderEmail ? { senderEmail } : {}),
@@ -81,8 +124,12 @@ export async function POST(request: Request) {
     ...(item ? { item } : {}),
     ...(customItem ? { customItem } : {}),
     ...(notes ? { note: notes } : {}),
+    ...(pickupAddress ? { pickupAddress } : {}),
+    ...(pickupPhone ? { pickupPhone } : {}),
     ...(paintingImageUrl ? { paintingImageUrl } : {}),
     ...(paintingStatus ? { paintingStatus } : {}),
+    ...(rewardOrderId ? { rewardOrderId } : {}),
+    ...(rewardStatus ? { rewardStatus } : {}),
     status: "sent",
     createdAt: new Date().toISOString(),
   });
@@ -99,11 +146,16 @@ export async function POST(request: Request) {
             ? customItem!
             : CURATED_ITEM_LABEL[item as CuratedGestureItem];
 
+  const rewardLine =
+    rewardStatus === "sent"
+      ? `<p style="font-size:13px;color:#1E7A4C;text-align:center;font-weight:600;">Un vrai chèque-cadeau a été envoyé à cette adresse par e-mail.</p>`
+      : "";
+
   const recipientEmailSent = recipientEmail
     ? await sendEmail({
         to: recipientEmail,
         subject: `${senderName} a pensé à vous`,
-        text: `${senderName} vous envoie : ${whatLine}.${notes && mode !== "painting" ? ` "${notes}"` : ""}\n\n${gestureUrl}`,
+        text: `${senderName} vous envoie : ${whatLine}.${notes && mode !== "painting" ? ` "${notes}"` : ""}${rewardStatus === "sent" ? " Un vrai chèque-cadeau vous a été envoyé par e-mail." : ""}\n\n${gestureUrl}`,
         html: emailShell({
           mascotName: "mochi",
           title: `${escapeHtml(senderName)} a pensé à vous`,
@@ -111,7 +163,7 @@ export async function POST(request: Request) {
             mode === "painting" && paintingImageUrl
               ? `<p style="font-size:11px;font-weight:600;text-align:center;color:#565049;text-transform:uppercase;letter-spacing:0.04em;">Illustration générée par IA</p>
                  <img src="${paintingImageUrl}" alt="Peinture générée par IA" width="480" style="display:block;width:100%;height:auto;border-radius:12px;margin:8px 0;" />`
-              : `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(whatLine)}${notes && mode !== "painting" ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>`,
+              : `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${escapeHtml(whatLine)}${notes && mode !== "painting" ? `<br><em>"${escapeHtml(notes)}"</em>` : ""}</p>${rewardLine}`,
         }),
       })
     : undefined;
@@ -125,6 +177,7 @@ export async function POST(request: Request) {
     gestureUrl,
     recipientEmailSent: recipientEmailSent ?? null,
     ...(mode === "painting" ? { paintingImageUrl: paintingImageUrl ?? null, paintingStatus } : {}),
+    ...(rewardStatus ? { rewardStatus, rewardOrderId: rewardOrderId ?? null } : {}),
   });
 }
 

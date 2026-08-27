@@ -52,6 +52,9 @@ interface GesturePreview {
   recipientChoice: GestureRecipientChoice | null;
   paintingImageUrl: string | null;
   paintingStatus: PaintingStatus | null;
+  rewardStatus: "sent" | "failed" | null;
+  courierStatus: "dispatched" | "failed" | null;
+  courierTrackingUrl: string | null;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -84,6 +87,7 @@ export default function GesturePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [addressMode, setAddressMode] = useState(false);
   const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [replying, setReplying] = useState(false);
 
   useEffect(() => {
@@ -100,16 +104,21 @@ export default function GesturePage() {
       .catch(() => setStatus("error"));
   }, [gestureId]);
 
-  async function sendChoice(choice: GestureRecipientChoice, addr?: string) {
+  async function sendChoice(choice: GestureRecipientChoice, addr?: string, contactPhone?: string) {
     setReplying(true);
     try {
       const res = await fetch(`/api/gestures/${gestureId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choice, ...(addr ? { address: addr } : {}) }),
+        body: JSON.stringify({ choice, ...(addr ? { address: addr } : {}), ...(contactPhone ? { phone: contactPhone } : {}) }),
       });
       if (!res.ok) throw new Error("failed");
-      setPreview((current) => (current ? { ...current, recipientChoice: choice } : current));
+      const data = await res.json().catch(() => ({}));
+      setPreview((current) =>
+        current
+          ? { ...current, recipientChoice: choice, courierStatus: data.courierStatus ?? current.courierStatus, courierTrackingUrl: data.courierTrackingUrl ?? current.courierTrackingUrl }
+          : current
+      );
     } catch {
       // Silent — the recipient's own read-only view is more important
       // than a retry loop for a nice-to-have reply; the sender's email
@@ -190,20 +199,40 @@ export default function GesturePage() {
             « {preview.note} »
           </p>
         )}
+        {(preview.mode === "curated" || preview.mode === "suggested") && preview.rewardStatus === "sent" && (
+          <p className="mt-3 text-sm font-medium" style={{ color: "#1E7A4C" }}>
+            Un vrai chèque-cadeau vous a été envoyé par e-mail (regardez aussi vos spams).
+          </p>
+        )}
 
         {isPhysical && (
           <div className="mt-8 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER }}>
             {preview.recipientChoice ? (
-              <p className="text-sm" style={{ color: MUTED }}>
-                {preview.recipientChoice === "address"
-                  ? `Vous avez transmis une adresse à ${preview.senderName}.`
-                  : `Vous avez prévenu ${preview.senderName} que vous préférez le recevoir en main propre.`}
-              </p>
+              <div className="text-sm" style={{ color: MUTED }}>
+                <p>
+                  {preview.recipientChoice === "address"
+                    ? `Vous avez transmis une adresse à ${preview.senderName}.`
+                    : `Vous avez prévenu ${preview.senderName} que vous préférez le recevoir en main propre.`}
+                </p>
+                {preview.courierStatus === "dispatched" && (
+                  <p className="mt-2 font-medium" style={{ color: "#1E7A4C" }}>
+                    Un coursier a été programmé pour venir chercher l&apos;objet.
+                    {preview.courierTrackingUrl && (
+                      <>
+                        {" "}
+                        <a href={preview.courierTrackingUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                          Suivre la course →
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
             ) : addressMode ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (address.trim()) sendChoice("address", address.trim());
+                  if (address.trim()) sendChoice("address", address.trim(), phone.trim() || undefined);
                 }}
               >
                 <label className="block text-sm font-medium">Votre adresse</label>
@@ -216,6 +245,16 @@ export default function GesturePage() {
                   className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
                   style={{ borderColor: BORDER }}
                 />
+                {preview.mode === "own" && (
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Votre numéro (pour le coursier)"
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                    style={{ borderColor: BORDER }}
+                  />
+                )}
                 <button
                   type="submit"
                   disabled={replying}
@@ -252,10 +291,12 @@ export default function GesturePage() {
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border p-4 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
-          Ittsui n&apos;a rien livré ni acheté automatiquement — {preview.senderName} vous a simplement fait
-          savoir qu&apos;iel pense à vous, et s&apos;occupe du reste de son côté.
-        </div>
+        {preview.rewardStatus !== "sent" && preview.courierStatus !== "dispatched" && (
+          <div className="mt-6 rounded-2xl border p-4 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
+            Ittsui n&apos;a rien livré ni acheté automatiquement — {preview.senderName} vous a simplement fait
+            savoir qu&apos;iel pense à vous, et s&apos;occupe du reste de son côté.
+          </div>
+        )}
       </div>
     </Shell>
   );
