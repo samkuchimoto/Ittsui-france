@@ -207,7 +207,7 @@ export function RequestsPanel() {
           ☕ Nouvelle demande
         </Link>
         <Link
-          href="/cadeau/nouveau"
+          href="/geste/nouveau"
           className="flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium"
           style={{ borderColor: BORDER, color: INK }}
         >

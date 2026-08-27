@@ -19,6 +19,7 @@ export default function robots(): MetadataRoute.Robots {
         "/dashboard",
         "/request/",
         "/invite/",
+        "/geste/",
         "/contacts",
         "/api/",
         // The venue's own bearer-link management page — a private

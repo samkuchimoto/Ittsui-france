@@ -1,4 +1,4 @@
-// /lib/giftLinks.ts
+// /lib/gestureLinks.ts
 // Real, verified-format external entry points for the "envoyer un
 // geste" flow's "curated"/"suggested" modes — deliberately well-known
 // French merchant homepages, not fabricated deep-link parameters for a
@@ -7,16 +7,16 @@
 // feature (2026-08-27) converged on the same point — centering Amazon
 // risks turning Ittsui into "Amazon with friends," and Amazon has no
 // live API that lets a third party place an order on someone's behalf
-// anyway (see docs/three-fronts-and-gifting.md). Ittsui has no business/
-// API partnership with any of these services — this is the honest v1:
-// point the sender at the real place to finish the gesture themselves,
-// the same pattern this app already uses for WhatsApp/SMS
+// anyway (see docs/three-fronts-and-gestures.md). Ittsui has no
+// business/API partnership with any of these services — this is the
+// honest v1: point the sender at the real place to finish the gesture
+// themselves, the same pattern this app already uses for WhatsApp/SMS
 // (lib/shareLink.ts), not a fabricated "automatic" purchase or delivery
 // this app can't actually back.
 
-import type { CuratedGiftItem } from "@/lib/types";
+import type { CuratedGestureItem } from "@/lib/types";
 
-export const CURATED_ITEM_LABEL: Record<CuratedGiftItem, string> = {
+export const CURATED_ITEM_LABEL: Record<CuratedGestureItem, string> = {
   fleurs: "Des fleurs",
   livre: "Un livre",
   chocolat: "Des chocolats",
@@ -26,9 +26,9 @@ export const CURATED_ITEM_LABEL: Record<CuratedGiftItem, string> = {
   repas: "Un repas livré",
 };
 
-export const CURATED_ITEMS: CuratedGiftItem[] = ["fleurs", "livre", "chocolat", "plante", "bougie", "papeterie", "repas"];
+export const CURATED_ITEMS: CuratedGestureItem[] = ["fleurs", "livre", "chocolat", "plante", "bougie", "papeterie", "repas"];
 
-export function curatedItemExternalLink(item: CuratedGiftItem): { label: string; url: string } {
+export function curatedItemExternalLink(item: CuratedGestureItem): { label: string; url: string } {
   switch (item) {
     case "fleurs":
       return { label: "Commander des fleurs", url: "https://www.interflora.fr/" };
@@ -53,7 +53,7 @@ export function curatedItemExternalLink(item: CuratedGiftItem): { label: string;
 // fabricated claim that Ittsui knows something personal about the
 // recipient it has no data for). `exclude` lets the UI's "une autre
 // idée" reshuffle button avoid repeating the item just shown.
-export function suggestCuratedItem(exclude?: CuratedGiftItem): CuratedGiftItem {
+export function suggestCuratedItem(exclude?: CuratedGestureItem): CuratedGestureItem {
   const pool = exclude ? CURATED_ITEMS.filter((item) => item !== exclude) : CURATED_ITEMS;
   return pool[Math.floor(Math.random() * pool.length)];
 }

@@ -1,17 +1,17 @@
 "use client";
-// /app/cadeau/nouveau/page.tsx
+// /app/geste/nouveau/page.tsx
 // "Envoyer un geste" — a physical gesture (or just a note) as a distinct
 // relationship action alongside a rendez-vous, not an ecommerce
 // marketplace. Four modes (a broad multi-AI review of this feature
 // converged on this exact framing on 2026-08-27 — see
-// docs/three-fronts-and-gifting.md), shown as an equal-weight tab
+// docs/three-fronts-and-gestures.md), shown as an equal-weight tab
 // alongside /request/new rather than a link buried in the dashboard:
 //   - "own": something the sender already has. Zero API, zero delivery
 //     arrangement — Ittsui only notifies the recipient; getting the
 //     object to them is the sender's own problem, same as it would be
 //     without this feature at all.
 //   - "curated": a small, deliberately non-Amazon list of gesture types
-//     (lib/giftLinks.ts), each linking to one real merchant homepage.
+//     (lib/gestureLinks.ts), each linking to one real merchant homepage.
 //   - "suggested": Ittsui picks one curated item for the sender so they
 //     don't have to — reshuffleable, honest decision-load removal.
 //   - "message": no object at all, just a note — the zero-friction floor
@@ -24,8 +24,8 @@ import { Fraunces, Work_Sans } from "next/font/google";
 import type { User } from "firebase/auth";
 import { watchAuthState } from "@/lib/firebase";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
-import { CURATED_ITEM_LABEL, CURATED_ITEMS, curatedItemExternalLink, suggestCuratedItem } from "@/lib/giftLinks";
-import type { GiftMode, CuratedGiftItem, Contact } from "@/lib/types";
+import { CURATED_ITEM_LABEL, CURATED_ITEMS, curatedItemExternalLink, suggestCuratedItem } from "@/lib/gestureLinks";
+import type { GestureMode, CuratedGestureItem, Contact } from "@/lib/types";
 import { shareLink } from "@/lib/shareLink";
 
 const fraunces = Fraunces({
@@ -43,14 +43,14 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const MODES: { id: GiftMode; emoji: string; title: string; subtitle: string }[] = [
+const MODES: { id: GestureMode; emoji: string; title: string; subtitle: string }[] = [
   { id: "own", emoji: "🎁", title: "Quelque chose que vous avez", subtitle: "Un objet qui vous appartient déjà." },
   { id: "curated", emoji: "🛍️", title: "Quelque chose à choisir", subtitle: "Choisissez un type de geste." },
   { id: "suggested", emoji: "✨", title: "Laissez Ittsui vous proposer", subtitle: "Une petite idée, sans avoir à réfléchir." },
   { id: "message", emoji: "💌", title: "Un mot doux", subtitle: "Juste leur faire savoir que vous pensez à eux." },
 ];
 
-export default function NewGiftPage() {
+export default function NewGesturePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | false | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -59,13 +59,13 @@ export default function NewGiftPage() {
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
-  const [mode, setMode] = useState<GiftMode | null>(null);
+  const [mode, setMode] = useState<GestureMode | null>(null);
   const [itemDescription, setItemDescription] = useState("");
-  const [item, setItem] = useState<CuratedGiftItem>(() => suggestCuratedItem());
+  const [item, setItem] = useState<CuratedGestureItem>(() => suggestCuratedItem());
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [giftUrl, setGiftUrl] = useState<string | null>(null);
+  const [gestureUrl, setGestureUrl] = useState<string | null>(null);
 
   // Signed-in convenience only — this page stays fully usable with no
   // account (see the homepage's "sans créer de compte" link to it), the
@@ -104,7 +104,7 @@ export default function NewGiftPage() {
     setStatus("submitting");
     setError(null);
     try {
-      const res = await fetch("/api/gifts", {
+      const res = await fetch("/api/gestures", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -121,7 +121,7 @@ export default function NewGiftPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
-      setGiftUrl(data.giftUrl);
+      setGestureUrl(data.gestureUrl);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.");
@@ -166,10 +166,10 @@ export default function NewGiftPage() {
               {externalLink.label} →
             </a>
           )}
-          {recipientPhone && giftUrl && (
+          {recipientPhone && gestureUrl && (
             <button
               type="button"
-              onClick={() => shareLink({ title: "Ittsui", text: `${senderName} vous envoie un geste.`, url: giftUrl })}
+              onClick={() => shareLink({ title: "Ittsui", text: `${senderName} vous envoie un geste.`, url: gestureUrl })}
               className="mt-3 w-full rounded-full border py-3 text-sm font-medium"
               style={{ borderColor: BORDER, color: INK }}
             >

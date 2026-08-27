@@ -703,7 +703,7 @@ export default function RequestFormClient() {
               ☕ Se voir
             </span>
             <Link
-              href="/cadeau/nouveau"
+              href="/geste/nouveau"
               className="flex-1 rounded-full border px-4 py-2.5 text-center text-sm font-medium"
               style={{ borderColor: BORDER, color: INK }}
             >

@@ -1,10 +1,10 @@
-// /app/api/gifts/[giftId]/route.ts
-// GET: public read for the recipient-facing /cadeau/[giftId] page — same
-// bearer-link trust model as every other shared link in this app (an
-// unguessable Firestore doc ID IS the authorization, no login). Only
-// public-safe fields are returned: never recipientEmail/recipientPhone/
-// senderEmail, which were given in confidence, not for display back to
-// whoever opens the link.
+// /app/api/gestures/[gestureId]/route.ts
+// GET: public read for the recipient-facing /geste/[gestureId] page —
+// same bearer-link trust model as every other shared link in this app
+// (an unguessable Firestore doc ID IS the authorization, no login).
+// Only public-safe fields are returned: never recipientEmail/
+// recipientPhone/senderEmail, which were given in confidence, not for
+// display back to whoever opens the link.
 //
 // PATCH: the recipient's own reply on how to actually receive a physical
 // gesture ("own"/"curated"/"suggested" modes only — "message" has
@@ -19,8 +19,8 @@ import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
-export async function GET(_request: Request, { params }: { params: { giftId: string } }) {
-  const snap = await adminDb.collection("giftGestures").doc(params.giftId).get();
+export async function GET(_request: Request, { params }: { params: { gestureId: string } }) {
+  const snap = await adminDb.collection("gestures").doc(params.gestureId).get();
   if (!snap.exists) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
@@ -44,12 +44,12 @@ const patchSchema = z
   })
   .refine((data) => data.choice !== "address" || !!data.address, { message: "adresse requise" });
 
-export async function PATCH(request: Request, { params }: { params: { giftId: string } }) {
+export async function PATCH(request: Request, { params }: { params: { gestureId: string } }) {
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
-  const ref = adminDb.collection("giftGestures").doc(params.giftId);
+  const ref = adminDb.collection("gestures").doc(params.gestureId);
   const snap = await ref.get();
   if (!snap.exists) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -90,7 +90,7 @@ async function sendEmail({ to, subject, text, html }: { to: string; subject: str
     body: JSON.stringify({ from: FROM_ADDRESS, to, subject, text, html }),
   });
   if (!res.ok) {
-    console.error(`gifts/[giftId] PATCH: sendEmail failed (${res.status}) to ${to}`);
+    console.error(`gestures/[gestureId] PATCH: sendEmail failed (${res.status}) to ${to}`);
     return false;
   }
   return true;

@@ -1,16 +1,16 @@
 "use client";
-// /app/cadeau/[giftId]/page.tsx
+// /app/geste/[gestureId]/page.tsx
 // What a recipient lands on from the "envoyer un geste" link. Public,
 // no login (same reasoning as /request/[requestId]: an unguessable link
 // is the whole point of a low-friction gesture, not another account to
 // create). Deliberately shows no delivery/tracking state — see
-// lib/giftLinks.ts: this app never claims to have purchased or shipped
-// anything, only that the sender wanted them to know.
+// lib/gestureLinks.ts: this app never claims to have purchased or
+// shipped anything, only that the sender wanted them to know.
 //
 // For a physical gesture (any mode but "message"), the recipient can
 // reply with how they'd like to actually receive it — an address, or
-// in person next time — via PATCH /api/gifts/[giftId]. Relayed back to
-// the sender by email if they left one at send time.
+// in person next time — via PATCH /api/gestures/[gestureId]. Relayed
+// back to the sender by email if they left one at send time.
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -18,8 +18,8 @@ import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { Mascot } from "@/app/components/Mascot";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
-import { CURATED_ITEM_LABEL } from "@/lib/giftLinks";
-import type { GiftMode, CuratedGiftItem, GiftRecipientChoice } from "@/lib/types";
+import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
+import type { GestureMode, CuratedGestureItem, GestureRecipientChoice } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 
 const fraunces = Fraunces({
@@ -37,14 +37,14 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-interface GiftPreview {
+interface GesturePreview {
   senderName: string;
   recipientName: string;
-  mode: GiftMode;
+  mode: GestureMode;
   itemDescription: string | null;
-  item: CuratedGiftItem | null;
+  item: CuratedGestureItem | null;
   note: string | null;
-  recipientChoice: GiftRecipientChoice | null;
+  recipientChoice: GestureRecipientChoice | null;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -63,18 +63,18 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function GiftPage() {
+export default function GesturePage() {
   const params = useParams();
-  const giftId = params?.giftId as string;
-  const [preview, setPreview] = useState<GiftPreview | null>(null);
+  const gestureId = params?.gestureId as string;
+  const [preview, setPreview] = useState<GesturePreview | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [addressMode, setAddressMode] = useState(false);
   const [address, setAddress] = useState("");
   const [replying, setReplying] = useState(false);
 
   useEffect(() => {
-    if (!giftId) return;
-    fetch(`/api/gifts/${giftId}`)
+    if (!gestureId) return;
+    fetch(`/api/gestures/${gestureId}`)
       .then((res) => {
         if (!res.ok) throw new Error("not found");
         return res.json();
@@ -84,12 +84,12 @@ export default function GiftPage() {
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
-  }, [giftId]);
+  }, [gestureId]);
 
-  async function sendChoice(choice: GiftRecipientChoice, addr?: string) {
+  async function sendChoice(choice: GestureRecipientChoice, addr?: string) {
     setReplying(true);
     try {
-      const res = await fetch(`/api/gifts/${giftId}`, {
+      const res = await fetch(`/api/gestures/${gestureId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ choice, ...(addr ? { address: addr } : {}) }),

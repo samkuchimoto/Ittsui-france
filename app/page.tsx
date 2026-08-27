@@ -485,7 +485,7 @@ export default function Home() {
                   visitor lands on, not buried three clicks deep in the
                   dashboard — real feedback: the feature existed but nobody
                   could discover it without already being a signed-in user. */}
-              <Link href="/cadeau/nouveau" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
+              <Link href="/geste/nouveau" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
                 Ou envoyer un petit geste à quelqu&apos;un, sans créer de compte →
               </Link>
             </div>
@@ -603,7 +603,7 @@ export default function Home() {
 
         <Reveal className="mt-8 text-center">
           <Link
-            href="/cadeau/nouveau"
+            href="/geste/nouveau"
             className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-transform hover:scale-[1.02]"
             style={{ borderColor: ACCENT, color: ACCENT }}
           >

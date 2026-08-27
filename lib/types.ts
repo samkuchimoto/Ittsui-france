@@ -242,10 +242,12 @@ export interface VenuePartner {
   createdAt: string;
 }
 
-// "Envoyer un geste" — a real, distinct relationship touchpoint from the
-// meeting-request flow: a physical gesture instead of a rendez-vous.
-// Framed deliberately as "send something", not "gift shop" — one
-// relationship action alongside a café or a walk, not a storefront.
+// "Envoyer un geste" — a real, distinct relationship action from the
+// meeting-request flow: a physical gesture (or just a note) instead of
+// a rendez-vous. Named Gesture deliberately, not "Gift" — per direct
+// 2026-08-27 feedback: this sits alongside a café or a walk as one of
+// several ways to act on a relationship, not a gift shop, and "geste"
+// is already the exact word every bit of French UI copy for it uses.
 // Four modes, not a product category:
 //   - "own": something the sender already has (a book, an object with
 //     history) — Ittsui arranges nothing, this is pure zero-API intent
@@ -253,9 +255,9 @@ export interface VenuePartner {
 //     over, mail it themselves), same honesty boundary as the rest of
 //     this feature.
 //   - "curated": a small, deliberately non-Amazon list of gesture types
-//     (see lib/giftLinks.ts's CURATED_ITEM_LABEL) — each links out to one
-//     real, well-known French merchant homepage to finish the gesture,
-//     never a fabricated specific-product deep link.
+//     (see lib/gestureLinks.ts's CURATED_ITEM_LABEL) — each links out to
+//     one real, well-known French merchant homepage to finish the
+//     gesture, never a fabricated specific-product deep link.
 //   - "suggested": Ittsui picks one curated item for the sender instead
 //     of asking them to choose — genuinely just decision-load removal
 //     (a deterministic pick, reshuffleable), not a claim that Ittsui
@@ -268,32 +270,34 @@ export interface VenuePartner {
 //     review, not as a variant of "curated".
 // `status` only ever tracks "the sender was notified/pointed somewhere,"
 // never "delivered" — this app has no real purchase/delivery API
-// partnership (see lib/giftLinks.ts and docs/three-fronts-and-gifting.md
-// for why Amazon/Deliveroo/Uber Direct specifically aren't it).
-export type GiftMode = "own" | "curated" | "suggested" | "message";
-export type CuratedGiftItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas";
-export type GiftGestureStatus = "sent";
+// partnership (see lib/gestureLinks.ts and
+// docs/three-fronts-and-gestures.md for why Amazon/Deliveroo/Uber Direct
+// specifically aren't it).
+export type GestureMode = "own" | "curated" | "suggested" | "message";
+export type CuratedGestureItem = "fleurs" | "livre" | "chocolat" | "plante" | "bougie" | "papeterie" | "repas";
+export type GestureStatus = "sent";
 // The recipient's own reply on how to actually get a physical "own"/
-// "curated"/"suggested" gesture to them — captured on /cadeau/[giftId]
-// (see /api/gifts/[giftId]'s PATCH) and, when the sender left an email,
-// relayed back to them so the loop actually closes instead of leaving
-// the sender to wonder whether anything happened after they clicked send.
-export type GiftRecipientChoice = "address" | "in_person";
+// "curated"/"suggested" gesture to them — captured on /geste/[gestureId]
+// (see /api/gestures/[gestureId]'s PATCH) and, when the sender left an
+// email, relayed back to them so the loop actually closes instead of
+// leaving the sender to wonder whether anything happened after they
+// clicked send.
+export type GestureRecipientChoice = "address" | "in_person";
 
-export interface GiftGesture {
+export interface Gesture {
   id: string;
   senderName: string;
   senderEmail?: string; // optional — only collected so the recipient's address/choice can be relayed back
   recipientName: string;
   recipientEmail?: string;
   recipientPhone?: string;
-  mode: GiftMode;
+  mode: GestureMode;
   itemDescription?: string; // "own" mode: sender's free-text description of the object itself
-  item?: CuratedGiftItem; // "curated"/"suggested" mode: which gesture type was picked
+  item?: CuratedGestureItem; // "curated"/"suggested" mode: which gesture type was picked
   note?: string; // required content for "message" mode; optional flourish otherwise
-  status: GiftGestureStatus;
+  status: GestureStatus;
   createdAt: string;
-  recipientChoice?: GiftRecipientChoice;
+  recipientChoice?: GestureRecipientChoice;
   recipientAddress?: string; // only present when recipientChoice === "address"
   recipientRespondedAt?: string; // ISO date
 }

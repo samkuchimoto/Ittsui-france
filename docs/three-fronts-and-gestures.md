@@ -1,12 +1,12 @@
 # SEO, Ittsui Partenaires, Early Access & "Envoyer un geste" — operating guide
 
 Walkthrough for the three fronts built this session (SEO fixes, the Ittsui Partenaires
-marketplace, early-access signups) plus the new gift-gesture feature, and what a fuller
-version of the gift feature would actually require. Every external claim below was checked
+marketplace, early-access signups) plus the new relationship-action ("geste") feature, and
+what a fuller version of it would actually require. Every external claim below was checked
 against the provider's own current documentation on 2026-08-27, not written from memory —
 this doc exists specifically because an earlier plan (courier APIs + Amazon) turned out to
 rest on capabilities those providers don't actually expose to a project at Ittsui's stage;
-see the "Gifting" section for the corrected picture.
+see the "Envoyer un geste" section for the corrected picture.
 
 ## 1. Ittsui Partenaires — reviewing and approving venue applications
 
@@ -67,11 +67,15 @@ to your Google account/domain ownership.
 land in Firestore's `earlyAccessSignups` collection, keyed by email for natural dedup. See
 section 1 above for how to read the list.
 
-## 4. "Envoyer un geste" (the gift feature) — what shipped and what a fuller version needs
+## 4. "Envoyer un geste" — what shipped and what a fuller version needs
+
+Named `Gesture`/`GestureMode` in code, not "Gift" — a direct 2026-08-27 naming correction: this
+sits alongside a café or a walk as one of several ways to act on a relationship, not a gift
+shop, and "geste" is already the exact word every bit of French UI copy for it uses.
 
 **What's live today** follows the framing the multi-AI review converged on hardest: this
 is "send something," one relationship action alongside a café or a walk — not a shop. At
-`/cadeau/nouveau` (surfaced as an equal-weight tab next to `/request/new`, on the homepage
+`/geste/nouveau` (surfaced as an equal-weight tab next to `/request/new`, on the homepage
 hero, and as a real button on the dashboard — not a link buried in small text, per direct
 2026-08-27 feedback that it existed but nobody could find it) the sender picks one of four
 modes, not a product category:
@@ -83,7 +87,7 @@ modes, not a product category:
   "I bought you something" — deliberately kept that way rather than routed through a courier
   API it doesn't need yet (see the Stuart note below for when that might change).
 - **🛍️ Quelque chose à choisir** — a small, curated list of gesture *types* (fleurs, livre,
-  chocolat, plante, bougie, papeterie, repas — `lib/giftLinks.ts`), each linking to one real
+  chocolat, plante, bougie, papeterie, repas — `lib/gestureLinks.ts`), each linking to one real
   merchant homepage to finish it. Capped at 7 on purpose — not an attempt at a catalog.
 - **✨ Laissez Ittsui vous proposer** — Ittsui picks one of the seven for the sender
   (reshuffleable). This is genuinely just decision-load removal, the same honesty principle
@@ -93,14 +97,14 @@ modes, not a product category:
   showed up as their *own* distinct relationship actions across the review, not as variants of
   each other. The zero-friction floor of the whole feature.
 
-The recipient's page (`/cadeau/[giftId]`) lets them reply with how they'd actually like to
+The recipient's page (`/geste/[gestureId]`) lets them reply with how they'd actually like to
 receive a physical gesture — an address, or in person next time — via a `PATCH` that's relayed
 back to the sender by email if they left one. That's the one piece of real interactivity this
 feature needed to not be a dead end: the sender finding out *something* happened after they
 hit send, without Ittsui ever claiming it arranged delivery itself.
 
 Ittsui never claims to have purchased, shipped, or tracked anything — `status` on a
-`GiftGesture` is only ever `"sent"`, because that's the only thing actually true.
+`Gesture` is only ever `"sent"`, because that's the only thing actually true.
 
 **Amazon is deliberately not in the curated list at all** — not just deprioritized. Every one
 of the four AI reviews flagged the same risk independently: centering Amazon risks Ittsui
@@ -127,15 +131,15 @@ actually exposes:
   · [developers.deliveroo.com](https://developers.deliveroo.com/)
 - **Stuart** is the closest thing to a same-city courier API usable without a huge merchant
   relationship (France-focused, has a real sandbox), but it moves a physical object from
-  point A to point B — it doesn't help pick or pay for the gift itself, and per-trip courier
-  cost (roughly €7–15 in Paris) can exceed the value of a small gesture.
+  point A to point B — it doesn't help pick or pay for the gesture itself, and per-trip
+  courier cost (roughly €7–15 in Paris) can exceed the value of a small gesture.
   [help.stuart.com/en/articles/7007518-getting-started-with-the-stuart-api](https://help.stuart.com/en/articles/7007518-getting-started-with-the-stuart-api)
 
 **The one option that actually matches the ambition** is **Goody**'s Commerce/Automation API
 — it's purpose-built for exactly this ("someone sends a gift without needing the recipient's
 address; the recipient supplies shipping when they open the link"), which is architecturally
-very close to how `/cadeau/[giftId]` already works today, just without Ittsui itself handling
-catalog or fulfillment.
+very close to how `/geste/[gestureId]` already works today, just without Ittsui itself
+handling catalog or fulfillment.
 [developer.ongoody.com/introduction/overview](https://developer.ongoody.com/introduction/overview)
 This is the one worth prototyping first if/when the deep-link v1 shows real usage — it needs
 a Goody business account (their own signup, not something I can request on your behalf), but
@@ -143,11 +147,11 @@ no courier/merchant partnership beyond that.
 
 **Recommended sequencing**, in order of what's real and available now:
 1. Ship v1 as-is (done) and see whether people actually use "envoyer un geste" at all, and
-   which of the three modes they reach for — that behavioral signal is worth more right now
+   which of the four modes they reach for — that behavioral signal is worth more right now
    than any integration would be.
 2. If "curated" usage justifies it, integrate Goody's API behind that mode specifically —
    real catalog, real fulfillment, no logistics for Ittsui to own, without touching the
-   "own"/"suggested" modes at all.
+   "own"/"suggested"/"message" modes at all.
 3. If "own" mode gets real usage, Stuart is the one worth evaluating for actually moving the
    object — a distinct, smaller feature from gifting a purchased item, worth its own
    validation before being bundled in.
