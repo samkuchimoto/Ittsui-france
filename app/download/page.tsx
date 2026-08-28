@@ -71,7 +71,8 @@ export default async function DownloadPage() {
               </dt>
               <dd className="mt-1">
                 Oui, le rituel de base reste gratuit pour toujours. Ittsui Plus (suggestions
-                enrichies, options supplémentaires) arrive bientôt.
+                enrichies, options supplémentaires) arrive bientôt, à partir de 1&nbsp;€/mois — le prix
+                d&apos;un café pour ne pas perdre le lien avec les gens qui comptent.
               </dd>
             </div>
             <div>

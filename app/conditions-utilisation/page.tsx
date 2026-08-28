@@ -103,7 +103,7 @@ export default function ConditionsUtilisationPage() {
           <Item title="Ce que nous fournissons, et ce que nous ne garantissons pas">
             <p>
               Le rituel hebdomadaire de base est gratuit, pour toujours. Ittsui Plus (suggestions
-              enrichies, options supplémentaires) arrivera plus tard à partir de 2,99&nbsp;€/mois — ces
+              enrichies, options supplémentaires) arrivera plus tard à partir de 1&nbsp;€/mois — ces
               conditions-ci seront mises à jour avec les modalités précises avant que cette offre ne soit
               activée. Ittsui propose des lieux et des créneaux à titre indicatif ; nous ne garantissons pas
               la disponibilité, l&apos;exactitude ou la pertinence de chaque suggestion, et ne sommes pas

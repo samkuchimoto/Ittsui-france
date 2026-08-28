@@ -790,9 +790,39 @@ export default function Home() {
             <IconArrowRight className="h-4 w-4" />
           </Link>
           <p className="mt-4 text-xs" style={{ color: MUTED }}>
-            Le rituel reste gratuit, pour toujours. Ittsui Plus (suggestions enrichies, options
-            supplémentaires) arrive bientôt, à partir de 2,99&nbsp;€/mois.
+            Le rituel reste gratuit, pour toujours.
           </p>
+
+          {/* Ittsui Plus — given its own real moment rather than a small
+              footnote caption, per direct product/pricing feedback: lead
+              with what a subscription actually protects (a specific
+              relationship — family, ami, partenaire), not a vague feature
+              list. €1/mois is a deliberate price point, not a placeholder
+              — cheaper than pushing back on a coffee, framed as exactly
+              that below. No fabricated feature list: "à venir" stays
+              honest about what Plus doesn't concretely include yet. */}
+          <div className="mt-8 rounded-2xl border p-6 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+            <div className="flex items-baseline justify-between">
+              <p className="text-sm font-semibold" style={{ color: ACCENT }}>
+                Ittsui Plus
+              </p>
+              <p className="text-sm" style={{ color: MUTED }}>
+                <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.5rem", color: INK }}>
+                  1&nbsp;€
+                </span>{" "}
+                / mois
+              </p>
+            </div>
+            <p className="mt-2 text-sm" style={{ color: INK }}>
+              Le prix d&apos;un café, pour ne pas perdre le lien avec votre famille, vos ami(e)s ou votre
+              partenaire.
+            </p>
+            <p className="mt-2 text-xs" style={{ color: MUTED }}>
+              Suggestions enrichies et options supplémentaires à venir — le rituel de base, lui, reste
+              gratuit pour toujours, Plus ou pas.
+            </p>
+          </div>
+
           <Link
             href="/download"
             className="mt-6 inline-flex items-center gap-1.5 text-sm underline underline-offset-4"

@@ -507,6 +507,7 @@ export default function DashboardClient() {
               relationshipKind={pair.relationshipKind}
               venueType={confirmedVenueType(week)}
             />
+            <PlusNudge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
             <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
             <NotificationTrail log={week.notificationLog} />
 
@@ -562,6 +563,7 @@ export default function DashboardClient() {
               relationshipKind={pair.relationshipKind}
               venueType={confirmedVenueType(week)}
             />
+            <PlusNudge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
             <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
             <NotificationTrail log={week.notificationLog} />
 
@@ -815,6 +817,25 @@ function ConfirmedMascotMoment({
       </span>
       <p className="text-xs" style={{ color: MUTED }}>Rendez-vous calé. On se tait jusqu&apos;à la prochaine fois.</p>
     </div>
+  );
+}
+
+// Surfaced at the one moment the product has just visibly worked — the
+// core loop delivering a real, locked-in rendez-vous — rather than as a
+// disconnected line in a footer nobody scrolls to. Kept deliberately
+// quiet (a plain text link, not a banner or button) to match this app's
+// existing restraint elsewhere, not a paywall interruption; real
+// 2026-08-28 pricing feedback (Dror Sharon) drove both the €1/mois
+// figure and the "show the value, then ask" placement.
+function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean }) {
+  if (status !== "confirmed" || lapsed) return null;
+  return (
+    <p className="mt-2 text-xs" style={{ color: MUTED }}>
+      <Link href="/#plus" className="underline underline-offset-4">
+        Ittsui Plus, 1&nbsp;€/mois
+      </Link>{" "}
+      — le prix d&apos;un café pour garder ce lien vivant.
+    </p>
   );
 }
 

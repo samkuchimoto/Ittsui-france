@@ -139,7 +139,11 @@ function Slider({
 export default function InvestorDashboardPage() {
   const [activePairsLog, setActivePairsLog] = useState(Math.log10(100_000));
   const [conversionRate, setConversionRate] = useState(12);
-  const [b2cArpu, setB2cArpu] = useState(4.99);
+  // €1/mois default — real 2026-08-28 investor feedback (Dror Sharon):
+  // paying customers are the metric that matters, not ARPU maximized per
+  // user; price low enough that "protect a relationship for less than a
+  // coffee" is an easy yes, and let conversion volume carry ARR instead.
+  const [b2cArpu, setB2cArpu] = useState(1);
   const [b2bTakeRate, setB2bTakeRate] = useState(15);
   const [valuationMultiple, setValuationMultiple] = useState(12);
   const [countryPhase, setCountryPhase] = useState<CountryPhase>("fr_us");
@@ -240,7 +244,7 @@ export default function InvestorDashboardPage() {
               label="ARPU B2C mensuel"
               value={b2cArpu}
               valueLabel={`€${b2cArpu.toFixed(2)}`}
-              min={2.99}
+              min={1}
               max={9.99}
               step={0.1}
               onChange={setB2cArpu}
