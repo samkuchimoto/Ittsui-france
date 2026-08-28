@@ -29,6 +29,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Fraunces, Work_Sans } from "next/font/google";
 import type { User } from "firebase/auth";
 import { watchAuthState } from "@/lib/firebase";
@@ -308,11 +309,13 @@ export default function NewGesturePage() {
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {MODES.map((m) => (
-            <button
+            <motion.button
               key={m.id}
               type="button"
               onClick={() => setMode(m.id)}
-              className="flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left transition-colors"
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left"
               style={
                 mode === m.id
                   ? { borderColor: ACCENT, backgroundColor: "rgba(184,78,42,0.06)" }
@@ -324,12 +327,20 @@ export default function NewGesturePage() {
               <span className="text-xs leading-snug" style={{ color: MUTED }}>
                 {m.subtitle}
               </span>
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {mode && (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+          <form id="gesture-form" onSubmit={handleSubmit} className="mt-8 space-y-8 pb-28">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={mode}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
             {mode === "own" && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
@@ -465,6 +476,8 @@ export default function NewGesturePage() {
                 />
               </div>
             )}
+              </motion.div>
+            </AnimatePresence>
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
@@ -648,24 +661,40 @@ export default function NewGesturePage() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={status === "submitting" || !canSubmit || (!recipientEmail && !recipientPhone)}
-              className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {status === "submitting"
-                ? mode === "painting"
-                  ? "Création de votre peinture..."
-                  : "Envoi..."
-                : "Prévenir " + (recipientName || "la personne")}
-            </button>
-            {!recipientEmail && !recipientPhone && (
-              <p className="-mt-2 text-center text-xs" style={{ color: MUTED }}>
-                Ajoutez le numéro ou l&apos;e-mail du destinataire pour pouvoir envoyer.
-              </p>
-            )}
           </form>
+        )}
+
+        {/* Pinned to the viewport, not the end of a long scroll — same
+            always-reachable-primary-action pattern well-established
+            booking flows (Doctolib, Calendly) use, rather than making
+            someone scroll back down to find "envoyer" after filling in
+            the last field. */}
+        {mode && (
+          <div
+            className="fixed inset-x-0 bottom-0 z-30 border-t px-6 py-4"
+            style={{ borderColor: BORDER, backgroundColor: "rgba(255,253,249,0.92)", backdropFilter: "blur(8px)" }}
+          >
+            <div className="mx-auto max-w-md">
+              <button
+                type="submit"
+                form="gesture-form"
+                disabled={status === "submitting" || !canSubmit || (!recipientEmail && !recipientPhone)}
+                className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
+                style={{ backgroundColor: ACCENT }}
+              >
+                {status === "submitting"
+                  ? mode === "painting"
+                    ? "Création de votre peinture..."
+                    : "Envoi..."
+                  : "Prévenir " + (recipientName || "la personne")}
+              </button>
+              {!recipientEmail && !recipientPhone && (
+                <p className="mt-2 text-center text-xs" style={{ color: MUTED }}>
+                  Ajoutez le numéro ou l&apos;e-mail du destinataire pour pouvoir envoyer.
+                </p>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </main>
