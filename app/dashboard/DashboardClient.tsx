@@ -30,7 +30,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, doc, updateDoc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { Pair, Week, VenueType } from "@/lib/types";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
@@ -120,27 +120,6 @@ function cadenceThisPeriod(cadence: Pair["cadence"]): string {
   if (cadence === "monthly") return "ce mois-ci";
   if (cadence === "yearly") return "cette année";
   return "cette semaine";
-}
-
-function cadencePeriodPlural(cadence: Pair["cadence"]): string {
-  if (cadence === "monthly") return "mois";
-  if (cadence === "yearly") return "années";
-  return "semaines";
-}
-
-// Counts consecutive confirmed periods, most recent first. The very latest
-// period (if still "proposed" — nobody's responded, or it lapsed unanswered)
-// hasn't resolved yet, so it's excluded rather than breaking the streak on
-// something that isn't actually a miss yet; an already-"cancelled" latest
-// period is a real, finalized miss and correctly stops the count at 0.
-function computeStreak(weeks: Week[]): number {
-  const resolved = weeks.length > 0 && weeks[0].status === "proposed" ? weeks.slice(1) : weeks;
-  let streak = 0;
-  for (const w of resolved) {
-    if (w.status !== "confirmed") break;
-    streak++;
-  }
-  return streak;
 }
 
 export default function DashboardClient() {
@@ -267,22 +246,6 @@ export default function DashboardClient() {
     getCountFromServer(q)
       .then((snap) => setConfirmedCount(snap.data().count))
       .catch(() => setConfirmedCount(null));
-  }, [pair, week?.status]);
-
-  // Consecutive-confirmed streak (Duolingo's loss-aversion mechanic, applied
-  // to a relationship instead of a language lesson) — distinct from
-  // confirmedCount's lifetime total above: a streak breaks the moment one
-  // period is missed, which is what actually motivates showing up again next
-  // time. Same one-time-read-over-listener reasoning as confirmedCount; 26
-  // periods back is comfortably more than any real streak needs to look
-  // past a single miss.
-  const [streak, setStreak] = useState<number | null>(null);
-  useEffect(() => {
-    if (!pair || pair.status !== "active") return;
-    const q = query(collection(db, "pairs", pair.id, "weeks"), orderBy("weekOf", "desc"), limit(26));
-    getDocs(q)
-      .then((snap) => setStreak(computeStreak(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Week))))
-      .catch(() => setStreak(null));
   }, [pair, week?.status]);
 
   async function handleSignOut() {
@@ -456,28 +419,14 @@ export default function DashboardClient() {
       </div>
 
       {/* Momentum, not just this week's card — silent for a brand-new pair
-          (0 confirmed yet isn't an encouraging thing to announce). Streak
-          only shows from 2 onward: at 1, confirmedCount's "1er rendez-vous"
-          already says the same thing without a second badge. */}
-      {(!!confirmedCount || (streak ?? 0) >= 2) && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {!!confirmedCount && (
-            <span
-              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-              style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
-            >
-              {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
-            </span>
-          )}
-          {(streak ?? 0) >= 2 && (
-            <span
-              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-              style={{ backgroundColor: "#FFF4E5", color: "#B8611A" }}
-            >
-              🔥 {streak} {cadencePeriodPlural(pair.cadence)} d&apos;affilée
-            </span>
-          )}
-        </div>
+          (0 confirmed yet isn't an encouraging thing to announce). */}
+      {!!confirmedCount && (
+        <span
+          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+          style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
+        >
+          {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
+        </span>
       )}
 
       {pair && (
