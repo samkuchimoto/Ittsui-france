@@ -502,7 +502,27 @@ export default function DashboardClient() {
           only ever link out to the marketing page's teaser, with no way to
           actually become Plus from inside the app itself. subscriptionStatus
           here reflects the webhook's own write, never this button directly
-          — a click only ever starts a Checkout session. */}
+          — a click only ever starts a Checkout session.
+
+          The redirect messages live OUTSIDE the active/not-yet-active split
+          below on purpose — real bug found 2026-08-28: they used to sit
+          inside the "not active" branch only, so the very common case where
+          the webhook lands before this page even finishes rendering meant
+          "success" never got a chance to show at all, jumping straight to
+          the badge with no acknowledgment of the payment someone just
+          actually made. Now it shows regardless of which state the badge
+          below is already in. */}
+      {plusRedirect === "success" && (
+        <p className="mt-2 text-xs" style={{ color: ACCENT }}>
+          Merci — un vrai geste pour rester proche de {pair.partnerName ?? "cette personne"}. 💛
+        </p>
+      )}
+      {plusRedirect === "cancelled" && (
+        <p className="mt-2 text-xs" style={{ color: MUTED }}>
+          Pas de souci, rien n&apos;a été débité — vous pouvez devenir membre fondateur quand vous voulez.
+        </p>
+      )}
+
       {pair.subscriptionStatus === "active" ? (
         <span
           className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
@@ -512,16 +532,6 @@ export default function DashboardClient() {
         </span>
       ) : (
         <div className="mt-3">
-          {plusRedirect === "success" && (
-            <p className="mb-1.5 text-xs" style={{ color: ACCENT }}>
-              Paiement reçu — merci ! Le statut Fondateur s&apos;active dans quelques instants.
-            </p>
-          )}
-          {plusRedirect === "cancelled" && (
-            <p className="mb-1.5 text-xs" style={{ color: MUTED }}>
-              Paiement annulé — rien n&apos;a été débité.
-            </p>
-          )}
           <button
             onClick={handleUpgradeToPlus}
             disabled={upgrading}
