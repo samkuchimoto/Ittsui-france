@@ -560,7 +560,9 @@ export default function RequestFormClient() {
         return;
       }
 
+      const filledLabels: string[] = [];
       if (result.recipientName) {
+        filledLabels.push("destinataire");
         const needle = result.recipientName.toLowerCase();
         const match = contacts.find(
           (c) => c.name.toLowerCase().includes(needle) || needle.includes(c.name.toLowerCase())
@@ -568,15 +570,35 @@ export default function RequestFormClient() {
         if (match) pickContact(match);
         else update("recipientName", result.recipientName);
       }
-      if (result.venueName) update("venueName", result.venueName);
-      if (result.venueAddress) update("venueAddress", result.venueAddress);
+      if (result.venueName) {
+        filledLabels.push("lieu");
+        update("venueName", result.venueName);
+      }
+      if (result.venueAddress) {
+        if (!filledLabels.includes("lieu")) filledLabels.push("lieu");
+        update("venueAddress", result.venueAddress);
+      }
       if (result.venueType) update("venueType", result.venueType);
-      if (result.date) update("date", result.date);
-      if (result.time) update("time", result.time);
+      if (result.date) {
+        filledLabels.push("date");
+        update("date", result.date);
+      }
+      if (result.time) {
+        filledLabels.push("heure");
+        update("time", result.time);
+      }
 
-      const filledCount = Object.values(result).filter(Boolean).length;
+      // Real gap fixed 2026-08-28: "Champs pré-remplis" used to show
+      // whenever ANY single field was found, even just one out of six —
+      // reading as a generic success next to five still-blank fields made
+      // the feature look broken on a short, low-information input like
+      // "Café du marais" (which genuinely has no name/date/time in it to
+      // extract). Now names exactly what it found, so a partial result
+      // reads as partial, not as a false "it worked."
       setParseMessage(
-        filledCount > 0 ? "Champs pré-remplis — vérifiez avant d'envoyer." : "Rien n'a pu être deviné — complétez ci-dessous."
+        filledLabels.length > 0
+          ? `Deviné : ${filledLabels.join(", ")} — complétez le reste vous-même.`
+          : "Rien n'a pu être deviné — complétez ci-dessous."
       );
     } catch {
       setParseMessage("Rien n'a pu être deviné — complétez ci-dessous.");
