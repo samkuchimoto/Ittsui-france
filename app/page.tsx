@@ -387,6 +387,17 @@ function FridayCard() {
 // --- end Friday Card ------------------------------------------------------
 
 export default function Home() {
+  // Sticky nav gains a background/border only once there's actual page
+  // content scrolled behind it — at the very top it stays transparent
+  // over the hero rather than drawing a hairline across empty cream.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <main
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
@@ -410,27 +421,39 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Nav */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2">
-          <MascotAvatar characterId="kokoro" variant="bust" size={32} />
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem" }}>Ittsui</span>
-          <span className="text-sm" style={{ color: MUTED }}>一対</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: MUTED }}>
-            App mobile
+      {/* Nav — sticky so the primary CTA stays reachable across a long
+          single-page scroll (many sections below), transparent at rest
+          over the hero and only gaining a background/hairline once
+          there's real content behind it. */}
+      <header
+        className="sticky top-0 z-40 transition-[background-color,border-color,backdrop-filter] duration-300"
+        style={{
+          backgroundColor: scrolled ? "rgba(255,253,249,0.85)" : "transparent",
+          backdropFilter: scrolled ? "blur(10px)" : "none",
+          borderBottom: `1px solid ${scrolled ? BORDER : "transparent"}`,
+        }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <Link href="/" className="flex items-center gap-2">
+            <MascotAvatar characterId="kokoro" variant="bust" size={32} />
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem" }}>Ittsui</span>
+            <span className="text-sm" style={{ color: MUTED }}>一対</span>
           </Link>
-          <Link href="/setup" className="text-sm transition-colors" style={{ color: MUTED }}>
-            Connexion
-          </Link>
-          <Link
-            href="/setup"
-            className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm text-white transition-transform hover:scale-[1.02]"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Commencer
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: MUTED }}>
+              App mobile
+            </Link>
+            <Link href="/setup" className="text-sm transition-colors" style={{ color: MUTED }}>
+              Connexion
+            </Link>
+            <Link
+              href="/setup"
+              className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm text-white transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Commencer
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -472,22 +495,30 @@ export default function Home() {
                 <IconSparkles className="h-3.5 w-3.5" />
                 Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
               </p>
-              {/* /request/new is deliberately usable with no account at all
-                  (see that file's own header comment) — a real, lower-
-                  commitment way in for someone not ready for a standing
-                  weekly ritual yet, but every CTA on this page used to
-                  point at /setup only, so a first-time visitor had no way
-                  to even discover it existed. */}
-              <Link href="/request/new" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
-                Ou proposez un seul rendez-vous d&apos;abord, sans créer de compte →
-              </Link>
-              {/* "Envoyer un geste" made visible from the very first page a
-                  visitor lands on, not buried three clicks deep in the
-                  dashboard — real feedback: the feature existed but nobody
-                  could discover it without already being a signed-in user. */}
-              <Link href="/geste/nouveau" className="text-sm underline underline-offset-4" style={{ color: MUTED }}>
-                Ou envoyer un petit geste à quelqu&apos;un, sans créer de compte →
-              </Link>
+              {/* Two lower-commitment, no-account entry points — both
+                  usable without signing up (see /request/new and
+                  /geste/nouveau's own header comments) — consolidated into
+                  one quiet row instead of two full-sentence lines stacked
+                  under the primary CTA, so the hero keeps one clear focal
+                  action rather than three competing calls to action.
+                  Real feedback drove adding both: a lower-commitment way
+                  in for someone not ready for a standing weekly ritual,
+                  and "envoyer un geste" existing but being undiscoverable
+                  outside the dashboard. */}
+              <div className="mt-1 flex items-center gap-4 text-sm">
+                <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
+                  Proposer un rendez-vous
+                </Link>
+                <span aria-hidden="true" style={{ color: BORDER }}>
+                  ·
+                </span>
+                <Link href="/geste/nouveau" className="underline underline-offset-4" style={{ color: MUTED }}>
+                  Envoyer un geste
+                </Link>
+              </div>
+              <p className="text-xs" style={{ color: `${MUTED}99` }}>
+                Sans créer de compte
+              </p>
             </div>
           </Reveal>
 
@@ -591,10 +622,19 @@ export default function Home() {
             { emoji: "🛍️", title: "Une petite attention", body: "Choisissez un type de geste — fleurs, livre, chocolat — et faites-le livrer." },
             { emoji: "✨", title: "Laissez Ittsui trouver l'idée", body: "Une suggestion toute faite, pour ne pas avoir à réfléchir." },
           ].map((tile) => (
-            <div key={tile.title} className="rounded-2xl border bg-white p-5 text-left" style={{ borderColor: BORDER }}>
-              <span className="text-2xl">{tile.emoji}</span>
-              <p className="mt-3 text-sm font-medium">{tile.title}</p>
-              <p className="mt-1 text-xs" style={{ color: MUTED }}>
+            <div
+              key={tile.title}
+              className="rounded-2xl border bg-white p-5 text-left transition-shadow hover:shadow-sm"
+              style={{ borderColor: BORDER }}
+            >
+              <span
+                className="flex h-11 w-11 items-center justify-center rounded-full text-xl"
+                style={{ backgroundColor: `${ACCENT}14` }}
+              >
+                {tile.emoji}
+              </span>
+              <p className="mt-4 text-sm font-medium">{tile.title}</p>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: MUTED }}>
                 {tile.body}
               </p>
             </div>
@@ -693,22 +733,32 @@ export default function Home() {
           </div>
         </Reveal>
 
-        {/* Real, unedited quotes from early testers — never fabricated,
-            never a star rating or a fake name. See AGENTS.md's standing
-            position on this: authentic-but-anonymous beats persuasive but
-            invented every time. */}
-        <Reveal className="mx-auto mt-10 max-w-2xl">
+      </section>
+
+      {/* Real, unedited quotes from early testers — never fabricated,
+          never a star rating or a fake name. See AGENTS.md's standing
+          position on this: authentic-but-anonymous beats persuasive but
+          invented every time. Own section with a faint tint so social
+          proof reads as its own moment, not an addendum tacked onto the
+          numbered steps above. */}
+      <section className="border-t px-6 py-16 sm:py-20" style={{ borderColor: BORDER, backgroundColor: `${ACCENT}08` }}>
+        <Reveal className="mx-auto max-w-2xl">
           <p className="text-center text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
             Premiers retours
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {[
               { quote: "C'est rapide, fluide… SMS c'est clean.", from: "Testeur parisien, 27 août 2026" },
               { quote: "Permet de trouver un contact rapidement.", from: "Testeur parisien, 27 août 2026" },
               { quote: "UI is nice… Intuitive.", from: "Étudiante américaine à Paris, 27 août 2026" },
             ].map((t) => (
-              <div key={t.quote} className="rounded-xl border p-4 text-sm" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-                <p style={{ color: INK }}>&ldquo;{t.quote}&rdquo;</p>
+              <div key={t.quote} className="rounded-xl border bg-white p-4 text-sm" style={{ borderColor: BORDER }}>
+                <p aria-hidden="true" className="leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", color: `${ACCENT}66` }}>
+                  &ldquo;
+                </p>
+                <p className="-mt-2" style={{ color: INK }}>
+                  {t.quote}
+                </p>
                 <p className="mt-2 text-xs" style={{ color: MUTED }}>— {t.from}</p>
               </div>
             ))}
