@@ -822,7 +822,7 @@ export default function RequestFormClient() {
             </button>
           </div>
         ) : (
-          <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-6 pb-28">
             {!simpleMode && (
               <section>
                 <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
@@ -1228,7 +1228,20 @@ export default function RequestFormClient() {
                 {error}
               </p>
             )}
+          </div>
+        )}
+      </div>
 
+      {/* Pinned to the viewport rather than the end of a long scroll —
+          same always-reachable-primary-action pattern as /geste/nouveau
+          (Doctolib/Calendly-style: the CTA that finishes the flow
+          shouldn't require scrolling back down to find). */}
+      {!sentTo && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t px-6 py-4"
+          style={{ borderColor: BORDER, backgroundColor: "rgba(255,253,249,0.92)", backdropFilter: "blur(8px)" }}
+        >
+          <div className="mx-auto max-w-md">
             {user ? (
               <button
                 onClick={handleSend}
@@ -1256,14 +1269,14 @@ export default function RequestFormClient() {
                 >
                   {signingIn ? "Connexion..." : "Se connecter pour envoyer"}
                 </button>
-                <p className="mt-3 text-center text-xs" style={{ color: MUTED }}>
+                <p className="mt-2 text-center text-xs" style={{ color: MUTED }}>
                   Via Google, juste pour vérifier que c&apos;est bien vous.
                 </p>
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </main>
   );
 }
