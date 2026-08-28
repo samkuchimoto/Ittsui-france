@@ -79,14 +79,24 @@ export async function groqComplete(
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Same visibility fix as mistralComplete (2026-08-28) — was silently
+      // swallowed before, meaning a real failure on BOTH vendors in a row
+      // (the actual worst case for any caller) left zero trail either.
+      const body = await res.text().catch(() => "");
+      console.error(`groqComplete: ${res.status} ${body.slice(0, 300)}`);
+      return null;
+    }
 
     const data = await res.json();
     const content: unknown = data?.choices?.[0]?.message?.content;
     return typeof content === "string" ? content.trim() : null;
-  } catch {
+  } catch (err) {
     // Timeout (AbortError), network error, or bad JSON — all the same:
-    // the caller's next option is the correct fallback.
+    // the caller's next option is the correct fallback, but still worth
+    // logging now that this is the last vendor in the chain for callers
+    // like parseMeetingRequestText.
+    console.error("groqComplete: request threw", err);
     return null;
   } finally {
     clearTimeout(timeout);

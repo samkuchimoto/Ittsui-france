@@ -89,10 +89,15 @@ function buildSystemPrompt(todayISO: string, todayWeekdayLabel: string): string 
     "français d'un rendez-vous entre deux proches. Réponds UNIQUEMENT avec " +
     "un objet JSON valide, sans backticks, sans explication. Champs (null " +
     "si absent ou incertain) : recipientName (prénom ou nom de la " +
-    "personne), venueName (nom du lieu s'il est nommé), venueAddress " +
+    "personne), venueName (nom du lieu OU du quartier/zone mentionné — " +
+    "\"vers Bastille\", \"dans le Marais\", \"proche de Montmartre\" comptent " +
+    "tous comme un venueName valide, ce n'est pas réservé aux noms " +
+    "d'établissements précis), venueAddress " +
     "(adresse uniquement si elle est explicitement mentionnée, jamais " +
     "inventée), venueType (un seul parmi : cafe, restaurant, home, park, " +
-    "museum — ou null), time (format HH:MM, 24h ; \"soir\" sans heure " +
+    "museum — ou null ; déduis-le du mot utilisé même sans lieu nommé, ex. " +
+    "\"un café\" -> cafe, \"un resto\"/\"dîner\" -> restaurant), time " +
+    "(format HH:MM, 24h ; \"soir\" sans heure " +
     "précise = 19:00 ; \"midi\" = 12:00), relativeDay — NE CALCULE AUCUNE " +
     "DATE toi-même, choisis uniquement la catégorie qui correspond au " +
     "texte parmi : today, tomorrow, day_after_tomorrow, mon, tue, wed, " +

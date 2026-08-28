@@ -578,7 +578,10 @@ export default function RequestFormClient() {
         if (!filledLabels.includes("lieu")) filledLabels.push("lieu");
         update("venueAddress", result.venueAddress);
       }
-      if (result.venueType) update("venueType", result.venueType);
+      if (result.venueType) {
+        if (!filledLabels.includes("lieu")) filledLabels.push("lieu");
+        update("venueType", result.venueType);
+      }
       if (result.date) {
         filledLabels.push("date");
         update("date", result.date);

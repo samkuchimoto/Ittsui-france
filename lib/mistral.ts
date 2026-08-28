@@ -64,12 +64,23 @@ export async function mistralComplete(
       }),
       signal: controller.signal,
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      // Real gap fixed 2026-08-28: this used to fail completely silently,
+      // by design ("no console logging, just null"), which meant a real
+      // production failure on parseMeetingRequestText had zero trail to
+      // diagnose from — no way to tell "Mistral genuinely failed here" from
+      // "Mistral was never even tried." Still falls through to the
+      // caller's next option exactly as before; this only adds visibility.
+      const body = await response.text().catch(() => "");
+      console.error(`mistralComplete: ${response.status} ${body.slice(0, 300)}`);
+      return null;
+    }
 
     const data = await response.json();
     const content: unknown = data?.choices?.[0]?.message?.content;
     return typeof content === "string" ? content.trim() : null;
-  } catch {
+  } catch (err) {
+    console.error("mistralComplete: request threw", err);
     return null;
   } finally {
     clearTimeout(timeout);
