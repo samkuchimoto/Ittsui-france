@@ -495,16 +495,20 @@ export default function Home() {
                 <IconSparkles className="h-3.5 w-3.5" />
                 Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
               </p>
-              {/* Two lower-commitment, no-account entry points — both
-                  usable without signing up (see /request/new and
-                  /geste/nouveau's own header comments) — consolidated into
-                  one quiet row instead of two full-sentence lines stacked
-                  under the primary CTA, so the hero keeps one clear focal
-                  action rather than three competing calls to action.
-                  Real feedback drove adding both: a lower-commitment way
-                  in for someone not ready for a standing weekly ritual,
-                  and "envoyer un geste" existing but being undiscoverable
-                  outside the dashboard. */}
+              {/* Two lower-commitment entry points, consolidated into one
+                  quiet row instead of two full-sentence lines stacked under
+                  the primary CTA. Real feedback drove adding both: a
+                  lower-commitment way in for someone not ready for a
+                  standing weekly ritual, and "envoyer un geste" existing but
+                  being undiscoverable outside the dashboard.
+                  Caption fixed 2026-08-28 (real audit finding): "Sans créer
+                  de compte" used to sit under both links but was only true
+                  for one — sending a custom rendez-vous requires a real
+                  Google sign-in at the final step (see RequestFormClient's
+                  handleConnect), only the *recipient* never needs an
+                  account, for either flow. Rephrased to the claim that's
+                  actually true for both rather than dropping the one that
+                  is. */}
               <div className="mt-1 flex items-center gap-4 text-sm">
                 <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
                   Proposer un rendez-vous
@@ -517,7 +521,7 @@ export default function Home() {
                 </Link>
               </div>
               <p className="text-xs" style={{ color: `${MUTED}99` }}>
-                Sans créer de compte
+                La personne qui reçoit n&apos;a jamais besoin de créer de compte
               </p>
             </div>
           </Reveal>
@@ -676,6 +680,17 @@ export default function Home() {
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
                   Chaque semaine, recevez une proposition unique, prête à être validée en un clic.
+                </p>
+                {/* The weekly proposal is the default, not a ceiling — this
+                    clarifies the override right where someone would first
+                    wonder "what if I already have a plan," rather than as
+                    its own marketing section (real 2026-08-28 gap: the
+                    /request/new link already existed in the hero, but
+                    nothing told a reader what it actually meant). */}
+                <p className="mt-2 text-sm">
+                  <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
+                    Vous savez déjà quoi faire ? Proposez votre propre rendez-vous →
+                  </Link>
                 </p>
               </div>
             </li>
