@@ -820,6 +820,22 @@ export default function RequestFormClient() {
             >
               Retour au tableau de bord
             </button>
+
+            {/* Plus CTA added 2026-08-28 (direct feedback: this was a real
+                gap — the moment right after someone's just done something
+                thoughtful for another person is exactly where "become a
+                founding member" belongs, same reasoning as the existing
+                post-accept nudge elsewhere in this app). Links to
+                /dashboard, same as every other Plus entry point — purchase
+                itself is pair-scoped and that page already handles
+                showing the real button vs. redirecting to sign in. */}
+            <Link
+              href="/dashboard"
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-3 text-sm font-medium transition-transform hover:scale-[1.01]"
+              style={{ borderColor: ACCENT, color: ACCENT }}
+            >
+              Devenir membre fondateur — 1&nbsp;€/mois →
+            </Link>
           </div>
         ) : (
           <div className="mt-6 space-y-6 pb-28">

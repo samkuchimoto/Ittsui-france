@@ -324,6 +324,18 @@ export default function NewGesturePage() {
           >
             Retour au tableau de bord
           </button>
+
+          {/* Same Plus CTA as /request/new's confirmation screen, same
+              reasoning: right after sending something thoughtful is a
+              real, well-matched moment for "become a founding member,"
+              not a generic ask. */}
+          <Link
+            href="/dashboard"
+            className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-3 text-sm font-medium transition-transform hover:scale-[1.01]"
+            style={{ borderColor: ACCENT, color: ACCENT }}
+          >
+            Devenir membre fondateur — 1&nbsp;€/mois →
+          </Link>
         </div>
       </main>
     );
