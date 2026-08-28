@@ -204,7 +204,17 @@ function StepDots({ step }: { step: 1 | 2 | 3 }) {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+// showOriginStory defaults to false and is only passed true at the real
+// wizard's own <Shell> call site (below). Real bug fixed 2026-08-28: Shell
+// is also reused for the transient "checking auth / checking for an
+// existing pair" loading state, which used to mount OriginStorySheet
+// immediately too — for anyone who already has an active pair, that
+// loading Shell shows for under a second before router.push("/dashboard")
+// unmounts the whole tree, so the sheet would flash open and vanish
+// before there was any chance to read it or tap "Passer." Gating it to
+// only the confirmed-wizard render means it never mounts unless someone
+// is actually staying on this page to see it.
+function Shell({ children, showOriginStory = false }: { children: React.ReactNode; showOriginStory?: boolean }) {
   // Hides the small header mascot mark while the origin story sheet is
   // open — its own pair is already on screen, larger; showing both at
   // once duplicated the same graphic (confirmed live, and flagged
@@ -215,7 +225,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
       style={{ color: INK }}
     >
-      <OriginStorySheet onOpenChange={setStorySheetOpen} />
+      {showOriginStory && <OriginStorySheet onOpenChange={setStorySheetOpen} />}
       <div className="mx-auto max-w-md px-6 py-14">
         {/* One-tap way back to the homepage from any step/state on this
             page — real feedback: there was no way out of some screens
@@ -716,7 +726,7 @@ export default function SetupClient() {
 
   // Signed in, no pair yet: the 3-step wizard
   return (
-    <Shell>
+    <Shell showOriginStory>
       <div className="mb-8 text-center">
         <p className="text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
           Étape {step} sur 3
