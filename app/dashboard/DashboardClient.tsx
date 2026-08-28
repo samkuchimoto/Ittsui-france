@@ -24,7 +24,7 @@
 // elsewhere in the app.
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -459,97 +459,124 @@ export default function DashboardClient() {
         </div>
       )}
 
-      {!week && (
-        <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
-          {/* Single large hero character — Mochi's "little joy, full of
-              wonder" fits the waiting mood itself, independent of which
-              relationship this pair is. Gentle idle float since this is
-              exactly the kind of contained, occasional hero moment worth
-              the motion, unlike a bust icon or a header mark. */}
-          <Mascot name="mochi" size="xl" float className={pair?.paused ? "opacity-40" : undefined} />
-          <p className="text-sm" style={{ color: MUTED }}>
-            {pair?.paused
-              ? "En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris."
-              : "Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu."}
-          </p>
-        </div>
-      )}
-
-      {week && !week.optionB && (
-        <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-          <VenuePhoto venueType={week.optionA?.venueType} />
-          <p className="text-base font-medium">{week.confirmationText}</p>
-
-          <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
-          <ConfirmedMascotMoment
-            status={isLapsed(week) ? "cancelled" : week.status}
-            lapsed={isLapsed(week)}
-            relationshipKind={pair.relationshipKind}
-            venueType={confirmedVenueType(week)}
-          />
-          <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
-          <NotificationTrail log={week.notificationLog} />
-
-          {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
-            <div className="mt-5 flex gap-3">
-              <motion.button
-                onClick={() => queueResponse("yes")}
-                disabled={responding}
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="min-h-[56px] flex-1 rounded-full text-lg font-medium text-white disabled:opacity-50"
-                style={{ backgroundColor: ACCENT }}
-              >
-                Oui
-              </motion.button>
-              <motion.button
-                onClick={() => queueResponse("no")}
-                disabled={responding}
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="min-h-[56px] flex-1 rounded-full border text-lg font-medium disabled:opacity-50"
-                style={{ borderColor: BORDER, color: INK }}
-              >
-                Non
-              </motion.button>
-            </div>
-          )}
-
-          {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
-            <p className="mt-4 text-sm" style={{ color: MUTED }}>
-              En attente de l&apos;autre personne…
+      {/* Cross-fades whenever the actual displayed state changes (empty ->
+          proposed -> confirmed, etc.) instead of jump-cutting — the same
+          "reduce the cognitive jump between steps" pattern applied to
+          /geste/nouveau's mode switcher, here driven by real-time
+          Firestore updates rather than a click. Purely presentational:
+          every handler/prop below is unchanged. */}
+      <AnimatePresence mode="wait">
+        {!week ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-6 flex flex-col items-center gap-3 py-4 text-center"
+          >
+            {/* Single large hero character — Mochi's "little joy, full of
+                wonder" fits the waiting mood itself, independent of which
+                relationship this pair is. Gentle idle float since this is
+                exactly the kind of contained, occasional hero moment worth
+                the motion, unlike a bust icon or a header mark. */}
+            <Mascot name="mochi" size="xl" float className={pair?.paused ? "opacity-40" : undefined} />
+            <p className="text-sm" style={{ color: MUTED }}>
+              {pair?.paused
+                ? "En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris."
+                : "Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu."}
             </p>
-          )}
-        </div>
-      )}
+          </motion.div>
+        ) : !week.optionB ? (
+          <motion.div
+            key={`one-${week.id}-${isLapsed(week) ? "lapsed" : week.status}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-6 rounded-2xl border p-5"
+            style={{ borderColor: BORDER, backgroundColor: "white" }}
+          >
+            <VenuePhoto venueType={week.optionA?.venueType} />
+            <p className="text-base font-medium">{week.confirmationText}</p>
 
-      {week && week.optionB && (
-        <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-          <p className="text-base font-medium">
-            {week.status === "proposed" ? `Deux propositions pour vous ${cadenceThisPeriod(pair.cadence)} :` : week.confirmationText}
-          </p>
+            <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+            <ConfirmedMascotMoment
+              status={isLapsed(week) ? "cancelled" : week.status}
+              lapsed={isLapsed(week)}
+              relationshipKind={pair.relationshipKind}
+              venueType={confirmedVenueType(week)}
+            />
+            <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
+            <NotificationTrail log={week.notificationLog} />
 
-          <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
-          <ConfirmedMascotMoment
-            status={isLapsed(week) ? "cancelled" : week.status}
-            lapsed={isLapsed(week)}
-            relationshipKind={pair.relationshipKind}
-            venueType={confirmedVenueType(week)}
-          />
-          <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
-          <NotificationTrail log={week.notificationLog} />
+            {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
+              <div className="mt-5 flex gap-3">
+                <motion.button
+                  onClick={() => queueResponse("yes")}
+                  disabled={responding}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="min-h-[56px] flex-1 rounded-full text-lg font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Oui
+                </motion.button>
+                <motion.button
+                  onClick={() => queueResponse("no")}
+                  disabled={responding}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="min-h-[56px] flex-1 rounded-full border text-lg font-medium disabled:opacity-50"
+                  style={{ borderColor: BORDER, color: INK }}
+                >
+                  Non
+                </motion.button>
+              </div>
+            )}
 
-          {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
-            <TwoOptionPicker week={week} onVote={queueResponse} voting={responding} />
-          )}
-
-          {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
-            <p className="mt-4 text-sm" style={{ color: MUTED }}>
-              En attente de l&apos;autre personne…
+            {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
+              <p className="mt-4 text-sm" style={{ color: MUTED }}>
+                En attente de l&apos;autre personne…
+              </p>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`two-${week.id}-${isLapsed(week) ? "lapsed" : week.status}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-6 rounded-2xl border p-5"
+            style={{ borderColor: BORDER, backgroundColor: "white" }}
+          >
+            <p className="text-base font-medium">
+              {week.status === "proposed" ? `Deux propositions pour vous ${cadenceThisPeriod(pair.cadence)} :` : week.confirmationText}
             </p>
-          )}
-        </div>
-      )}
+
+            <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
+            <ConfirmedMascotMoment
+              status={isLapsed(week) ? "cancelled" : week.status}
+              lapsed={isLapsed(week)}
+              relationshipKind={pair.relationshipKind}
+              venueType={confirmedVenueType(week)}
+            />
+            <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
+            <NotificationTrail log={week.notificationLog} />
+
+            {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
+              <TwoOptionPicker week={week} onVote={queueResponse} voting={responding} />
+            )}
+
+            {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
+              <p className="mt-4 text-sm" style={{ color: MUTED }}>
+                En attente de l&apos;autre personne…
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <HitbonenutPause
         open={pendingResponse !== null}
