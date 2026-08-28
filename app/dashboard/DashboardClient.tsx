@@ -25,7 +25,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Fraunces, Work_Sans } from "next/font/google";
@@ -124,12 +124,30 @@ function cadenceThisPeriod(cadence: Pair["cadence"]): string {
 
 export default function DashboardClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // null = not checked yet, false = checked and not signed in
   const [user, setUser] = useState<User | null | false>(null);
   const [pair, setPair] = useState<Pair | null>(null);
   const [pairChecked, setPairChecked] = useState(false);
   const [pauseUpdating, setPauseUpdating] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  // Set from ?plus=success|cancelled, the redirect Stripe Checkout sends
+  // people back to (see /api/stripe/checkout's success_url/cancel_url).
+  // "success" here means Checkout completed, not that Plus is active yet
+  // — the webhook is what actually flips subscriptionStatus, and the
+  // existing onSnapshot listener on `pair` below picks that up on its own
+  // once it lands, typically within a second or two.
+  const [plusRedirect, setPlusRedirect] = useState<"success" | "cancelled" | null>(null);
+  useEffect(() => {
+    const value = searchParams.get("plus");
+    if (value === "success" || value === "cancelled") {
+      setPlusRedirect(value);
+      router.replace("/dashboard");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [week, setWeek] = useState<Week | null>(null);
   const [responding, setResponding] = useState(false);
   // 3-second escape hatch, matching /invite's existing "slowConnection"
@@ -270,6 +288,40 @@ export default function DashboardClient() {
       // best-effort — pair state above stays whatever it last was
     } finally {
       setPauseUpdating(false);
+    }
+  }
+
+  // Real Stripe Checkout redirect — /api/stripe/checkout verifies this
+  // user is actually part of `pair` server-side before creating a session,
+  // so the ID token below isn't optional the way a plain userId would be
+  // elsewhere in this app; this starts a real charge. 501 specifically
+  // means STRIPE_PLUS_PRICE_ID isn't configured yet (billing not live),
+  // surfaced as its own message rather than a generic error.
+  async function handleUpgradeToPlus() {
+    if (!user || !pair || upgrading) return;
+    setUpgrading(true);
+    setUpgradeError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ pairId: pair.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUpgradeError(
+          res.status === 501
+            ? "Le paiement n'est pas encore activé — revenez bientôt."
+            : (data?.error ?? "Une erreur est survenue.")
+        );
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setUpgradeError("Une erreur est survenue.");
+    } finally {
+      setUpgrading(false);
     }
   }
 
@@ -435,16 +487,50 @@ export default function DashboardClient() {
         </div>
       )}
 
-      {/* The only mention of the paid tier used to live solely on the
-          marketing page — someone already using the app had no way to even
-          discover it exists. Links back to the public page's own teaser
-          rather than duplicating the "bientôt, pas encore de paiement"
-          disclosure in a second place. */}
-      <p className="mt-2 text-xs" style={{ color: MUTED }}>
-        <Link href="/#plus" className="underline underline-offset-4">
-          Découvrir Ittsui Plus
-        </Link>
-      </p>
+      {/* Real purchase entry point (2026-08-28) — the paid tier used to
+          only ever link out to the marketing page's teaser, with no way to
+          actually become Plus from inside the app itself. subscriptionStatus
+          here reflects the webhook's own write, never this button directly
+          — a click only ever starts a Checkout session. */}
+      {pair.subscriptionStatus === "active" ? (
+        <span
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+          style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
+        >
+          ✓ Membre Fondateur
+        </span>
+      ) : (
+        <div className="mt-3">
+          {plusRedirect === "success" && (
+            <p className="mb-1.5 text-xs" style={{ color: ACCENT }}>
+              Paiement reçu — merci ! Le statut Fondateur s&apos;active dans quelques instants.
+            </p>
+          )}
+          {plusRedirect === "cancelled" && (
+            <p className="mb-1.5 text-xs" style={{ color: MUTED }}>
+              Paiement annulé — rien n&apos;a été débité.
+            </p>
+          )}
+          <button
+            onClick={handleUpgradeToPlus}
+            disabled={upgrading}
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
+            style={{ backgroundColor: ACCENT }}
+          >
+            {upgrading ? "..." : "Devenir membre fondateur — 1 €/mois"}
+          </button>
+          {upgradeError && (
+            <p className="mt-1.5 text-xs" style={{ color: ACCENT }}>
+              {upgradeError}
+            </p>
+          )}
+          <p className="mt-1.5 text-xs" style={{ color: MUTED }}>
+            <Link href="/#plus" className="underline underline-offset-4">
+              En savoir plus
+            </Link>
+          </p>
+        </div>
+      )}
 
       {pair && (
         <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: MUTED }}>

@@ -77,6 +77,15 @@ export interface Pair {
   paused?: boolean;
   preferences: Preferences;
   subscriptionStatus: "active" | "trialing" | "past_due" | "canceled";
+  // Set once a real Stripe Checkout session completes for this pair (see
+  // app/api/stripe/webhook/route.ts) — absent for every pair that has
+  // never gone through checkout, which is every pair created before
+  // 2026-08-28's real billing integration. Kept on the pair (not the
+  // user) because subscriptionStatus itself is already pair-scoped, not
+  // per-person — one Plus subscription protects the relationship, not
+  // either individual account.
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
   createdAt: string; // ISO date
   // Real delivery record for the invite email, not an assumption — set by
   // invite-partner/route.ts right after actually attempting to send it.
