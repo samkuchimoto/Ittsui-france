@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import { generateWarmConfirmation } from "@/lib/confirmationText";
 import type { Pair, VenueOption, Week } from "@/lib/types";
@@ -29,7 +30,7 @@ const bodySchema = z.object({
 
 type TxOutcome =
   | { ok: false; error: string; status: number }
-  | { ok: true; newStatus: Week["status"]; chosenOption: VenueOption | null; week: Week };
+  | { ok: true; newStatus: Week["status"]; chosenOption: VenueOption | null; week: Week; justResolved: boolean };
 
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
     if (week.status !== "proposed") {
       // Already locked or cancelled — taps after that don't change anything
-      return { ok: true, newStatus: week.status, chosenOption: null, week };
+      return { ok: true, newStatus: week.status, chosenOption: null, week, justResolved: false };
     }
 
     if (!(userId in week.responses)) {
@@ -125,17 +126,20 @@ export async function POST(request: Request) {
         : {}),
     });
 
-    return { ok: true, newStatus, chosenOption, week: { ...week, responses: updatedResponses } };
+    return { ok: true, newStatus, chosenOption, week: { ...week, responses: updatedResponses }, justResolved: true };
   });
 
   if (!outcome.ok) {
     return NextResponse.json({ error: outcome.error }, { status: outcome.status });
   }
-  const { newStatus, chosenOption, week } = outcome;
+  const { newStatus, chosenOption, week, justResolved } = outcome;
+  if (justResolved) logEvent("rsvp_response", { pairId, weekId, response, newStatus });
 
   if (newStatus !== "confirmed") {
     return NextResponse.json({ status: newStatus });
   }
+
+  if (justResolved) logEvent("week_confirmed", { pairId, weekId });
 
   // From here on, only the one request that actually witnessed the
   // transition to "confirmed" reaches this point — the transaction above

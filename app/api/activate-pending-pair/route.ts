@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
 
 // ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
 // call to Resend's /domains API before removing the old TODO here, not
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
     userIds: [inviterUid, userId],
     status: "active",
   });
+  logEvent("invite_activated", { pairId });
 
   const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "Votre invité(e)"} a rejoint Ittsui. Le lien est actif.`);
   if (!sent) console.warn(`activate-pending-pair: activation notification failed for inviter ${inviterUid}`);

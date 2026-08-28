@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
 
@@ -144,6 +145,8 @@ export async function POST(request: Request) {
     // to see real delivery status later, not just at send time.
     await ref.update({ recipientEmailSent });
   }
+
+  logEvent("custom_rendezvous_created", { requestId: ref.id, hasEmail: Boolean(recipientEmail), hasPhone: Boolean(recipientPhone) });
 
   return NextResponse.json({ id: ref.id, status: "pending", recipientEmailSent: recipientEmailSent ?? null, requestUrl });
 }

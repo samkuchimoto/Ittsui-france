@@ -33,6 +33,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
 import type { CuratedGestureItem, PaintingStatus } from "@/lib/types";
@@ -135,6 +136,8 @@ export async function POST(request: Request) {
     status: "sent",
     createdAt: new Date().toISOString(),
   });
+
+  logEvent("gesture_sent", { gestureId: ref.id, mode });
 
   const gestureUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/g/${ref.id}`;
   const whatLine =

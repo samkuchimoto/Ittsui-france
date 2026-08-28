@@ -77,6 +77,7 @@
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import { generateWarmConfirmation } from "@/lib/confirmationText";
 import { getWeatherSignal } from "@/lib/weather";
@@ -193,6 +194,7 @@ export async function GET(request: Request) {
       notificationLog: [{ event: "proposed", sentAt: new Date().toISOString(), results: notifyResults }],
     });
     results.push({ pairId: pair.id, status: "proposed", source: proposal.source, weatherSwapped: Boolean(swapNote) });
+    logEvent("proposal_shown", { pairId: pair.id, source: proposal.source, hasOptionB: Boolean(proposal.optionB) });
   }
 
   return NextResponse.json({ weekOf, results });
