@@ -169,6 +169,20 @@ export async function GET(request: Request) {
       continue;
     }
 
+    // Plus-only supplement (2026-08-28): a real, buildable benefit that
+    // doesn't touch the "one proposal, one decision" surface at all — it
+    // just makes the existing swap-to-an-alternative mechanic (already
+    // fully built, see optionB/rsvp.ts) reliably available instead of
+    // whatever tiers 1-3 happened to find. Only ever fills in optionB when
+    // every other tier already produced optionA but genuinely had no
+    // second candidate (the static catalog often has just one entry per
+    // metro/type) — never touches optionA, never runs for a non-Plus pair,
+    // never blocks the proposal on failure.
+    if (pair.subscriptionStatus === "active" && !proposal.optionB && proposal.optionA.venueType) {
+      const extra = await tryFreeVenueApiForOptionB(pair, proposal.optionA.venueType, proposal.optionA.venueName);
+      if (extra) proposal.optionB = extra;
+    }
+
     const confirmationText =
       proposal.source === "rag-service" ? proposal.confirmationText : await withWarmConfirmation(pair, proposal, swapNote);
 
@@ -475,6 +489,80 @@ function staticRuleEngineFallback(pair: Pair): VenueProposal {
     confirmationText: `${venueA.name}, ${dayLabel(pair.agreedDay)} ${pair.agreedWindowStart}`,
     source: "static-rule-engine",
   };
+}
+
+// --- Plus-only optionB supplement (free, no API key) ---
+// OpenStreetMap's Nominatim (geocoding) and Overpass (place search) APIs
+// are both free and require no API key or account — only a descriptive
+// User-Agent per each project's usage policy, which this sends. This
+// route runs once/day per due pair via cron, and this path only fires for
+// Plus pairs still missing optionB after every other tier, so real
+// request volume is nowhere near either service's rate limits.
+const OSM_AMENITY_TAG: Partial<Record<VenueType, string>> = {
+  cafe: "amenity=cafe",
+  restaurant: "amenity=restaurant",
+  park: "leisure=park",
+  museum: "tourism=museum",
+};
+const FREE_VENUE_API_TIMEOUT_MS = 2500;
+
+async function tryFreeVenueApiForOptionB(
+  pair: Pair,
+  venueType: VenueType,
+  excludeName: string
+): Promise<VenueOption | undefined> {
+  const amenityTag = OSM_AMENITY_TAG[venueType];
+  if (!amenityTag || !pair.postalCode) return undefined; // "home" has nothing to search for
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FREE_VENUE_API_TIMEOUT_MS);
+  const userAgent = "Ittsui/1.0 (+https://www.ittsui.fr; hello@ittsui.fr)";
+
+  try {
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(pair.postalCode)}&country=France&format=json&limit=1`,
+      { signal: controller.signal, headers: { "User-Agent": userAgent } }
+    );
+    if (!geoRes.ok) return undefined;
+    const geoData: unknown = await geoRes.json();
+    const first = Array.isArray(geoData) ? geoData[0] : undefined;
+    const lat = first?.lat;
+    const lon = first?.lon;
+    if (!lat || !lon) return undefined;
+
+    const overpassQuery = `[out:json][timeout:2];node(around:1500,${lat},${lon})[${amenityTag}];out 5;`;
+    const overpassRes = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      body: overpassQuery,
+      signal: controller.signal,
+      headers: { "User-Agent": userAgent, "Content-Type": "text/plain" },
+    });
+    if (!overpassRes.ok) return undefined;
+    const overpassData: { elements?: { type: string; id: number; tags?: Record<string, string> }[] } = await overpassRes.json();
+
+    const match = (overpassData.elements ?? []).find((el) => el.tags?.name && el.tags.name !== excludeName);
+    if (!match?.tags?.name) return undefined;
+
+    const addressParts = [match.tags["addr:housenumber"], match.tags["addr:street"], match.tags["addr:postcode"], match.tags["addr:city"]]
+      .filter(Boolean)
+      .join(" ");
+
+    return {
+      venueId: `osm-${match.type}-${match.id}`,
+      venueName: match.tags.name,
+      venueAddress: addressParts || pair.postalCode,
+      venueType,
+    };
+  } catch {
+    // Network error, timeout, or unexpected response shape — same posture
+    // as every other tier in this file: optionB just stays undefined,
+    // exactly as it already was before this existed. Never worth logging
+    // loudly for a best-effort supplement that isn't even part of the
+    // real guarantee (tiers 1-3 already produced optionA regardless).
+    return undefined;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 const METRO_CITY_NAMES: Record<Metro, string> = {
