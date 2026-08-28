@@ -132,6 +132,8 @@ export default function NewGesturePage() {
   const [recipientPhone, setRecipientPhone] = useState("");
   const [mode, setMode] = useState<GestureMode | null>(null);
   const [itemDescription, setItemDescription] = useState("");
+  const [photoDescribing, setPhotoDescribing] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [item, setItem] = useState<CuratedGestureItem>(() => suggestCuratedItem());
   const [customItem, setCustomItem] = useState("");
   const [notes, setNotes] = useState("");
@@ -146,8 +148,13 @@ export default function NewGesturePage() {
   const [gestureUrl, setGestureUrl] = useState<string | null>(null);
   const [paintingImageUrl, setPaintingImageUrl] = useState<string | null>(null);
 
-  async function searchGifs(e: React.FormEvent) {
-    e.preventDefault();
+  // Real bug fixed 2026-08-28: this used to be a <form onSubmit> nested
+  // inside the page's main gesture <form> — invalid HTML (forms can't
+  // nest), so the browser silently dropped the inner form tag and
+  // "Chercher" never actually fired this function at all, just bubbled
+  // into the outer form. Now a plain function called from a type="button"
+  // click and an Enter keypress, no nested form involved.
+  async function searchGifs() {
     if (!gifQuery.trim()) return;
     setGifSearching(true);
     try {
@@ -186,6 +193,45 @@ export default function NewGesturePage() {
     setRecipientName(contact.name);
     setRecipientEmail(contact.email ?? "");
     setRecipientPhone(contact.phone ?? "");
+  }
+
+  // Real photo -> text via Groq vision (see /api/gestures/describe-photo).
+  // Fills itemDescription but never submits on its own — the sender still
+  // sees and can edit the result before sending, same reasoning as every
+  // other AI-assisted field in this app: a vision guess feeding straight
+  // into a real courier dispatch with no human check would be exactly the
+  // kind of fabricated confidence this codebase avoids everywhere else.
+  async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow picking the same file again later
+    if (!file) return;
+    setPhotoError(null);
+    setPhotoDescribing(true);
+    try {
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("lecture impossible"));
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/gestures/describe-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPhotoError(
+          res.status === 501 ? "La reconnaissance photo n'est pas encore activée." : "Impossible d'analyser la photo — décrivez-le à la main."
+        );
+        return;
+      }
+      setItemDescription(data.description);
+    } catch {
+      setPhotoError("Impossible d'analyser la photo — décrivez-le à la main.");
+    } finally {
+      setPhotoDescribing(false);
+    }
   }
 
   const externalLink =
@@ -422,6 +468,35 @@ export default function NewGesturePage() {
                 <div className="mt-2 space-y-3 rounded-2xl border p-4" style={{ borderColor: BORDER, backgroundColor: "rgba(28,25,23,0.015)" }}>
                   <div>
                     <label className="block text-sm font-medium">Qu&apos;avez-vous envie de lui envoyer ?</label>
+                    {/* Real photo -> text, not a mockup: uploads to
+                        /api/gestures/describe-photo (Groq vision), fills
+                        the field below, which stays editable — see
+                        handlePhotoCapture's own comment for why this never
+                        auto-submits on the AI's word alone. capture="environment"
+                        opens the back camera directly on mobile instead of
+                        a generic file picker. */}
+                    <label
+                      className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm font-medium"
+                      style={{ borderColor: ACCENT, color: ACCENT }}
+                    >
+                      {photoDescribing ? "Analyse de la photo..." : "📷 Prendre une photo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handlePhotoCapture}
+                        disabled={photoDescribing}
+                        className="hidden"
+                      />
+                    </label>
+                    {photoError && (
+                      <p className="mt-1.5 text-xs" style={{ color: ACCENT }}>
+                        {photoError}
+                      </p>
+                    )}
+                    <p className="mt-2 text-center text-xs" style={{ color: MUTED }}>
+                      ou décrivez-le
+                    </p>
                     <input
                       type="text"
                       required
@@ -680,24 +755,31 @@ export default function NewGesturePage() {
                   </div>
                 ) : (
                   <>
-                    <form onSubmit={searchGifs} className="mt-2 flex gap-2">
+                    <div className="mt-2 flex gap-2">
                       <input
                         type="text"
                         value={gifQuery}
                         onChange={(e) => setGifQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            searchGifs();
+                          }
+                        }}
                         placeholder="Chercher un GIF (ex: câlin, merci...)"
                         className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
                         style={{ borderColor: BORDER }}
                       />
                       <button
-                        type="submit"
+                        type="button"
+                        onClick={searchGifs}
                         disabled={gifSearching}
                         className="shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
                         style={{ borderColor: BORDER, color: INK }}
                       >
                         {gifSearching ? "..." : "Chercher"}
                       </button>
-                    </form>
+                    </div>
                     {gifResults.length > 0 && (
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         {gifResults.map((gif) => (
