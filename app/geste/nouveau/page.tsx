@@ -52,13 +52,21 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const MODES: { id: GestureMode; emoji: string; title: string; subtitle: string }[] = [
+const ALL_MODES: { id: GestureMode; emoji: string; title: string; subtitle: string }[] = [
   { id: "own", emoji: "🎁", title: "Quelque chose que vous avez", subtitle: "Un objet qui vous appartient déjà." },
   { id: "curated", emoji: "🛍️", title: "Quelque chose à choisir", subtitle: "Choisissez un type de geste." },
   { id: "suggested", emoji: "✨", title: "Laissez Ittsui vous proposer", subtitle: "Une petite idée, sans avoir à réfléchir." },
   { id: "message", emoji: "💌", title: "Un mot doux", subtitle: "Juste leur faire savoir que vous pensez à eux." },
   { id: "painting", emoji: "🎨", title: "Une peinture Ittsui", subtitle: "Une illustration générée par IA, rien que pour vous deux." },
 ];
+
+// Hidden rather than shown-but-broken while the Fal.ai account is
+// waiting on a balance top-up (2026-08-28) — every real submission
+// would fall back to the honest "not configured" message, which reads
+// as a bug to someone testing the app rather than an unfinished
+// feature. Flip NEXT_PUBLIC_GESTURE_PAINTING_ENABLED=true on Vercel and
+// redeploy once Fal.ai is funded; no code change needed at that point.
+const MODES = ALL_MODES.filter((m) => m.id !== "painting" || process.env.NEXT_PUBLIC_GESTURE_PAINTING_ENABLED === "true");
 
 export default function NewGesturePage() {
   const router = useRouter();
