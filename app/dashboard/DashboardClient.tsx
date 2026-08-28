@@ -482,14 +482,19 @@ export default function DashboardClient() {
       </div>
 
       {/* Momentum, not just this week's card — silent for a brand-new pair
-          (0 confirmed yet isn't an encouraging thing to announce). */}
+          (0 confirmed yet isn't an encouraging thing to announce). Now a
+          real link into /dashboard/archive rather than a static badge —
+          the one natural place someone curious about "how many, which
+          ones" would click. Free for every pair, not gated to Plus. */}
       {!!confirmedCount && (
-        <span
-          className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+        <Link
+          href="/dashboard/archive"
+          className="mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
         >
           {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
-        </span>
+          <span aria-hidden="true">→</span>
+        </Link>
       )}
 
       {pair && (
