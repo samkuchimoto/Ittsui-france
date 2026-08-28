@@ -466,7 +466,17 @@ export default function Home() {
               list. €1/mois is a deliberate price point, not a placeholder
               — cheaper than pushing back on a coffee, framed as exactly
               that below. No fabricated feature list: "à venir" stays
-              honest about what Plus doesn't concretely include yet. */}
+              honest about what Plus doesn't concretely include yet.
+              CTA added 2026-08-28 (real gap: this card was purely
+              informational, nothing clickable on it at all) — links to
+              /dashboard rather than starting checkout directly from this
+              public, unauthenticated page: purchase is pair-scoped (see
+              lib/types.ts's Pair.subscriptionStatus) and /dashboard
+              already redirects to /setup on its own when nobody is signed
+              in, so this is correct for both a signed-in visitor with a
+              pair (lands right on the real purchase button) and an
+              anonymous one (bounced to sign in first) without this page
+              needing to know which. */}
           <div className="mt-8 rounded-2xl border p-6 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-semibold" style={{ color: ACCENT }}>
@@ -487,6 +497,14 @@ export default function Home() {
               Suggestions enrichies et options supplémentaires à venir — le rituel de base, lui, reste
               gratuit pour toujours, Plus ou pas.
             </p>
+            <Link
+              href="/dashboard"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: ACCENT }}
+            >
+              Devenir membre fondateur
+              <IconArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
           <Link
