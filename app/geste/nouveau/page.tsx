@@ -46,6 +46,58 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+// Shared by own/curated/suggested modes — collecting a pickup address here
+// is what makes a real Stuart courier dispatch possible later, once the
+// recipient replies with their own address (see /api/gestures/[gestureId]
+// route.ts's PATCH handler). Extracted 2026-08-28 when this stopped being
+// "own"-mode-only: real enforcement now applies to curated/suggested too,
+// not just a link-out with nothing Ittsui itself actually did.
+function PickupAddressFields({
+  pickupAddress,
+  setPickupAddress,
+  pickupPhone,
+  setPickupPhone,
+  hint,
+}: {
+  pickupAddress: string;
+  setPickupAddress: (v: string) => void;
+  pickupPhone: string;
+  setPickupPhone: (v: string) => void;
+  hint: string;
+}) {
+  return (
+    <div className="mt-3 border-t pt-3" style={{ borderColor: BORDER }}>
+      <label className="block text-sm font-medium">
+        Votre adresse{" "}
+        <span className="font-normal" style={{ color: MUTED }}>
+          (optionnel)
+        </span>
+      </label>
+      <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
+        {hint}
+      </p>
+      <input
+        type="text"
+        value={pickupAddress}
+        onChange={(e) => setPickupAddress(e.target.value)}
+        placeholder="12 rue de la Paix, 75002 Paris"
+        className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+        style={{ borderColor: BORDER }}
+      />
+      {pickupAddress && (
+        <input
+          type="tel"
+          value={pickupPhone}
+          onChange={(e) => setPickupPhone(e.target.value)}
+          placeholder="Votre numéro (pour le coursier)"
+          className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+          style={{ borderColor: BORDER }}
+        />
+      )}
+    </div>
+  );
+}
+
 const workSans = Work_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -138,6 +190,7 @@ export default function NewGesturePage() {
 
   const externalLink =
     mode === "curated" || mode === "suggested" ? curatedItemExternalLink(item) : null;
+  const courierEligible = mode === "own" || mode === "curated" || mode === "suggested";
   const canSubmit =
     mode === "own"
       ? itemDescription.trim().length > 0
@@ -164,8 +217,14 @@ export default function NewGesturePage() {
           ...(recipientPhone ? { recipientPhone } : {}),
           mode,
           ...(mode === "own" ? { itemDescription } : {}),
-          ...(mode === "own" && pickupAddress ? { pickupAddress } : {}),
-          ...(mode === "own" && pickupPhone ? { pickupPhone } : {}),
+          // Real enforcement extended 2026-08-28 to "curated"/"suggested":
+          // a pickup address on any of the three physical-item modes is
+          // the trigger for a real Stuart courier dispatch once the
+          // recipient replies with their own address — previously only
+          // "own" mode collected this, leaving curated/suggested as a
+          // bare link-out with nothing Ittsui itself actually did.
+          ...(courierEligible && pickupAddress ? { pickupAddress } : {}),
+          ...(courierEligible && pickupPhone ? { pickupPhone } : {}),
           ...(mode === "curated" || mode === "suggested" ? { item } : {}),
           ...(mode === "curated" && item === "autre" ? { customItem } : {}),
           ...(notes ? { notes } : {}),
@@ -213,7 +272,9 @@ export default function NewGesturePage() {
           )}
           {(mode === "curated" || mode === "suggested") && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
-              Il ne reste plus qu&apos;à finaliser {(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.
+              {pickupAddress
+                ? `Une fois ${(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} en main, dès que ${recipientName} indique son adresse, un vrai coursier peut venir le récupérer chez vous.`
+                : `Il ne reste plus qu'à finaliser ${(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.`}
             </p>
           )}
           {mode === "painting" && paintingImageUrl && (
@@ -359,35 +420,13 @@ export default function NewGesturePage() {
                       style={{ borderColor: BORDER }}
                     />
                   </div>
-                  <div className="border-t pt-3" style={{ borderColor: BORDER }}>
-                    <label className="block text-sm font-medium">
-                      Votre adresse{" "}
-                      <span className="font-normal" style={{ color: MUTED }}>
-                        (optionnel)
-                      </span>
-                    </label>
-                    <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
-                      Permet à un vrai coursier de venir le récupérer chez vous.
-                    </p>
-                    <input
-                      type="text"
-                      value={pickupAddress}
-                      onChange={(e) => setPickupAddress(e.target.value)}
-                      placeholder="12 rue de la Paix, 75002 Paris"
-                      className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                      style={{ borderColor: BORDER }}
-                    />
-                    {pickupAddress && (
-                      <input
-                        type="tel"
-                        value={pickupPhone}
-                        onChange={(e) => setPickupPhone(e.target.value)}
-                        placeholder="Votre numéro (pour le coursier)"
-                        className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                        style={{ borderColor: BORDER }}
-                      />
-                    )}
-                  </div>
+                  <PickupAddressFields
+                    pickupAddress={pickupAddress}
+                    setPickupAddress={setPickupAddress}
+                    pickupPhone={pickupPhone}
+                    setPickupPhone={setPickupPhone}
+                    hint="Permet à un vrai coursier de venir le récupérer chez vous."
+                  />
                 </div>
               </div>
             )}
@@ -438,6 +477,13 @@ export default function NewGesturePage() {
                     style={{ borderColor: BORDER }}
                   />
                 )}
+                <PickupAddressFields
+                  pickupAddress={pickupAddress}
+                  setPickupAddress={setPickupAddress}
+                  pickupPhone={pickupPhone}
+                  setPickupPhone={setPickupPhone}
+                  hint="Une fois que vous l'avez, un vrai coursier peut venir le récupérer chez vous."
+                />
               </div>
             )}
 
@@ -455,6 +501,15 @@ export default function NewGesturePage() {
                 >
                   Une autre idée
                 </button>
+                <div className="text-left">
+                  <PickupAddressFields
+                    pickupAddress={pickupAddress}
+                    setPickupAddress={setPickupAddress}
+                    pickupPhone={pickupPhone}
+                    setPickupPhone={setPickupPhone}
+                    hint="Une fois que vous l'avez, un vrai coursier peut venir le récupérer chez vous."
+                  />
+                </div>
               </div>
             )}
 

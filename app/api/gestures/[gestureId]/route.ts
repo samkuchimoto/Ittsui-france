@@ -22,6 +22,8 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { dispatchStuartCourier } from "@/lib/stuartCourier";
+import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
+import type { CuratedGestureItem } from "@/lib/types";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -94,10 +96,23 @@ export async function PATCH(request: Request, { params }: { params: { gestureId:
   let courierTrackingUrl: string | undefined;
   let courierStatus: "dispatched" | "failed" | undefined;
 
-  if (choice === "address" && data.mode === "own" && data.pickupAddress && data.pickupPhone && address && phone) {
+  // Real enforcement extended 2026-08-28 to "curated"/"suggested" too, not
+  // just "own" — those two modes used to just link out to a merchant's
+  // homepage with nothing Ittsui itself actually did. Now, whenever a
+  // pickup address was collected at send time (see /api/gestures POST —
+  // the field itself was always mode-agnostic, only this check wasn't),
+  // the exact same real Stuart dispatch "own" mode already used fires for
+  // them too: buy the flowers/book/chocolate wherever you like, then
+  // Ittsui gets it delivered, same as if you already owned it.
+  const courierEligibleModes = ["own", "curated", "suggested"];
+  if (choice === "address" && courierEligibleModes.includes(data.mode) && data.pickupAddress && data.pickupPhone && address && phone) {
+    const packageDescription =
+      data.itemDescription ??
+      (data.item === "autre" ? data.customItem : CURATED_ITEM_LABEL[data.item as CuratedGestureItem]) ??
+      "Geste Ittsui";
     const result = await dispatchStuartCourier({
       clientReference: params.gestureId,
-      packageDescription: data.itemDescription ?? "Geste Ittsui",
+      packageDescription,
       pickupAddress: data.pickupAddress,
       pickupContact: { ...splitName(data.senderName), phone: data.pickupPhone },
       dropoffAddress: address,
