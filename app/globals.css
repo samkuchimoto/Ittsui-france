@@ -26,3 +26,44 @@ select:focus-visible,
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Homepage scroll-reveal (app/components/Reveal.tsx) + hero photo frame
+   (app/page.tsx). Moved here from a page-local <style jsx global> block
+   2026-08-28 when app/page.tsx became a Server Component — styled-jsx's
+   client-side style registry isn't something to rely on inside a Server
+   Component, while a plain global stylesheet rule needs no such
+   machinery and works identically either way. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-in {
+    animation: fadeUp 0.9s ease-out both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-init,
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reveal-init {
+  opacity: 0;
+  transform: translateY(16px);
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hero-photo-frame {
+  max-height: 320px;
+}
+@media (min-width: 1024px) {
+  .hero-photo-frame {
+    max-height: 520px;
+  }
+}
