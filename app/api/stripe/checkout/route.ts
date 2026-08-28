@@ -47,7 +47,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "déjà membre fondateur" }, { status: 409 });
   }
 
-  const priceId = process.env.STRIPE_PLUS_PRICE_ID;
+  // .trim() for the same reason lib/stripe.ts trims the secret key — a
+  // dashboard-pasted env var can carry an invisible trailing newline.
+  const priceId = process.env.STRIPE_PLUS_PRICE_ID?.trim();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!priceId || !appUrl) {
     // Honest fallback, same posture as every other optional integration in

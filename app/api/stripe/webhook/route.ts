@@ -34,7 +34,9 @@ function mapStripeStatus(status: Stripe.Subscription.Status): Pair["subscription
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  // .trim() for the same reason lib/stripe.ts trims the secret key — a
+  // dashboard-pasted env var can carry an invisible trailing newline.
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!signature || !webhookSecret) {
     return NextResponse.json({ error: "webhook non configuré" }, { status: 501 });
   }

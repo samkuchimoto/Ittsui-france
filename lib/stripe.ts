@@ -21,9 +21,15 @@ function lazy<T extends object>(factory: () => T): T {
   });
 }
 
+// .trim() is load-bearing, not defensive paranoia: a real production
+// failure (2026-08-28) traced to a literal ERR_INVALID_CHAR from Node's
+// http client building the Authorization header — the key value, pasted
+// into Vercel's dashboard UI by hand, carried a trailing newline/whitespace
+// character invisible in the UI. Node's setHeader rejects control
+// characters in header values outright.
 export const stripe: Stripe = lazy(
   () =>
-    new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+    new Stripe((process.env.STRIPE_SECRET_KEY as string).trim(), {
       apiVersion: "2026-08-26.dahlia",
     })
 );

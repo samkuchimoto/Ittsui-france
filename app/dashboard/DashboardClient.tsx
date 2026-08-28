@@ -445,6 +445,17 @@ export default function DashboardClient() {
           <p className="text-sm" style={{ color: MUTED }}>
             Aucune personne liée pour le moment.
           </p>
+          {/* Real gap fixed 2026-08-28: this screen previously had zero
+              mention of Plus, a dead end for anyone who lands here without
+              an active pair yet — subscriptionStatus lives on the Pair
+              (see lib/types.ts), so real purchase genuinely can't happen
+              until one exists; this is a link to the explanation, not a
+              purchase button. */}
+          <p className="mt-3 text-xs" style={{ color: MUTED }}>
+            <Link href="/#plus" className="underline underline-offset-4">
+              Découvrir Ittsui Plus
+            </Link>
+          </p>
           <button onClick={handleSignOut} className="mt-6 text-xs underline underline-offset-4" style={{ color: MUTED }}>
             Se déconnecter
           </button>
