@@ -140,6 +140,11 @@ export async function POST(request: Request) {
   logEvent("gesture_sent", { gestureId: ref.id, mode });
 
   const gestureUrl = `${process.env.NEXT_PUBLIC_APP_URL}/m/g/${ref.id}`;
+  // customItem now wins over the generic category label whenever it's
+  // present, not just for item === "autre" (2026-08-28): picking a real
+  // specific book via /api/gestures/book-search sets customItem to
+  // "Title — Author" too, and that real, specific thing is always more
+  // meaningful to show than the bare category name "Un livre".
   const whatLine =
     mode === "own"
       ? itemDescription!
@@ -147,8 +152,8 @@ export async function POST(request: Request) {
         ? "un petit mot"
         : mode === "painting"
           ? "une peinture générée par IA, rien que pour vous deux"
-          : item === "autre"
-            ? customItem!
+          : customItem
+            ? customItem
             : CURATED_ITEM_LABEL[item as CuratedGestureItem];
 
   const recipientEmailSent = recipientEmail

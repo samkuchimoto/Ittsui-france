@@ -98,6 +98,120 @@ function PickupAddressFields({
   );
 }
 
+// Real, specific book search for the "livre" curated item — replaces the
+// generic "Un livre" category label with an actual chosen title once
+// picked, via /api/gestures/book-search (Google Books, real key). Owns
+// its own search/picked state internally; only writes out to customItem
+// (already a general free-text field, not "autre"-only server-side as of
+// 2026-08-28) so no new schema or submit-payload plumbing was needed.
+function BookSearchPicker({ customItem, setCustomItem }: { customItem: string; setCustomItem: (v: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ id: string; title: string; authors: string[]; thumbnail: string | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [pickedThumbnail, setPickedThumbnail] = useState<string | null>(null);
+
+  async function search() {
+    if (!query.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/gestures/book-search?q=${encodeURIComponent(query.trim())}`);
+      const data = await res.json();
+      setResults(res.ok ? (data.results ?? []) : []);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pick(book: { title: string; authors: string[]; thumbnail: string | null }) {
+    setCustomItem(book.authors.length ? `${book.title} — ${book.authors.join(", ")}` : book.title);
+    setPickedThumbnail(book.thumbnail);
+    setResults([]);
+  }
+
+  if (customItem) {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-xl border p-3" style={{ borderColor: BORDER }}>
+        {pickedThumbnail && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={pickedThumbnail} alt="" className="h-16 rounded shadow-sm" />
+        )}
+        <p className="flex-1 text-sm font-medium">{customItem}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setCustomItem("");
+            setPickedThumbnail(null);
+          }}
+          className="shrink-0 text-xs underline underline-offset-4"
+          style={{ color: MUTED }}
+        >
+          Changer
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              search();
+            }
+          }}
+          placeholder="Chercher un titre, un auteur..."
+          className="w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+          style={{ borderColor: BORDER }}
+        />
+        <button
+          type="button"
+          onClick={search}
+          disabled={searching}
+          className="shrink-0 rounded-xl border px-4 text-sm font-medium disabled:opacity-50"
+          style={{ borderColor: BORDER, color: INK }}
+        >
+          {searching ? "..." : "Chercher"}
+        </button>
+      </div>
+      {results.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {results.map((book) => (
+            <button
+              key={book.id}
+              type="button"
+              onClick={() => pick(book)}
+              className="flex w-full items-center gap-3 rounded-xl border p-2 text-left transition-colors hover:border-current"
+              style={{ borderColor: BORDER }}
+            >
+              {book.thumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={book.thumbnail} alt="" className="h-14 w-10 shrink-0 rounded object-cover shadow-sm" />
+              ) : (
+                <div className="h-14 w-10 shrink-0 rounded" style={{ backgroundColor: `${MUTED}1A` }} />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{book.title}</p>
+                {book.authors.length > 0 && (
+                  <p className="truncate text-xs" style={{ color: MUTED }}>
+                    {book.authors.join(", ")}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const workSans = Work_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -272,7 +386,10 @@ export default function NewGesturePage() {
           ...(courierEligible && pickupAddress ? { pickupAddress } : {}),
           ...(courierEligible && pickupPhone ? { pickupPhone } : {}),
           ...(mode === "curated" || mode === "suggested" ? { item } : {}),
-          ...(mode === "curated" && item === "autre" ? { customItem } : {}),
+          // Sent whenever set, not just for item === "autre" (2026-08-28):
+          // a real book picked via BookSearchPicker also writes into
+          // customItem now, for either mode.
+          ...((mode === "curated" || mode === "suggested") && customItem ? { customItem } : {}),
           ...(notes ? { notes } : {}),
           ...(mode === "message" && gifUrl ? { gifUrl } : {}),
         }),
@@ -319,8 +436,8 @@ export default function NewGesturePage() {
           {(mode === "curated" || mode === "suggested") && (
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               {pickupAddress
-                ? `Une fois ${(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} en main, dès que ${recipientName} indique son adresse, un vrai coursier peut venir le récupérer chez vous.`
-                : `Il ne reste plus qu'à finaliser ${(item === "autre" ? customItem : CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.`}
+                ? `Une fois ${(customItem || CURATED_ITEM_LABEL[item]).toLowerCase()} en main, dès que ${recipientName} indique son adresse, un vrai coursier peut venir le récupérer chez vous.`
+                : `Il ne reste plus qu'à finaliser ${(customItem || CURATED_ITEM_LABEL[item]).toLowerCase()} vous-même.`}
             </p>
           )}
           {mode === "painting" && paintingImageUrl && (
@@ -526,7 +643,10 @@ export default function NewGesturePage() {
                     <button
                       key={c}
                       type="button"
-                      onClick={() => setItem(c)}
+                      onClick={() => {
+                        setItem(c);
+                        setCustomItem(""); // clears a stale picked book/"autre" text left over from a previous choice
+                      }}
                       className="rounded-full border px-3.5 py-2 text-sm transition-colors"
                       style={
                         item === c
@@ -542,7 +662,10 @@ export default function NewGesturePage() {
                       into one of the seven fixed buckets. */}
                   <button
                     type="button"
-                    onClick={() => setItem("autre")}
+                    onClick={() => {
+                      setItem("autre");
+                      setCustomItem("");
+                    }}
                     className="rounded-full border px-3.5 py-2 text-sm transition-colors"
                     style={
                       item === "autre"
@@ -564,6 +687,10 @@ export default function NewGesturePage() {
                     style={{ borderColor: BORDER }}
                   />
                 )}
+                {/* Real, specific book search (2026-08-28) — replaces the
+                    bare "Un livre" category label with an actual chosen
+                    title once picked. See BookSearchPicker's own comment. */}
+                {item === "livre" && <BookSearchPicker customItem={customItem} setCustomItem={setCustomItem} />}
                 <PickupAddressFields
                   pickupAddress={pickupAddress}
                   setPickupAddress={setPickupAddress}
@@ -582,13 +709,17 @@ export default function NewGesturePage() {
                 <p className="mt-1 text-lg font-medium">{CURATED_ITEM_LABEL[item]}</p>
                 <button
                   type="button"
-                  onClick={() => setItem((current) => suggestCuratedItem(current))}
+                  onClick={() => {
+                    setItem((current) => suggestCuratedItem(current));
+                    setCustomItem(""); // clears a stale picked book from a previous suggestion
+                  }}
                   className="mt-2 text-xs underline underline-offset-4"
                   style={{ color: ACCENT }}
                 >
                   Une autre idée
                 </button>
                 <div className="text-left">
+                  {item === "livre" && <BookSearchPicker customItem={customItem} setCustomItem={setCustomItem} />}
                   <PickupAddressFields
                     pickupAddress={pickupAddress}
                     setPickupAddress={setPickupAddress}
