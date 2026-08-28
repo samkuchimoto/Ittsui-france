@@ -16,6 +16,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import { generateWarmConfirmation } from "@/lib/confirmationText";
+import { googleCalendarLink } from "@/lib/googleCalendarLink";
+import { parisDateTimeParts } from "@/lib/timezone";
 import type { Pair, VenueOption, Week } from "@/lib/types";
 
 const VALID_RESPONSES = ["yes", "no", "A", "B"] as const;
@@ -184,7 +186,29 @@ export async function POST(request: Request) {
   }
 
   const venueName = chosenOption?.venueName ?? week.venueName;
-  const notifyResults = await notifyBothUsers(pair, `Rendez-vous verrouillé : ${venueName}.`);
+  // chosenOption?.venueAddress, not week.venueAddress, for the same reason
+  // venueName above prefers it: `week` here is the pre-update snapshot
+  // (see the transaction's return above), still mirroring optionA's
+  // address even when optionB is what actually got confirmed.
+  const venueAddress = chosenOption?.venueAddress ?? week.venueAddress ?? "";
+  // Calendar-link parity with meeting-requests/create + respond, which
+  // already offer this for a custom rendez-vous — the weekly ritual's own
+  // confirm step never had it. A single link appended to the existing
+  // confirmation text, not a new notification: this respects the "silence
+  // between meets" principle (no separate reminder ping), it's just one
+  // more useful thing inside the one confirmation message that already goes out.
+  const { date, time } = parisDateTimeParts(week.proposedTime);
+  const calendarUrl = googleCalendarLink({
+    title: `${venueName} — Ittsui`,
+    details: "Rendez-vous confirmé via Ittsui.",
+    venueAddress,
+    date,
+    time,
+  });
+  const notifyResults = await notifyBothUsers(
+    pair,
+    `Rendez-vous verrouillé : ${venueName}.\nAjouter à Google Agenda : ${calendarUrl}`
+  );
   await weekRef.update({
     notificationLog: FieldValue.arrayUnion({
       event: "confirmed",

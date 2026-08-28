@@ -66,6 +66,26 @@ export function parisWallClockToUTCISOString(hhmm: string, dateStr?: string): st
   return guess.toISOString();
 }
 
+// Renders a stored UTC ISO instant (e.g. Week.proposedTime) back into its
+// Paris wall-clock date/time — the inverse of parisWallClockToUTCISOString,
+// needed wherever a stored instant has to be handed to something that wants
+// a plain Paris date/time, like googleCalendarLink's {date, time} shape.
+// Same formatToParts + "24"-as-midnight defensive handling as the function
+// above, for the same reason: a plain .format() string isn't safe to slice.
+export function parisDateTimeParts(isoString: string): { date: string; time: string } {
+  const d = new Date(isoString);
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: PARIS_TZ }).format(d); // YYYY-MM-DD
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PARIS_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return { date, time: `${hour}:${get("minute")}` };
+}
+
 // Monday of the current week, as Paris's calendar reads it.
 export function parisMondayISO(): string {
   const { dateStr } = parisNow();
