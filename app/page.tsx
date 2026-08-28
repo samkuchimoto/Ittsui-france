@@ -476,11 +476,17 @@ export default function Home() {
             >
               Protégez vos relations précieuses contre l&apos;érosion du quotidien.
             </h1>
+            {/* Reordered 2026-08-28 (real audit finding, per the strategic
+                doc's §10 critique): this used to open with the mechanism
+                ("Chaque semaine, Ittsui propose...") and only mention the
+                actual problem — workload, lack of time, never a lack of
+                desire — as an afterthought at the end. Same two facts, same
+                length, problem now stated first. */}
             <p className="mx-auto mt-5 max-w-md text-[17px] lg:mx-0" style={{ color: MUTED }}>
-              Chaque semaine, Ittsui propose un lieu et un horaire pour un(e) proche, un(e) partenaire ou
-              la famille — vous dites oui en un clic, sans agenda à gérer. Entre la charge de travail et
-              le manque de temps, c&apos;est ce qui empêche de perdre de vue les gens qui comptent, sans
-              jamais l&apos;avoir décidé.
+              Ce n&apos;est pas un manque d&apos;envie de les voir — c&apos;est la charge de travail et
+              le manque de temps qui font perdre de vue les gens qui comptent, sans jamais l&apos;avoir
+              décidé. Chaque semaine, Ittsui propose un lieu et un horaire pour un(e) proche, un(e)
+              partenaire ou la famille : vous dites oui en un clic, sans agenda à gérer.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
               <Link
@@ -748,6 +754,48 @@ export default function Home() {
           </div>
         </Reveal>
 
+      </section>
+
+      {/* The "why" — real origin story, not new marketing copy. Both
+          quotes below are verbatim from /a-propos, not written for this
+          section; the only thing new here is surfacing them on the
+          homepage instead of leaving them one click away. Deliberately
+          NOT the fuller 3-card "why planning fails" / "why Ittsui" content
+          blocks a 2026-08-28 draft proposed — those substantially
+          duplicate what "Pas de réseau social" above and "Comment ça
+          marche" already say; adding them again as generic pain-point
+          copy would be redundant, not high-impact, and drifts toward the
+          declarative trust-copy this app has deliberately avoided
+          elsewhere (real product clarity over persuasive marketing
+          sections). This section stays a single real story, not a
+          feature-benefit list. */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            Le problème n&apos;est pas l&apos;envie.
+            <br />
+            C&apos;est le temps.
+          </h2>
+          <p
+            className="mx-auto mt-6 max-w-md text-[17px] italic"
+            style={{ fontFamily: "var(--font-display)", color: INK }}
+          >
+            « Le problème, ce n&apos;est pas qu&apos;on n&apos;a pas envie de voir les gens. C&apos;est
+            qu&apos;on n&apos;a pas le temps. »
+          </p>
+          <p className="mx-auto mt-4 max-w-sm text-sm" style={{ color: MUTED }}>
+            Une phrase entendue par hasard, un soir de voyage, qui a donné à Ittsui sa forme actuelle :
+            une seule proposition, une seule décision, puis plus rien à gérer jusqu&apos;à la prochaine
+            fois.
+          </p>
+          <Link
+            href="/a-propos"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm underline underline-offset-4"
+            style={{ color: INK }}
+          >
+            Lire l&apos;histoire complète →
+          </Link>
+        </Reveal>
       </section>
 
       {/* Real, unedited quotes from early testers — never fabricated,
