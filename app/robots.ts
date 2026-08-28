@@ -26,6 +26,10 @@ export default function robots(): MetadataRoute.Robots {
         // credential in the URL itself, same reasoning meeting-request
         // and invite bearer links are already excluded above.
         "/partenaires/*/gerer",
+        // Internal fundraising scenario tool — not a public product
+        // page, deliberately unlinked from any nav; a direct-link-only
+        // private URL, not something search engines should surface.
+        "/investors",
       ],
     },
     sitemap: "https://www.ittsui.fr/sitemap.xml",

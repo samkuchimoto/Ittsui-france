@@ -295,13 +295,16 @@ export default function NewGesturePage() {
           chose.
         </p>
 
-        <div className="mt-6 space-y-2">
+        <p className="mt-6 text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+          Le geste
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
           {MODES.map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setMode(m.id)}
-              className="flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors"
+              className="flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left transition-colors"
               style={
                 mode === m.id
                   ? { borderColor: ACCENT, backgroundColor: "rgba(184,78,42,0.06)" }
@@ -309,57 +312,63 @@ export default function NewGesturePage() {
               }
             >
               <span className="text-xl leading-none">{m.emoji}</span>
-              <span>
-                <span className="block text-sm font-medium">{m.title}</span>
-                <span className="block text-xs" style={{ color: MUTED }}>
-                  {m.subtitle}
-                </span>
+              <span className="text-sm font-medium leading-tight">{m.title}</span>
+              <span className="text-xs leading-snug" style={{ color: MUTED }}>
+                {m.subtitle}
               </span>
             </button>
           ))}
         </div>
 
         {mode && (
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-8">
             {mode === "own" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium">Qu&apos;avez-vous envie de lui envoyer ?</label>
-                  <input
-                    type="text"
-                    required
-                    value={itemDescription}
-                    onChange={(e) => setItemDescription(e.target.value)}
-                    placeholder="Un livre que j'ai déjà lu, une photo, un pull..."
-                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                    style={{ borderColor: BORDER }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">
-                    Votre adresse{" "}
-                    <span className="font-normal" style={{ color: MUTED }}>
-                      (optionnel — permet à un coursier de venir le récupérer chez vous)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={pickupAddress}
-                    onChange={(e) => setPickupAddress(e.target.value)}
-                    placeholder="12 rue de la Paix, 75002 Paris"
-                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
-                    style={{ borderColor: BORDER }}
-                  />
-                  {pickupAddress && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+                  L&apos;objet
+                </p>
+                <div className="mt-2 space-y-3 rounded-2xl border p-4" style={{ borderColor: BORDER, backgroundColor: "rgba(28,25,23,0.015)" }}>
+                  <div>
+                    <label className="block text-sm font-medium">Qu&apos;avez-vous envie de lui envoyer ?</label>
                     <input
-                      type="tel"
-                      value={pickupPhone}
-                      onChange={(e) => setPickupPhone(e.target.value)}
-                      placeholder="Votre numéro (pour le coursier)"
+                      type="text"
+                      required
+                      value={itemDescription}
+                      onChange={(e) => setItemDescription(e.target.value)}
+                      placeholder="Un livre que j'ai déjà lu, une photo, un pull..."
                       className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
                       style={{ borderColor: BORDER }}
                     />
-                  )}
+                  </div>
+                  <div className="border-t pt-3" style={{ borderColor: BORDER }}>
+                    <label className="block text-sm font-medium">
+                      Votre adresse{" "}
+                      <span className="font-normal" style={{ color: MUTED }}>
+                        (optionnel)
+                      </span>
+                    </label>
+                    <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
+                      Permet à un vrai coursier de venir le récupérer chez vous.
+                    </p>
+                    <input
+                      type="text"
+                      value={pickupAddress}
+                      onChange={(e) => setPickupAddress(e.target.value)}
+                      placeholder="12 rue de la Paix, 75002 Paris"
+                      className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                      style={{ borderColor: BORDER }}
+                    />
+                    {pickupAddress && (
+                      <input
+                        type="tel"
+                        value={pickupPhone}
+                        onChange={(e) => setPickupPhone(e.target.value)}
+                        placeholder="Votre numéro (pour le coursier)"
+                        className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:border-current"
+                        style={{ borderColor: BORDER }}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -450,7 +459,10 @@ export default function NewGesturePage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium">Votre prénom</label>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+                Vous
+              </p>
+              <label className="mt-2 block text-sm font-medium">Votre prénom</label>
               <input
                 type="text"
                 required
@@ -477,7 +489,10 @@ export default function NewGesturePage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium">Pour qui ?</label>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: MUTED }}>
+                Destinataire
+              </p>
+              <label className="mt-2 block text-sm font-medium">Pour qui ?</label>
               {/* Signed-in users with saved contacts get to tap someone
                   they already know instead of retyping a name every time
                   — the same chip row /request/new already uses, capped
@@ -637,6 +652,11 @@ export default function NewGesturePage() {
                   : "Envoi..."
                 : "Prévenir " + (recipientName || "la personne")}
             </button>
+            {!recipientEmail && !recipientPhone && (
+              <p className="-mt-2 text-center text-xs" style={{ color: MUTED }}>
+                Ajoutez le numéro ou l&apos;e-mail du destinataire pour pouvoir envoyer.
+              </p>
+            )}
           </form>
         )}
       </div>
