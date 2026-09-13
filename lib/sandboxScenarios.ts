@@ -44,7 +44,11 @@ export interface SandboxScenario {
   label: string;
   /** Placeholder name used in the preview of the message the invitee gets. */
   sampleRecipient: string;
+  /** Card header form: "Samedi · 15:30". */
   when: string;
+  /** Prose form for the message preview: "samedi à 15h30". The header
+   *  form reads as a glitch mid-sentence. */
+  whenSentence: string;
   tilePhoto: string;
   tileAlt: string;
   primary: SandboxVenue;
@@ -107,6 +111,7 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
     label: "Vos ami(e)s proches",
     sampleRecipient: "Thomas",
     when: "Samedi · 15:30",
+    whenSentence: "samedi à 15h30",
     tilePhoto: "/friends-cafe-terrace.jpg",
     tileAlt: "Deux amis discutent en terrasse, sur une rue pavée.",
     primary: CAFE_INDUSTRIE,
@@ -117,6 +122,7 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
     label: "Votre partenaire",
     sampleRecipient: "Camille",
     when: "Vendredi · 20:00",
+    whenSentence: "vendredi à 20h",
     tilePhoto: "/couple-living-room.jpg",
     tileAlt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.",
     primary: CHEZ_JANOU,
@@ -127,6 +133,7 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
     label: "Votre famille",
     sampleRecipient: "Mamie",
     when: "Dimanche · 15:00",
+    whenSentence: "dimanche à 15h",
     tilePhoto: "/grandmother-granddaughter-park.jpg",
     tileAlt: "Une grand-mère et sa petite-fille assises sur un banc, dans un parc.",
     primary: LUXEMBOURG,
@@ -137,6 +144,7 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
     label: "Vos parents",
     sampleRecipient: "Papa",
     when: "Dimanche · 11:00",
+    whenSentence: "dimanche à 11h",
     tilePhoto: "/hero-father-son-vineyard.jpg.jpg",
     tileAlt: "Un père et son fils adulte marchent côte à côte dans les vignes.",
     primary: RODIN,

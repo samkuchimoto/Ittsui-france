@@ -17,13 +17,25 @@
 // integration — see AGENTS.md's venue-coverage section), and a plausible
 // invented number about a real business is worse than an absent one.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { googleMapsLink, citymapperLink } from "@/lib/mapsLink";
 import type { SandboxVenue } from "@/lib/sandboxScenarios";
 
 export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onClose: () => void }) {
+  // Portalled to <body>, and it has to be. The card that opens this sheet
+  // lives inside app/components/Reveal.tsx, whose fade-up leaves a
+  // `transform` on the wrapper — and a transformed ancestor becomes the
+  // containing block for `position: fixed` descendants. Rendered in place,
+  // the "full-screen" overlay covered only the sandbox column: the
+  // backdrop stopped at its edges and the sheet was boxed into the right
+  // half of the page. Mount-gated so server render and first client render
+  // agree (both null) and hydration doesn't mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Escape closes, and the page behind stops scrolling while it's up.
   useEffect(() => {
     if (!venue) return;
@@ -39,9 +51,9 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
     };
   }, [venue, onClose]);
 
-  if (!venue) return null;
+  if (!venue || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:px-6"
       role="dialog"
@@ -119,6 +131,7 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

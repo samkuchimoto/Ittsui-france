@@ -3,7 +3,8 @@
 // The homepage's live proposal card — the product's entire mechanic,
 // playable before signing up.
 //
-// Three states: default -> swapped -> confirmed. Two ways in: buttons or
+// Two independent bits of state — which venue is showing, and whether
+// the demo has been validated. Two ways to change either: the buttons or
 // a native drag gesture (swipe right = validate, swipe left = swap). No
 // gesture library for the drag maths — pointer coordinates and a
 // spring-back transform, wrapped in useTransition so the snap feels
@@ -43,12 +44,21 @@ import { IconCheck } from "@/app/components/HomeIcons";
 import { VenueSheet } from "@/app/components/VenueSheet";
 import { SANDBOX_SCENARIOS, type SandboxScenario, type SandboxVenue } from "@/lib/sandboxScenarios";
 
-type CardState = "default" | "swapped" | "confirmed";
+// "swapped" (which of the two venues is showing) and "confirmed"
+// (whether the demo has been validated) are independent facts, and they
+// used to be squashed into one enum. That enum lost the swap the moment
+// you confirmed: the card fell back to computing the venue from
+// state === "swapped", which is false once state is "confirmed", so
+// validating the alternative locked in the ORIGINAL venue. Invisible
+// before, because the confirmed state showed only a checkmark; the
+// moment it started naming the place and quoting the invitee's message,
+// it started naming the wrong one.
 
 const SWIPE_THRESHOLD = 76; // px before a drag commits to an action
 
 export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: SandboxScenario }) {
-  const [cardState, setCardState] = useState<CardState>("default");
+  const [swapped, setSwapped] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const [sheetVenue, setSheetVenue] = useState<SandboxVenue | null>(null);
   const [, startTransition] = useTransition();
@@ -76,7 +86,8 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
   // "confirmed" would show a rendez-vous locked at the previous
   // scenario's venue under the new context's heading.
   useEffect(() => {
-    setCardState("default");
+    setSwapped(false);
+    setConfirmed(false);
     setSkipped(false);
     setSheetVenue(null);
   }, [scenario.id]);
@@ -91,17 +102,18 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
 
   function swapCard() {
     startTransition(() => {
-      setCardState((s) => (s === "swapped" ? "default" : "swapped"));
+      setSwapped((s) => !s);
     });
   }
 
   function confirmCard() {
-    startTransition(() => setCardState("confirmed"));
+    startTransition(() => setConfirmed(true));
   }
 
   function resetDemo() {
     startTransition(() => {
-      setCardState("default");
+      setSwapped(false);
+      setConfirmed(false);
       setSkipped(false);
     });
   }
@@ -111,35 +123,35 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
     if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
     skipTimerRef.current = setTimeout(() => {
       startTransition(() => {
-        setCardState("default");
+        setSwapped(false);
         setSkipped(false);
       });
     }, 1800);
   }
 
-  const venue = cardState === "swapped" ? scenario.alternative : scenario.primary;
-  const { sampleRecipient, when } = scenario;
+  const venue = swapped ? scenario.alternative : scenario.primary;
+  const { sampleRecipient, when, whenSentence } = scenario;
 
   return (
     <div className="mx-auto max-w-sm">
       <motion.div
         className="touch-pan-y select-none overflow-hidden rounded-3xl border bg-white shadow-sm"
         style={{ borderColor: BORDER, x, rotate }}
-        drag={cardState === "confirmed" ? false : "x"}
+        drag={confirmed ? false : "x"}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.9}
         dragTransition={{ bounceStiffness: 320, bounceDamping: 22 }}
         onDragEnd={handleDragEnd}
         whileDrag={{ scale: 1.03 }}
       >
-        {cardState === "confirmed" ? (
+        {confirmed ? (
           <div className="px-6 py-8 text-center">
             <MascotPair size={40} nod />
             <h3 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.35rem" }}>
               C&apos;est bloqué.
             </h3>
             <p className="mx-auto mt-1.5 max-w-[26ch] text-sm" style={{ color: MUTED }}>
-              {venue.name} · {when}. Plus rien à gérer jusqu&apos;à la semaine prochaine.
+              {venue.name}, {whenSentence}. Plus rien à gérer jusqu&apos;à la semaine prochaine.
             </p>
 
             {/* The message the invitee actually receives. Showing it
@@ -150,7 +162,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                 Ce que {sampleRecipient} reçoit
               </p>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: INK }}>
-                « Salut {sampleRecipient}, Ittsui nous propose de nous retrouver {when.toLowerCase()} à {venue.name}. Tu es
+                « Salut {sampleRecipient}, Ittsui nous propose de nous retrouver {whenSentence} à {venue.name}. Tu es
                 partant(e) ? »
               </p>
               <div className="mt-3 flex gap-2">
@@ -195,7 +207,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                 draggable={false}
                 className="pointer-events-none object-cover"
               />
-              {cardState === "swapped" && (
+              {swapped && (
                 <span
                   className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
                   style={{ backgroundColor: ACCENT }}
@@ -237,7 +249,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                   className="transition-colors"
                   style={{ color: MUTED }}
                 >
-                  ← {cardState === "swapped" ? "Option initiale" : "Échanger"}
+                  ← {swapped ? "Option initiale" : "Échanger"}
                 </motion.button>
                 <motion.button
                   type="button"
@@ -256,7 +268,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
         )}
       </motion.div>
 
-      {cardState !== "confirmed" && (
+      {!confirmed && (
         <div className="mt-4 text-center" style={{ minHeight: "1.25rem" }}>
           {skipped ? (
             <div className="flex flex-col items-center gap-2">
