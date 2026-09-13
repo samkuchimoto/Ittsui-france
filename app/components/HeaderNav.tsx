@@ -8,11 +8,34 @@
 // Sticky so the primary CTA stays reachable across a long single-page
 // scroll (many sections below), transparent at rest over the hero and only
 // gaining a background/hairline once there's real content behind it.
+//
+// ---------------------------------------------------------------------
+// The mascot is gone from here, and only from here.
+//
+// Verbatim tester reaction: "Mascot misleading as products", alongside
+// "Le nom ne lui parle pas" and "L'explication n'est pas dans le nom".
+// Those are the same failure seen from two sides. The first element a
+// French visitor met was an unreadable foreign name next to a single
+// cartoon bear — and the category cues that combination sends are
+// children's merchandise or a gamified dating app, both of which this
+// product then has to spend the rest of the page arguing against.
+//
+// Two further problems specific to putting Kokoro here. The characters
+// are a *pair* system (Ittsui, 一対, means exactly that), so showing one
+// of them alone inverts the concept it is supposed to carry. And a
+// mascot's job is to make an already-understood utility feel warm; it
+// cannot establish what the utility is. Line and Kakao both earned their
+// characters after being indispensable, not before.
+//
+// This is a Zone 0 decision, not a retirement. The full cast stays
+// everywhere it explains a relationship rather than the software: the
+// duo-type picker in setup, the dashboard, the invite and gesture flows,
+// the origin-story sheet. See lib/mascots.config.ts.
+// ---------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
-import { MascotAvatar } from "@/app/components/MascotAvatar";
 
 export function HeaderNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -33,10 +56,21 @@ export function HeaderNav() {
       }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <MascotAvatar characterId="kokoro" variant="bust" size={32} />
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem", color: INK }}>Ittsui</span>
-          <span className="text-sm" style={{ color: MUTED }}>一対</span>
+        {/* Typographic monogram plus a descriptor, because the name alone
+            explains nothing to the audience it's being shown to. The
+            descriptor is the first thing that has to be legible — 一対
+            stays as a quiet editorial mark beside it, not as the thing
+            carrying the meaning. */}
+        <Link href="/" className="flex items-baseline gap-2.5">
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem", color: INK }}>
+            Ittsui
+          </span>
+          <span className="hidden text-[13px] sm:inline" style={{ color: MUTED }}>
+            L&apos;organisateur de vos moments partagés
+          </span>
+          <span className="text-sm sm:hidden" style={{ color: MUTED }}>
+            一対
+          </span>
         </Link>
         <div className="flex items-center gap-6">
           <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: MUTED }}>

@@ -1,11 +1,13 @@
 "use client";
 // /app/components/FridayCard.tsx
-// Extracted out of app/page.tsx so that file can be a Server Component.
-// Three states only: default -> swapped -> confirmed. Two ways in: buttons
-// or a native drag gesture (swipe right = validate, swipe left = swap).
-// No gesture library — just pointer/touch coordinates and a spring-back
-// transform, wrapped in useTransition so the snap feels immediate even
-// while React schedules the state update.
+// The homepage's live proposal card — the product's entire mechanic,
+// playable before signing up.
+//
+// Three states: default -> swapped -> confirmed. Two ways in: buttons or
+// a native drag gesture (swipe right = validate, swipe left = swap). No
+// gesture library for the drag maths — pointer coordinates and a
+// spring-back transform, wrapped in useTransition so the snap feels
+// immediate while React schedules the state update.
 //
 // Kept on useTransition deliberately (a 2026-08-28 review proposed
 // removing it, citing "frame drops alongside Framer Motion values" —
@@ -13,33 +15,42 @@
 // direct DOM mutation, bypassing React's render cycle entirely, so the
 // drag itself was never competing with these state transitions in the way
 // that claim assumed, and no measurement backed it up).
+//
+// Two changes driven by real user feedback:
+//
+//   1. The venue is a button now, not a caption ("Image not clikable",
+//      "Adress not / Je rentre"). Tapping it opens VenueSheet with the
+//      real address, the nearest metro, and a live map link.
+//   2. Confirming no longer ends on a self-congratulatory checkmark. It
+//      reveals the actual SMS/WhatsApp the invitee would receive, plus
+//      the one fact that dissolves most of the scepticism about adopting
+//      a new social app: the other person needs no account and no
+//      install. That guarantee used to be a 12px line of grey text in
+//      the hero; here it lands at the moment someone is actually
+//      wondering "yes, but what does this make my friend do?".
+//
+// The card is driven by a scenario (lib/sandboxScenarios.ts) rather than
+// two hardcoded venues, so the duo-context tiles above it can reconfigure
+// it instead of sitting there as dead decoration.
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { MascotPair } from "@/app/components/MascotPair";
 import { IconCheck } from "@/app/components/HomeIcons";
+import { VenueSheet } from "@/app/components/VenueSheet";
+import { SANDBOX_SCENARIOS, type SandboxScenario, type SandboxVenue } from "@/lib/sandboxScenarios";
 
 type CardState = "default" | "swapped" | "confirmed";
 
-const OPTION_A = {
-  name: "Café de Flore · Paris 6e",
-  img: "/couple-parisian-cafe.jpg",
-  alt: "Café de Flore, Paris 6e",
-};
-const OPTION_B = {
-  name: "Jardin du Luxembourg · Paris 6e",
-  img: "/grandmother-granddaughter-park.jpg",
-  alt: "Jardin du Luxembourg, Paris 6e",
-};
-
 const SWIPE_THRESHOLD = 76; // px before a drag commits to an action
 
-export function FridayCard() {
+export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: SandboxScenario }) {
   const [cardState, setCardState] = useState<CardState>("default");
   const [skipped, setSkipped] = useState(false);
+  const [sheetVenue, setSheetVenue] = useState<SandboxVenue | null>(null);
   const [, startTransition] = useTransition();
 
   const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,6 +71,15 @@ export function FridayCard() {
       if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
     };
   }, []);
+
+  // Switching duo context mid-demo has to reset the card: leaving it on
+  // "confirmed" would show a rendez-vous locked at the previous
+  // scenario's venue under the new context's heading.
+  useEffect(() => {
+    setCardState("default");
+    setSkipped(false);
+    setSheetVenue(null);
+  }, [scenario.id]);
 
   function handleDragEnd(_event: unknown, info: { offset: { x: number } }) {
     if (info.offset.x > SWIPE_THRESHOLD) {
@@ -97,7 +117,8 @@ export function FridayCard() {
     }, 1800);
   }
 
-  const option = cardState === "swapped" ? OPTION_B : OPTION_A;
+  const venue = cardState === "swapped" ? scenario.alternative : scenario.primary;
+  const { sampleRecipient, when } = scenario;
 
   return (
     <div className="mx-auto max-w-sm">
@@ -112,18 +133,47 @@ export function FridayCard() {
         whileDrag={{ scale: 1.03 }}
       >
         {cardState === "confirmed" ? (
-          <div className="flex flex-col items-center px-6 py-14 text-center">
-            <MascotPair size={44} nod />
-            <h3 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-              Rendez-vous verrouillé !
+          <div className="px-6 py-8 text-center">
+            <MascotPair size={40} nod />
+            <h3 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.35rem" }}>
+              C&apos;est bloqué.
             </h3>
-            <p className="mt-2 max-w-[22ch] text-sm" style={{ color: MUTED }}>
-              ✓ Rendez-vous verrouillé pour Samedi 15:30. On se tait jusqu&apos;à samedi !
+            <p className="mx-auto mt-1.5 max-w-[26ch] text-sm" style={{ color: MUTED }}>
+              {venue.name} · {when}. Plus rien à gérer jusqu&apos;à la semaine prochaine.
             </p>
+
+            {/* The message the invitee actually receives. Showing it
+                verbatim is the point: no mystery about what lands in
+                someone else's phone, and no account on the other end. */}
+            <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "#FFFDF9" }}>
+              <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: MUTED }}>
+                Ce que {sampleRecipient} reçoit
+              </p>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: INK }}>
+                « Salut {sampleRecipient}, Ittsui nous propose de nous retrouver {when.toLowerCase()} à {venue.name}. Tu es
+                partant(e) ? »
+              </p>
+              <div className="mt-3 flex gap-2">
+                <span
+                  className="flex-1 rounded-full py-2 text-center text-xs font-medium text-white"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Je viens
+                </span>
+                <span className="flex-1 rounded-full border py-2 text-center text-xs font-medium" style={{ borderColor: BORDER }}>
+                  Pas dispo
+                </span>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed" style={{ color: MUTED }}>
+                Un lien, un geste, et le moment est bloqué dans son agenda. Aucun compte, aucune application à installer
+                pour elle ou lui.
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={resetDemo}
-              className="mt-6 text-xs underline underline-offset-4"
+              className="mt-5 text-xs underline underline-offset-4"
               style={{ color: MUTED }}
             >
               Réessayer la démonstration
@@ -133,13 +183,13 @@ export function FridayCard() {
           <>
             <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
               <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "#FFFDF9", color: MUTED }}>
-                Rendez-vous du Samedi · 15:30
+                Rendez-vous du {when}
               </span>
             </div>
             <div className="relative h-48 w-full">
               <Image
-                src={option.img}
-                alt={option.alt}
+                src={venue.photo}
+                alt={venue.photoAlt}
                 fill
                 sizes="384px"
                 draggable={false}
@@ -150,12 +200,34 @@ export function FridayCard() {
                   className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Alternative 1/1 · Samedi 15:30
+                  Alternative 1/1 · {when}
                 </span>
               )}
             </div>
             <div className="px-5 py-4">
-              <p className="text-sm font-medium">{option.name}</p>
+              {/* Was a static <p>. Real feedback: "Image not clikable",
+                  "Adress not". The venue is the one thing on this card a
+                  visitor actually wants to interrogate. */}
+              <button
+                type="button"
+                onClick={() => setSheetVenue(venue)}
+                className="flex w-full items-start justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-medium underline decoration-dotted underline-offset-4">
+                    {venue.shortLabel}
+                  </span>
+                  <span className="mt-0.5 block text-xs" style={{ color: MUTED }}>
+                    {venue.ambience.slice(0, 2).join(" · ")}
+                  </span>
+                </span>
+                <span
+                  className="mt-0.5 shrink-0 rounded-full px-2 py-1 text-[10px] font-medium"
+                  style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
+                >
+                  Voir le lieu
+                </span>
+              </button>
               <div className="mt-4 flex items-center justify-between text-xs">
                 <motion.button
                   type="button"
@@ -211,6 +283,8 @@ export function FridayCard() {
           Pourquoi on a créé Ittsui →
         </Link>
       </p>
+
+      <VenueSheet venue={sheetVenue} onClose={() => setSheetVenue(null)} />
     </div>
   );
 }

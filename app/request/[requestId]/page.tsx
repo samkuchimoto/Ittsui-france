@@ -22,6 +22,7 @@ import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { Mascot } from "@/app/components/Mascot";
 import { buildICSContent, downloadICSFile } from "@/lib/icsFile";
+import { VenueDirections } from "@/app/components/VenueDirections";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import type { VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
@@ -105,10 +106,12 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
         </div>
       )}
       <p className="text-base font-medium">{preview.venueName}</p>
-      <p className="mt-0.5 text-sm" style={{ color: MUTED }}>
-        {preview.venueAddress}
-      </p>
-      <p className="mt-1 text-sm" style={{ color: MUTED }}>
+      {/* The invitee is the one person on this screen who has never seen
+          the venue and still has to physically get there. Leaving the
+          address as dead text was the "Adress not / Je rentre" finding at
+          its sharpest. */}
+      <VenueDirections venueName={preview.venueName} venueAddress={preview.venueAddress} className="mt-0.5" />
+      <p className="mt-2 text-sm" style={{ color: MUTED }}>
         {preview.date} à {preview.time}
       </p>
     </div>

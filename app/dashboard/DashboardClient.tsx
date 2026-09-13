@@ -45,6 +45,7 @@ import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } fro
 import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
+import { VenueDirections } from "@/app/components/VenueDirections";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -611,6 +612,14 @@ export default function DashboardClient() {
           >
             <VenuePhoto venueType={week.optionA?.venueType} />
             <p className="text-base font-medium">{week.confirmationText}</p>
+            {/* confirmationText names the place and the time but never the
+                street. Someone deciding whether to say yes is deciding
+                whether they can get there — "Curiosite il veut savoir". */}
+            <VenueDirections
+              venueName={week.venueName}
+              venueAddress={week.venueAddress ?? week.optionA?.venueAddress}
+              className="mt-2"
+            />
 
             <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
             <ConfirmedMascotMoment
@@ -1092,10 +1101,11 @@ function TwoOptionPicker({
           {viewing === "A" ? "Option 1 sur 2" : "Option 2 sur 2"}
         </p>
         <p className="mt-1 text-base font-medium">{option.venueName}</p>
-        <p className="mt-1 text-sm" style={{ color: MUTED }}>
-          {option.venueAddress}
-        </p>
       </div>
+
+      {/* Outside the draggable card on purpose: these are real links, and
+          a tap that starts a horizontal drag would fight them. */}
+      <VenueDirections venueName={option.venueName} venueAddress={option.venueAddress} className="mt-3" />
 
       <button
         type="button"

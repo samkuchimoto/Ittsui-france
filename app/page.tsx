@@ -3,23 +3,57 @@
 // Server Component as of 2026-08-28 — this file has no Firebase/Firestore/
 // API dependencies and no hooks of its own; every piece of client-side
 // interactivity (scroll-tracked header, IntersectionObserver reveals, the
-// early-access form, the draggable Friday card) was extracted into its own
-// "use client" component under app/components/, so this file now only ever
-// composes static, server-rendered marketing prose plus those imported
-// islands. Splitting it this way means the static sections below (DUO_CARDS,
-// "Comment ça marche," the origin-story section, footer, etc.) never ship
-// their own render logic to the client bundle — only the interactive pieces
-// do. See app/components/HeaderNav.tsx, Reveal.tsx, EarlyAccessForm.tsx,
-// FridayCard.tsx, HomeIcons.tsx for what moved and why.
+// early-access form, the sandbox) lives in its own "use client" component
+// under app/components/, so this file only ever composes static,
+// server-rendered prose plus those imported islands.
+//
+// ---------------------------------------------------------------------
+// Rewritten against real tester feedback, quoted verbatim below.
+//
+//   "C'est quoi"                     "Le nom ne lui parle pas"
+//   "Site de rencontre, il sait      "L'explication n'est pas dans
+//    ce que c'est"                    le nom, en dessous de ça il faut"
+//   "Image not clikable"             "Mascot misleading as products"
+//   "Adress not / Je rentre"         "Curiosité, il veut savoir"
+//   "Deux types: ceux qui vont vers le site, un autre qui juste browsing"
+//   "L'appli qui doit lui dire c'est quoi sans chercher"
+//   "En moins de trois secondes il sait de quoi il s'agit"
+//   "En naviguant au lieu de naviguer c'est la confirmation, càd satisfaire"
+//
+// Four structural changes came out of that:
+//
+// 1. Positive framing. The hero badge used to read "Pas une appli de
+//    rencontre — un outil de maintien relationnel". Negation makes the
+//    reader picture the rejected category first, which is precisely how
+//    "site de rencontre" kept sticking. The badge now says who this is
+//    for, and the H1 says what happens, in one sentence of plain French.
+//
+// 2. The sandbox is the hero visual. A decorative stock photo sat here
+//    and answered nothing when tapped. Someone who is "juste browsing"
+//    now meets a working proposal card in the first screen, with no
+//    scrolling and no signup — the fastest honest answer to "c'est quoi".
+//
+// 3. One concrete question for the high-intent visitor: "Avec qui
+//    voulez-vous bloquer un moment ?" replaces the abstract "Protéger
+//    mes relations" button, and the answer is carried into setup.
+//
+// 4. Every surface that looks tappable now is. Duo tiles reconfigure the
+//    card, the venue opens its real address and a map link, the gesture
+//    tiles expand to the real catalogue.
+//
+// The mascot's removal from the header is a Zone 0 decision only — see
+// HeaderNav.tsx's comment. The cast stays everywhere in-product.
+// ---------------------------------------------------------------------
 
-import Image from "next/image";
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { HeaderNav } from "@/app/components/HeaderNav";
 import { Reveal } from "@/app/components/Reveal";
 import { EarlyAccessForm } from "@/app/components/EarlyAccessForm";
-import { FridayCard } from "@/app/components/FridayCard";
+import { DuoSandbox } from "@/app/components/DuoSandbox";
+import { GestureTiles } from "@/app/components/GestureTiles";
+import { StartRitualField } from "@/app/components/StartRitualField";
 import { IconArrowRight, IconCheck, IconSparkles, IconCalendarX } from "@/app/components/HomeIcons";
 import { MascotAvatar } from "@/app/components/MascotAvatar";
 
@@ -38,17 +72,31 @@ const workSans = Work_Sans({
   display: "swap",
 });
 
-const DUO_CARDS = [
-  { src: "/friends-cafe-terrace.jpg", alt: "Deux amis discutent en terrasse, sur une rue pavée.", label: "Vos ami(e)s proches" },
-  { src: "/couple-living-room.jpg", alt: "Un couple discute, installé sur un canapé, dans la lumière chaude du soir.", label: "Votre partenaire" },
-  { src: "/grandmother-granddaughter-park.jpg", alt: "Une grand-mère et sa petite-fille assises sur un banc, dans un parc.", label: "Votre famille" },
+// The real competitor is not another app — it's the default habit of
+// negotiating a date across a messaging thread. Naming that comparison
+// explicitly is the only way a visitor can judge whether Ittsui is
+// worth the switch; "plus simple" on its own means nothing next to a
+// tool they already have and trust.
+const VERSUS = [
   {
-    // Filename genuinely has a double .jpg.jpg extension on disk — not a
-    // typo to "fix" (verified 2026-08-28 against the real file in public/;
-    // dropping the second extension would 404 this image).
-    src: "/hero-father-son-vineyard.jpg.jpg",
-    alt: "Un père et son fils adulte marchent côte à côte dans les vignes.",
-    label: "Vos parents",
+    dimension: "Trouver une date",
+    whatsapp: "« On se voit quand ? » · « T'es libre quel jour ? » · relance trois jours plus tard",
+    ittsui: "Un jour et une heure déjà choisis, une fois pour toutes, à la configuration.",
+  },
+  {
+    dimension: "Trouver un lieu",
+    whatsapp: "Chercher un café, vérifier les horaires, envoyer trois liens, attendre un avis",
+    ittsui: "Une adresse réelle proposée pour vous, avec une alternative si elle ne va pas.",
+  },
+  {
+    dimension: "Ce que ça demande à l'autre",
+    whatsapp: "Participer à toute la négociation",
+    ittsui: "Ouvrir un lien et toucher « Je viens ». Aucun compte, aucune application.",
+  },
+  {
+    dimension: "Après",
+    whatsapp: "Le fil continue, les notifications aussi",
+    ittsui: "Silence total jusqu'au jour J.",
   },
 ];
 
@@ -60,209 +108,131 @@ export default function Home() {
     >
       <HeaderNav />
 
-      {/* Hero — stacked and centered on mobile, side-by-side above the
-          fold on desktop (lg:) so the headline and the interactive visual
-          share the same first screen instead of the image requiring a
-          scroll to reach. */}
-      <section className="px-6 pb-8 pt-4 sm:pb-12">
+      {/* Hero — the copy on the left, a working demonstration on the
+          right, both on the first screen at lg: and stacked in that order
+          on mobile. */}
+      <section className="px-6 pb-10 pt-2 sm:pb-14">
         <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
-          <Reveal className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+          <Reveal className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <span
               className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
               style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
             >
-              Pas une appli de rencontre — un outil de maintien relationnel
+              Pour vos proches, votre partenaire et vos ami(e)s qui comptent déjà
             </span>
+            {/* Sized down at the small end of the clamp on purpose: at
+                2.25rem this headline ran four lines on a 390px screen and
+                pushed the interactive card entirely off the first screen,
+                which is the one thing this rewrite exists to prevent. */}
             <h1
-              className="mt-4 leading-[1.08]"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(2.5rem, 5.5vw, 4rem)" }}
+              className="mt-3.5 leading-[1.08]"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.9rem, 4.6vw, 3.5rem)" }}
             >
-              Protégez vos relations précieuses contre l&apos;érosion du quotidien.
+              Un rendez-vous par semaine avec les personnes qui comptent.
             </h1>
-            {/* Reordered 2026-08-28 (real audit finding, per the strategic
-                doc's §10 critique): this used to open with the mechanism
-                ("Chaque semaine, Ittsui propose...") and only mention the
-                actual problem — workload, lack of time, never a lack of
-                desire — as an afterthought at the end. Same two facts, same
-                length, problem now stated first. */}
-            <p className="mx-auto mt-5 max-w-md text-[17px] lg:mx-0" style={{ color: MUTED }}>
-              Ce n&apos;est pas un manque d&apos;envie de les voir — c&apos;est la charge de travail et
-              le manque de temps qui font perdre de vue les gens qui comptent, sans jamais l&apos;avoir
-              décidé. Chaque semaine, Ittsui propose un lieu et un horaire pour un(e) proche, un(e)
-              partenaire ou la famille : vous dites oui en un clic, sans agenda à gérer.
+            <p className="mx-auto mt-4 max-w-md text-[15px] sm:text-[17px] lg:mx-0" style={{ color: MUTED }}>
+              Ittsui choisit le lieu et l&apos;horaire. Vous validez en 1 clic. Votre invité(e) n&apos;a besoin
+              d&apos;aucune application, ni même d&apos;un compte.
             </p>
-            <div className="mt-8 flex flex-col items-center gap-3 lg:items-start">
-              <Link
-                href="/setup"
-                className="inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: ACCENT }}
-              >
-                Protéger mes relations
-                <IconArrowRight className="h-4 w-4" />
-              </Link>
-              <p className="flex items-center gap-1.5 text-sm" style={{ color: MUTED }}>
-                <IconSparkles className="h-3.5 w-3.5" />
-                Gratuit · Sans calendrier à synchroniser · Configuration en 1 minute
-              </p>
-              {/* Two lower-commitment entry points, consolidated into one
-                  quiet row instead of two full-sentence lines stacked under
-                  the primary CTA. Real feedback drove adding both: a
-                  lower-commitment way in for someone not ready for a
-                  standing weekly ritual, and "envoyer un geste" existing but
-                  being undiscoverable outside the dashboard.
-                  Caption fixed 2026-08-28 (real audit finding): "Sans créer
-                  de compte" used to sit under both links but was only true
-                  for one — sending a custom rendez-vous requires a real
-                  Google sign-in at the final step (see RequestFormClient's
-                  handleConnect), only the *recipient* never needs an
-                  account, for either flow. Rephrased to the claim that's
-                  actually true for both rather than dropping the one that
-                  is. */}
-              <div className="mt-1 flex items-center gap-4 text-sm">
-                <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
-                  Proposer un rendez-vous
-                </Link>
-                <span aria-hidden="true" style={{ color: BORDER }}>
-                  ·
-                </span>
-                <Link href="/geste/nouveau" className="underline underline-offset-4" style={{ color: MUTED }}>
-                  Envoyer un geste
-                </Link>
-              </div>
-              <p className="text-xs" style={{ color: `${MUTED}99` }}>
-                La personne qui reçoit n&apos;a jamais besoin de créer de compte
-              </p>
+
+            <div className="mx-auto mt-5 max-w-md sm:mt-7 lg:mx-0">
+              <StartRitualField />
             </div>
+
+            {/* Two lower-commitment entry points, kept as one quiet row.
+                Real feedback drove adding both: a way in for someone not
+                ready for a standing weekly ritual, and "envoyer un geste"
+                existing but being undiscoverable outside the dashboard. */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm lg:justify-start">
+              <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
+                Proposer un rendez-vous ponctuel
+              </Link>
+              {/* Hidden where the row wraps — a lone middot stranded at
+                  the end of a line reads as a typo. */}
+              <span aria-hidden="true" className="hidden sm:inline" style={{ color: BORDER }}>
+                ·
+              </span>
+              <Link href="/geste/nouveau" className="underline underline-offset-4" style={{ color: MUTED }}>
+                Envoyer un geste
+              </Link>
+            </div>
+
+            {/* The kanji stays, explained. Leaving 一対 as an unglossed
+                graphic next to an opaque name was half of "le nom ne lui
+                parle pas" — a footnote costs one line and turns it from
+                a barrier into the thing that makes the name memorable. */}
+            <p className="mt-4 text-xs sm:mt-6" style={{ color: `${MUTED}CC` }}>
+              <span style={{ fontFamily: "var(--font-display)" }}>Ittsui (一対)</span> : l&apos;art d&apos;entretenir
+              le lien à deux.
+            </p>
           </Reveal>
 
-          <Reveal className="mx-auto mt-12 max-w-3xl lg:mx-0 lg:mt-0 lg:max-w-none">
-            <div
-              className="hero-photo-frame relative w-full overflow-hidden rounded-3xl border"
-              style={{ borderColor: BORDER, aspectRatio: "3 / 2" }}
-            >
-              <Image
-                src="/hero.jpg"
-                alt="Mère et fille au café"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
-            </div>
+          <Reveal className="mx-auto mt-8 w-full max-w-xl sm:mt-12 lg:mx-0 lg:mt-0 lg:max-w-none">
+            <DuoSandbox />
           </Reveal>
         </div>
       </section>
 
-      {/* Early access email capture — real feature request: visible on
-          the first page, not buried in a footer or a separate page. */}
-      <section className="px-6 pb-16">
-        <Reveal className="mx-auto max-w-md">
-          <EarlyAccessForm />
-        </Reveal>
-      </section>
-
-      {/* Any duo */}
+      {/* Why not just send a text — the comparison that decides whether
+          someone switches. */}
       <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
-            Pas de réseau social.
-            <br />
-            Pas d&apos;application de rencontre.
-          </h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm" style={{ color: MUTED }}>
-            Un outil simple pour les gens qui comptent déjà dans votre vie.
-          </p>
-        </Reveal>
-
-        <Reveal className="mx-auto mt-14 grid max-w-5xl grid-cols-2 gap-5 sm:grid-cols-4">
-          {DUO_CARDS.map((card, i) => (
-            <div
-              key={card.src}
-              className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${i % 2 === 1 ? "sm:mt-8" : ""}`}
-              style={{ borderColor: BORDER }}
-            >
-              <div className="relative h-40 w-full sm:h-56">
-                <Image src={card.src} alt={card.alt} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
-              </div>
-              <p className="px-3 py-3 text-center text-xs font-medium sm:px-5 sm:py-4 sm:text-sm">{card.label}</p>
-            </div>
-          ))}
-        </Reveal>
-      </section>
-
-      {/* Friday card mockup — now interactive */}
-      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
-        <Reveal className="mx-auto max-w-md text-center">
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)" }}>
-            Ce que vous recevez chaque semaine.
-            <br />
-            Et rien d&apos;autre.
-          </h2>
-          <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
-            Glissez la carte, ou utilisez les boutons. Essayez.
-          </p>
-        </Reveal>
-
-        <Reveal className="mt-12">
-          <FridayCard />
-        </Reveal>
-      </section>
-
-      {/* "Envoyer un geste" — a distinct relationship action alongside the
-          weekly rendez-vous, given its own scroll section rather than
-          staying a small link buried in the dashboard (2026-08-27: real
-          feedback that the feature existed but was undiscoverable). No
-          photography here on purpose — real, well-known third-party stock
-          photos surfaced during art-direction research come from small
-          commercial sites (a florist's own catalog shop, a gift-wrap
-          tutorial blog) with no license granted to Ittsui, and this app's
-          CSP/next.config.js only allowlists images.unsplash.com as a
-          remote image host regardless. Simple icon tiles instead, same
-          restrained treatment as the "Comment ça marche" steps below. */}
-      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
-            🎁 Envoyer une attention
+            Pourquoi pas juste un message ?
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm" style={{ color: MUTED }}>
-            Parce qu&apos;une relation se nourrit aussi de petites choses, pas seulement de rendez-vous.
+            Caler un café avec un(e) ami(e) prend rarement un message. Il en prend douze, sur quatre jours, et
+            souvent ça ne se fait pas.
           </p>
         </Reveal>
 
-        <Reveal className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-3">
-          {[
-            { emoji: "🎁", title: "Un objet qui vient de vous", body: "Envoyez quelque chose que vous avez déjà et qui vous fait penser à cette personne." },
-            { emoji: "🛍️", title: "Une petite attention", body: "Choisissez un type de geste — fleurs, livre, chocolat — et faites-le livrer." },
-            { emoji: "✨", title: "Laissez Ittsui trouver l'idée", body: "Une suggestion toute faite, pour ne pas avoir à réfléchir." },
-          ].map((tile) => (
+        <Reveal className="mx-auto mt-12 max-w-3xl">
+          <div className="overflow-hidden rounded-3xl border bg-white" style={{ borderColor: BORDER }}>
             <div
-              key={tile.title}
-              className="rounded-2xl border bg-white p-5 text-left transition-shadow hover:shadow-sm"
-              style={{ borderColor: BORDER }}
+              className="grid grid-cols-[1fr_1fr] border-b text-xs uppercase tracking-[0.12em] sm:grid-cols-[10rem_1fr_1fr]"
+              style={{ borderColor: BORDER, color: MUTED }}
             >
-              <span
-                className="flex h-11 w-11 items-center justify-center rounded-full text-xl"
-                style={{ backgroundColor: `${ACCENT}14` }}
-              >
-                {tile.emoji}
-              </span>
-              <p className="mt-4 text-sm font-medium">{tile.title}</p>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: MUTED }}>
-                {tile.body}
-              </p>
+              <div className="hidden px-5 py-3 sm:block" />
+              <div className="px-5 py-3">Messagerie</div>
+              <div className="px-5 py-3" style={{ color: ACCENT }}>
+                Ittsui
+              </div>
             </div>
-          ))}
+            {VERSUS.map((row) => (
+              <div
+                key={row.dimension}
+                className="grid grid-cols-[1fr_1fr] border-b text-sm last:border-b-0 sm:grid-cols-[10rem_1fr_1fr]"
+                style={{ borderColor: BORDER }}
+              >
+                <div
+                  className="col-span-2 px-5 pb-1 pt-4 text-xs font-medium sm:col-span-1 sm:py-5 sm:text-sm"
+                  style={{ color: INK }}
+                >
+                  {row.dimension}
+                </div>
+                <div className="px-5 py-4 text-xs leading-relaxed sm:py-5 sm:text-sm" style={{ color: MUTED }}>
+                  {row.whatsapp}
+                </div>
+                <div className="px-5 py-4 text-xs leading-relaxed sm:py-5 sm:text-sm" style={{ color: INK }}>
+                  {row.ittsui}
+                </div>
+              </div>
+            ))}
+          </div>
         </Reveal>
 
-        <Reveal className="mt-8 text-center">
-          <Link
-            href="/geste/nouveau"
-            className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-transform hover:scale-[1.02]"
-            style={{ borderColor: ACCENT, color: ACCENT }}
-          >
-            Envoyer un geste
-            <IconArrowRight className="h-4 w-4" />
-          </Link>
+        <Reveal className="mx-auto mt-8 max-w-xl">
+          <div className="flex items-start gap-4 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+            <MascotAvatar characterId="kokoro" variant="bust" size={40} className="shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Ce n&apos;est pas un manque d&apos;envie.</p>
+              <p className="mt-1 text-sm" style={{ color: MUTED }}>
+                C&apos;est la charge de travail et le manque de temps qui font perdre de vue les gens qui comptent,
+                sans jamais l&apos;avoir décidé. Ittsui prend la décision à votre place chaque semaine ; vous, vous
+                dites juste oui.
+              </p>
+            </div>
+          </div>
         </Reveal>
       </section>
 
@@ -288,14 +258,9 @@ export default function Home() {
                   </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Chaque semaine, recevez une proposition unique, prête à être validée en un clic.
+                  Chaque semaine, recevez une proposition unique — un lieu réel, un horaire — prête à être validée en
+                  un clic.
                 </p>
-                {/* The weekly proposal is the default, not a ceiling — this
-                    clarifies the override right where someone would first
-                    wonder "what if I already have a plan," rather than as
-                    its own marketing section (real 2026-08-28 gap: the
-                    /request/new link already existed in the hero, but
-                    nothing told a reader what it actually meant). */}
                 <p className="mt-2 text-sm">
                   <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
                     Vous savez déjà quoi faire ? Proposez votre propre rendez-vous →
@@ -309,14 +274,14 @@ export default function Home() {
               </span>
               <div>
                 <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Validation en 1 clic
+                  Votre invité(e) répond en un geste
                   <span style={{ color: MUTED }}>
                     <IconCheck className="h-4 w-4" />
                   </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Un lieu, un horaire. Vous dites oui, ou vous changez d&apos;avis en un geste — sans négociation,
-                  sans fil de discussion à relancer vous-même comme avec un texto classique.
+                  Elle ou il reçoit un lien par SMS ou WhatsApp, voit le lieu et l&apos;heure, touche « Je viens ». Pas
+                  de compte à créer, pas d&apos;application à installer, rien à négocier.
                 </p>
               </div>
             </li>
@@ -326,14 +291,14 @@ export default function Home() {
               </span>
               <div>
                 <h3 className="flex items-center gap-2 text-xl" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                  Anti-érosion relationnelle
+                  Puis plus rien
                   <span style={{ color: MUTED }}>
                     <IconCalendarX className="h-4 w-4" />
                   </span>
                 </h3>
                 <p className="mt-1 text-[17px]" style={{ color: MUTED }}>
-                  Une fois le rendez-vous bloqué, silence total jusqu&apos;à la semaine suivante. Le lien se
-                  maintient sans effort de mémoire.
+                  Une fois le rendez-vous bloqué, silence total jusqu&apos;à la semaine suivante. Le lien se maintient
+                  sans effort de mémoire.
                 </p>
                 <p className="mt-1 text-sm" style={{ color: MUTED }}>
                   Le droit à la déconnexion, appliqué à vos relations.
@@ -342,36 +307,58 @@ export default function Home() {
             </li>
           </ol>
         </Reveal>
+      </section>
 
-        <Reveal className="mx-auto mt-12 max-w-xl">
-          <div className="flex items-start gap-4 rounded-2xl border p-5" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-            <MascotAvatar characterId="kokoro" variant="bust" size={40} className="shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Pourquoi pas juste un texto ?</p>
-              <p className="mt-1 text-sm" style={{ color: MUTED }}>
-                Un SMS demande à quelqu&apos;un de proposer, relancer, caler l&apos;horaire — la charge
-                mentale reste entière. Ittsui prend cette décision à votre place chaque semaine ; vous,
-                vous dites juste oui.
-              </p>
-            </div>
-          </div>
+      {/* Early access email capture — real feature request: visible on
+          the first page, not buried in a footer or a separate page. Sits
+          below the mechanic rather than next to the hero, so there is
+          only ever one field asking for something at a time. */}
+      <section className="border-t px-6 py-16" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-md">
+          <EarlyAccessForm />
+        </Reveal>
+      </section>
+
+      {/* "Envoyer un geste" — a distinct relationship action alongside the
+          weekly rendez-vous, given its own scroll section rather than
+          staying a small link buried in the dashboard (2026-08-27: real
+          feedback that the feature existed but was undiscoverable). No
+          photography here on purpose — real, well-known third-party stock
+          photos surfaced during art-direction research come from small
+          commercial sites (a florist's own catalog shop, a gift-wrap
+          tutorial blog) with no license granted to Ittsui, and this app's
+          CSP/next.config.js only allowlists images.unsplash.com as a
+          remote image host regardless. */}
+      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
+            🎁 Envoyer une attention
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm" style={{ color: MUTED }}>
+            Parce qu&apos;une relation se nourrit aussi de petites choses, pas seulement de rendez-vous.
+          </p>
         </Reveal>
 
+        <Reveal className="mt-10">
+          <GestureTiles />
+        </Reveal>
+
+        <Reveal className="mt-8 text-center">
+          <Link
+            href="/geste/nouveau"
+            className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-transform hover:scale-[1.02]"
+            style={{ borderColor: ACCENT, color: ACCENT }}
+          >
+            Envoyer un geste
+            <IconArrowRight className="h-4 w-4" />
+          </Link>
+        </Reveal>
       </section>
 
       {/* The "why" — real origin story, not new marketing copy. Both
           quotes below are verbatim from /a-propos, not written for this
           section; the only thing new here is surfacing them on the
-          homepage instead of leaving them one click away. Deliberately
-          NOT the fuller 3-card "why planning fails" / "why Ittsui" content
-          blocks a 2026-08-28 draft proposed — those substantially
-          duplicate what "Pas de réseau social" above and "Comment ça
-          marche" already say; adding them again as generic pain-point
-          copy would be redundant, not high-impact, and drifts toward the
-          declarative trust-copy this app has deliberately avoided
-          elsewhere (real product clarity over persuasive marketing
-          sections). This section stays a single real story, not a
-          feature-benefit list. */}
+          homepage instead of leaving them one click away. */}
       <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
         <Reveal className="mx-auto max-w-xl text-center">
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
@@ -404,9 +391,7 @@ export default function Home() {
       {/* Real, unedited quotes from early testers — never fabricated,
           never a star rating or a fake name. See AGENTS.md's standing
           position on this: authentic-but-anonymous beats persuasive but
-          invented every time. Own section with a faint tint so social
-          proof reads as its own moment, not an addendum tacked onto the
-          numbered steps above. */}
+          invented every time. */}
       <section className="border-t px-6 py-16 sm:py-20" style={{ borderColor: BORDER, backgroundColor: `${ACCENT}08` }}>
         <Reveal className="mx-auto max-w-2xl">
           <p className="text-center text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
@@ -452,7 +437,7 @@ export default function Home() {
             className="mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 text-base text-white transition-transform hover:scale-[1.02]"
             style={{ backgroundColor: ACCENT }}
           >
-            Protéger mes relations
+            Bloquer un premier moment
             <IconArrowRight className="h-4 w-4" />
           </Link>
           <p className="mt-4 text-xs" style={{ color: MUTED }}>
@@ -463,20 +448,14 @@ export default function Home() {
               footnote caption, per direct product/pricing feedback: lead
               with what a subscription actually protects (a specific
               relationship — family, ami, partenaire), not a vague feature
-              list. €1/mois is a deliberate price point, not a placeholder
-              — cheaper than pushing back on a coffee, framed as exactly
-              that below. No fabricated feature list: "à venir" stays
-              honest about what Plus doesn't concretely include yet.
-              CTA added 2026-08-28 (real gap: this card was purely
-              informational, nothing clickable on it at all) — links to
-              /dashboard rather than starting checkout directly from this
-              public, unauthenticated page: purchase is pair-scoped (see
+              list. €1/mois is a deliberate price point, not a placeholder.
+              No fabricated feature list: "à venir" stays honest about what
+              Plus doesn't concretely include yet. Links to /dashboard
+              rather than starting checkout directly from this public,
+              unauthenticated page: purchase is pair-scoped (see
               lib/types.ts's Pair.subscriptionStatus) and /dashboard
               already redirects to /setup on its own when nobody is signed
-              in, so this is correct for both a signed-in visitor with a
-              pair (lands right on the real purchase button) and an
-              anonymous one (bounced to sign in first) without this page
-              needing to know which. */}
+              in. */}
           <div className="mt-8 rounded-2xl border p-6 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-semibold" style={{ color: ACCENT }}>

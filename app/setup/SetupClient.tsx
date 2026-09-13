@@ -324,6 +324,24 @@ export default function SetupClient() {
     if (detectedPostalCode) setPostalCode(detectedPostalCode);
   }, [detectedPostalCode]);
 
+  // Carries the homepage hero's "Avec qui voulez-vous bloquer un moment ?"
+  // answer into Step 1, so the same question is never asked twice (see
+  // app/components/StartRitualField.tsx). Read off window.location rather
+  // than useSearchParams deliberately: this page is force-dynamic and the
+  // value is a one-shot prefill, so there's no reason to take on
+  // useSearchParams' Suspense-boundary requirement for it. Prefill only —
+  // it never overwrites something already typed, and the field stays
+  // fully editable.
+  useEffect(() => {
+    try {
+      const fromHero = new URLSearchParams(window.location.search).get("avec")?.trim();
+      if (fromHero) setPartnerName((current) => current || fromHero.slice(0, 60));
+    } catch {
+      // Malformed query string — the field just starts empty, which is
+      // exactly what it did before this existed.
+    }
+  }, []);
+
   useEffect(() => {
     const unsub = watchAuthState((u) => setUser(u ?? false));
     return unsub;
