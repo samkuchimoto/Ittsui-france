@@ -19,7 +19,7 @@ import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
-import { fetchNearbyVenueSuggestions } from "@/lib/geoVenueSuggestions";
+import { fetchNearbyVenueSuggestions, placeNameToPostalCode } from "@/lib/geoVenueSuggestions";
 import { isValidEmail } from "@/lib/validation";
 import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
@@ -271,7 +271,12 @@ export default function RequestFormClient() {
   // out — a first-time visitor here (the exact "walking down the street"
   // scenario this whole flow targets) isn't going to type a postal code
   // from memory any more readily than they'd type a friend's email.
-  const { status: locationStatus, postalCode: detectedPostalCode, detect: detectLocation } = useUserLocation();
+  const {
+    status: locationStatus,
+    postalCode: detectedPostalCode,
+    coords: detectedCoords,
+    detect: detectLocation,
+  } = useUserLocation();
   useEffect(() => {
     if (detectedPostalCode) update("postalCode", detectedPostalCode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -584,6 +589,32 @@ export default function RequestFormClient() {
       if (result.venueName) {
         filledLabels.push("lieu");
         update("venueName", result.venueName);
+        // An extracted venueName is often an area/landmark reference
+        // ("Bastille"), not a specific business with its own address — it
+        // was only ever a place to search NEAR, the same job
+        // draft.postalCode already does to trigger venue suggestions
+        // below. Geocoding it fills that in so a real café/restaurant
+        // picker appears instead of raw text sitting in the field.
+        //
+        // Gated on a detected position, and that gate is the whole point.
+        // A neighbourhood name is not unique in France — "Bastille" alone
+        // resolves to a street in Brittany, "Croix-Rousse" to one in the
+        // Dordogne — so without a reference point to disambiguate against,
+        // this quietly filled the postal code with somewhere hundreds of
+        // kilometres away and suggested cafés there. See
+        // lib/geoVenueSuggestions.ts for the measured evidence and why
+        // BAN's own proximity-bias parameters don't fix it.
+        //
+        // So: no detected position, no guess. That is the same
+        // no-suggestions behaviour as before this existed, which is the
+        // right failure — someone who hasn't tapped "Utiliser ma position
+        // actuelle" still has the manual postal code field, and it stays
+        // the source of truth either way.
+        if (!draft.postalCode && detectedCoords) {
+          placeNameToPostalCode(result.venueName, detectedCoords).then((code) => {
+            if (code) update("postalCode", code);
+          });
+        }
       }
       if (result.venueAddress) {
         if (!filledLabels.includes("lieu")) filledLabels.push("lieu");
