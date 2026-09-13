@@ -58,8 +58,13 @@ export async function POST(request: Request) {
             content: [
               {
                 type: "text",
+                // Was framed as describing the object "à un livreur qui
+                // doit venir le récupérer". There is no courier any more
+                // (2026-09-13), and the description's only reader is the
+                // person being offered the object, so the prompt says
+                // that instead. Same instruction otherwise.
                 text:
-                  "Décris cet objet en une courte phrase en français, comme si tu l'annonçais à un livreur qui doit venir le récupérer. Sois concret et précis (type d'objet, couleur si visible), pas plus de 12 mots, pas de ponctuation finale.",
+                  "Décris cet objet en une courte phrase en français, comme si tu l'annonçais à la personne à qui on l'offre. Sois concret et précis (type d'objet, couleur si visible), pas plus de 12 mots, pas de ponctuation finale.",
               },
               { type: "image_url", image_url: { url: imageDataUrl } },
             ],

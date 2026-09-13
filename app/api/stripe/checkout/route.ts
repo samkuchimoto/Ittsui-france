@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!priceId || !appUrl) {
     // Honest fallback, same posture as every other optional integration in
-    // this app (Stuart, GIPHY, Fal.ai) — missing configuration never
+    // this app (GIPHY, Fal.ai) — missing configuration never
     // fabricates a session, it just tells the caller billing isn't live yet.
     return NextResponse.json({ error: "paiement non configuré" }, { status: 501 });
   }

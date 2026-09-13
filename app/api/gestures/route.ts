@@ -8,11 +8,11 @@
 // stored intent:
 //   - "painting": calls the same Fal.ai image-generation infrastructure
 //     already wired for app/api/ai-venue-mood/route.ts.
-//   - "own": collects the sender's own pickup address here so a real
-//     Stuart courier (lib/stuartCourier.ts) can be dispatched later,
-//     from /api/gestures/[gestureId]'s PATCH, once the recipient
-//     supplies their own dropoff address — Ittsui never has both
-//     addresses before that second step.
+//   - "own" used to collect the sender's home address here so a real
+//     Stuart bike courier could be dispatched to collect the object.
+//     Removed 2026-09-13 as a deliberate scope deletion — see
+//     /api/gestures/[gestureId]/route.ts for the reasoning. "own" is now
+//     an intent plus a notification, like "curated"/"suggested" below.
 //   - "message": can carry a real GIF the sender picked via
 //     GET /api/gestures/gif-search (a thin GIPHY proxy) — validated
 //     here to actually be a giphy.com media URL, not an arbitrary
@@ -60,16 +60,10 @@ const bodySchema = z
     item: z.enum(CURATED_ITEM_VALUES).optional(),
     customItem: z.string().trim().min(1).max(120).optional(),
     notes: z.string().trim().max(500).optional(),
-    // "own" mode only — see the Stuart note above for why this is
-    // collected now instead of at dispatch time.
-    pickupAddress: z.string().trim().min(1).max(300).optional(),
-    pickupPhone: z
-      .string()
-      .trim()
-      .min(6)
-      .max(30)
-      .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
-      .optional(),
+    // pickupAddress/pickupPhone are gone along with the courier dispatch
+    // they existed for. Dropping them from the schema rather than
+    // rejecting them means an older client still sending those keys has
+    // them silently stripped by zod instead of getting a 400.
     // "message" mode only — must actually be a GIPHY media URL, never
     // an arbitrary client-supplied image URL that would otherwise get
     // embedded straight into the recipient's notification email.
@@ -104,8 +98,6 @@ export async function POST(request: Request) {
     item,
     customItem,
     notes,
-    pickupAddress,
-    pickupPhone,
     gifUrl,
   } = parsed.data;
 
@@ -129,8 +121,6 @@ export async function POST(request: Request) {
     ...(customItem ? { customItem } : {}),
     ...(notes ? { note: notes } : {}),
     ...(gifUrl ? { gifUrl } : {}),
-    ...(pickupAddress ? { pickupAddress } : {}),
-    ...(pickupPhone ? { pickupPhone } : {}),
     ...(paintingImageUrl ? { paintingImageUrl } : {}),
     ...(paintingStatus ? { paintingStatus } : {}),
     status: "sent",

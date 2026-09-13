@@ -329,23 +329,17 @@ export interface Gesture {
   // a synchronous call, not a queue, at this scale).
   paintingImageUrl?: string;
   paintingStatus?: PaintingStatus;
-  // "own" mode only: the sender's own pickup address, collected at
-  // creation specifically so a real courier dispatch (lib/stuartCourier.ts)
-  // is possible once the recipient supplies their own address via PATCH —
-  // Ittsui never has both addresses before that point.
-  pickupAddress?: string;
-  pickupPhone?: string;
-  courierJobId?: string;
-  courierTrackingUrl?: string;
-  courierStatus?: "dispatched" | "failed";
+  // Removed 2026-09-13 with the Stuart courier dispatch they existed for:
+  // pickupAddress, pickupPhone, courierJobId, courierTrackingUrl,
+  // courierStatus, recipientContactPhone. Deliberate scope deletion, not
+  // an oversight — see app/api/gestures/[gestureId]/route.ts. Documents
+  // written before that date may still carry those keys in Firestore;
+  // nothing reads them, and they are harmless left in place. Do not
+  // reintroduce them without reopening the decision to run logistics.
   status: GestureStatus;
   createdAt: string;
   recipientChoice?: GestureRecipientChoice;
   recipientAddress?: string; // only present when recipientChoice === "address"
-  // The recipient's OWN contact number for the courier, collected
-  // alongside recipientAddress — distinct from recipientPhone (given by
-  // the sender at creation, used only for the notification link).
-  recipientContactPhone?: string;
   recipientRespondedAt?: string; // ISO date
 }
 

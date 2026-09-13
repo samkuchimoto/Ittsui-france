@@ -3,8 +3,8 @@
 // same bearer-link trust model as every other shared link in this app
 // (an unguessable Firestore doc ID IS the authorization, no login).
 // Only public-safe fields are returned: never recipientEmail/
-// recipientPhone/senderEmail/pickupAddress/pickupPhone, which were
-// given in confidence, not for display back to whoever opens the link.
+// recipientPhone/senderEmail, which were given in confidence, not for
+// display back to whoever opens the link.
 //
 // PATCH: the recipient's own reply on how to actually receive a physical
 // gesture ("own"/"curated"/"suggested" modes only — "message"/"painting"
@@ -12,18 +12,20 @@
 // they left one, so the loop actually closes instead of the sender
 // wondering whether the link even got opened.
 //
-// For "own" mode specifically, supplying an address here is also the
-// trigger for a REAL Stuart courier dispatch (lib/stuartCourier.ts) —
-// this is the first point Ittsui has both the sender's pickup address
-// (collected at creation) and the recipient's own dropoff address.
+// This used to also dispatch a real Stuart bike courier across Paris.
+// That is gone (2026-09-13, deliberate scope deletion): a two-person
+// software team cannot also be an on-demand logistics operator, and the
+// unanswerable questions were operational, not technical — who pays the
+// 8-18 EUR per ride, who is liable for a lost or broken parcel, who
+// handles a sender who isn't home. What remains does the same job with
+// zero operations: the recipient says where to send it, or that they'd
+// rather have it in person, and the sender is told. The sender posts it
+// themselves, exactly as they would have anyway.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
-import { dispatchStuartCourier } from "@/lib/stuartCourier";
-import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
-import type { CuratedGestureItem } from "@/lib/types";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -46,8 +48,6 @@ export async function GET(_request: Request, { params }: { params: { gestureId: 
     recipientChoice: data.recipientChoice ?? null,
     paintingImageUrl: data.paintingImageUrl ?? null,
     paintingStatus: data.paintingStatus ?? null,
-    courierStatus: data.courierStatus ?? null,
-    courierTrackingUrl: data.courierTrackingUrl ?? null,
   });
 }
 
@@ -55,29 +55,14 @@ const patchSchema = z
   .object({
     choice: z.enum(["address", "in_person"]),
     address: z.string().trim().min(1).max(300).optional(),
-    // Recipient's own contact number — only actually needed for a real
-    // Stuart dispatch ("own" mode); optional here so the address/
-    // in-person reply still works even when courier dispatch isn't
-    // possible (no pickupAddress on file, or Stuart not configured).
-    phone: z
-      .string()
-      .trim()
-      .min(6)
-      .max(30)
-      .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
-      .optional(),
+    // No phone field any more. It existed only so a courier could ring
+    // the recipient on arrival; with no courier there is nobody to ring,
+    // and asking someone for their number to accomplish nothing is
+    // exactly the kind of field this flow is being stripped of. Any
+    // phone still sent by an older client is simply ignored rather than
+    // rejected — zod strips unknown keys by default.
   })
   .refine((data) => data.choice !== "address" || !!data.address, { message: "adresse requise" });
-
-// Stuart's contact object wants firstname/lastname separately; this app
-// only ever stores one free-text name field. A plain word-split is an
-// honest reformat of data already given, not an invention of data that
-// isn't there — "lastname" ends up empty for a one-word name, which
-// Stuart's own docs allow.
-function splitName(fullName: string): { firstname: string; lastname: string } {
-  const [firstname, ...rest] = fullName.trim().split(/\s+/);
-  return { firstname: firstname || fullName, lastname: rest.join(" ") };
-}
 
 export async function PATCH(request: Request, { params }: { params: { gestureId: string } }) {
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
@@ -90,50 +75,11 @@ export async function PATCH(request: Request, { params }: { params: { gestureId:
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   const data = snap.data()!;
-  const { choice, address, phone } = parsed.data;
-
-  let courierJobId: string | undefined;
-  let courierTrackingUrl: string | undefined;
-  let courierStatus: "dispatched" | "failed" | undefined;
-
-  // Real enforcement extended 2026-08-28 to "curated"/"suggested" too, not
-  // just "own" — those two modes used to just link out to a merchant's
-  // homepage with nothing Ittsui itself actually did. Now, whenever a
-  // pickup address was collected at send time (see /api/gestures POST —
-  // the field itself was always mode-agnostic, only this check wasn't),
-  // the exact same real Stuart dispatch "own" mode already used fires for
-  // them too: buy the flowers/book/chocolate wherever you like, then
-  // Ittsui gets it delivered, same as if you already owned it.
-  const courierEligibleModes = ["own", "curated", "suggested"];
-  if (choice === "address" && courierEligibleModes.includes(data.mode) && data.pickupAddress && data.pickupPhone && address && phone) {
-    const packageDescription =
-      data.itemDescription ??
-      (data.item === "autre" ? data.customItem : CURATED_ITEM_LABEL[data.item as CuratedGestureItem]) ??
-      "Geste Ittsui";
-    const result = await dispatchStuartCourier({
-      clientReference: params.gestureId,
-      packageDescription,
-      pickupAddress: data.pickupAddress,
-      pickupContact: { ...splitName(data.senderName), phone: data.pickupPhone },
-      dropoffAddress: address,
-      dropoffContact: { ...splitName(data.recipientName), phone },
-    });
-    if (result.status !== "not_configured") {
-      courierStatus = result.status;
-      if (result.status === "dispatched") {
-        courierJobId = result.jobId;
-        courierTrackingUrl = result.trackingUrl;
-      }
-    }
-  }
+  const { choice, address } = parsed.data;
 
   await ref.update({
     recipientChoice: choice,
     ...(address ? { recipientAddress: address } : {}),
-    ...(phone ? { recipientContactPhone: phone } : {}),
-    ...(courierJobId ? { courierJobId } : {}),
-    ...(courierTrackingUrl ? { courierTrackingUrl } : {}),
-    ...(courierStatus ? { courierStatus } : {}),
     recipientRespondedAt: new Date().toISOString(),
   });
 
@@ -142,23 +88,19 @@ export async function PATCH(request: Request, { params }: { params: { gestureId:
       choice === "address"
         ? `${escapeHtml(data.recipientName)} a laissé une adresse : ${escapeHtml(address ?? "")}`
         : `${escapeHtml(data.recipientName)} préfère recevoir ça en main propre, la prochaine fois que vous vous voyez.`;
-    const courierLine =
-      courierStatus === "dispatched"
-        ? `<p style="font-size:13px;color:#1E7A4C;text-align:center;font-weight:600;">Un livreur Stuart a été programmé pour récupérer l'objet chez vous.${courierTrackingUrl ? ` <a href="${courierTrackingUrl}">Suivre la course</a>` : ""}</p>`
-        : "";
     await sendEmail({
       to: data.senderEmail,
       subject: `${data.recipientName} a répondu`,
-      text: choiceLine.replace(/<[^>]+>/g, "") + (courierStatus === "dispatched" ? " Un livreur Stuart a été programmé." : ""),
+      text: choiceLine.replace(/<[^>]+>/g, ""),
       html: emailShell({
         mascotName: "mochi",
         title: `${escapeHtml(data.recipientName)} a répondu`,
-        bodyHtml: `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${choiceLine}</p>${courierLine}`,
+        bodyHtml: `<p style="font-size:15px;line-height:1.5;color:#565049;text-align:center;">${choiceLine}</p>`,
       }),
     });
   }
 
-  return NextResponse.json({ status: "ok", ...(courierStatus ? { courierStatus, courierTrackingUrl: courierTrackingUrl ?? null } : {}) });
+  return NextResponse.json({ status: "ok" });
 }
 
 async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text: string; html: string }): Promise<boolean> {

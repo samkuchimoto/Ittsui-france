@@ -1,13 +1,13 @@
 // /app/api/gestures/gif-search/route.ts
 // Thin server-side proxy to GIPHY's real search endpoint, so
 // GIPHY_API_KEY never reaches the client bundle — the same reasoning
-// every other server-only key in this app (Fal.ai, Stuart, Resend) is
+// every other server-only key in this app (Fal.ai, Resend) is
 // never called directly from a page component. Powers the optional GIF
 // picker on "message"-mode gestures (lib/gestureLinks.ts's zero-object
 // mode) — verified 2026-08-28 against a real GIPHY Beta API key created
 // for this project (developers.giphy.com), not guessed.
 //
-// Honest-fallback posture, same as Fal.ai/Stuart: unset key returns 501
+// Honest-fallback posture, same as Fal.ai: unset key returns 501
 // and the picker simply doesn't appear client-side.
 
 import { NextResponse } from "next/server";

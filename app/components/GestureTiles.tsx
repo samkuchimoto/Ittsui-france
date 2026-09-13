@@ -30,8 +30,12 @@ const TILES = [
     emoji: "🎁",
     title: "Un objet qui vient de vous",
     body: "Envoyez quelque chose que vous avez déjà et qui vous fait penser à cette personne.",
+    // Was: "...et un coursier passe le récupérer chez vous." Ittsui no
+    // longer dispatches couriers (2026-09-13), so that sentence became a
+    // promise the product doesn't keep — on the landing page, which is
+    // the worst place to make one.
     detail:
-      "Un livre que vous avez fini, une photo tirée, un pull qu'elle vous empruntait tout le temps. Vous le décrivez, la personne indique son adresse, et un coursier passe le récupérer chez vous.",
+      "Un livre que vous avez fini, une photo tirée, un pull qu'elle vous empruntait tout le temps. Vous le décrivez, la personne vous dit où l'envoyer — ou qu'elle préfère le recevoir en main propre la prochaine fois que vous vous voyez.",
     items: [] as string[],
   },
   {
