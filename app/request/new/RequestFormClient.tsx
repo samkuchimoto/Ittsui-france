@@ -25,6 +25,7 @@ import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { listenOnce } from "@/lib/nativeSpeech";
 import { shareLink } from "@/lib/shareLink";
+import { meetingRequestShareText } from "@/lib/proposalMessage";
 import { whatsappLinkForNumber, smsLinkForNumber, normalizePhoneForShare } from "@/lib/phoneShareLinks";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { useUserLocation } from "@/app/hooks/useUserLocation";
@@ -176,7 +177,17 @@ export default function RequestFormClient() {
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<{ name: string; requestUrl: string; hasEmail: boolean; phone: string } | null>(null);
+  const [sentTo, setSentTo] = useState<{
+    name: string;
+    requestUrl: string;
+    hasEmail: boolean;
+    phone: string;
+    // Carried so the hand-shared message can name the actual rendez-vous
+    // instead of just linking to it — see lib/proposalMessage.ts.
+    venueName: string;
+    date: string;
+    time: string;
+  } | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [freeText, setFreeText] = useState("");
@@ -681,7 +692,20 @@ export default function RequestFormClient() {
       if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
 
       sessionStorage.removeItem(DRAFT_KEY);
-      setSentTo({ name: draft.recipientName, requestUrl: data.requestUrl as string, hasEmail, phone: draft.recipientPhone });
+      // Venue/date/time are snapshotted here rather than read off `draft`
+      // at share time: the share buttons render for as long as this
+      // success state is up, and nothing stops the form state underneath
+      // from being edited or reset in between. The message has to
+      // describe the rendez-vous that was actually sent.
+      setSentTo({
+        name: draft.recipientName,
+        requestUrl: data.requestUrl as string,
+        hasEmail,
+        phone: draft.recipientPhone,
+        venueName: draft.venueName,
+        date: draft.date,
+        time: draft.time,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi.");
     } finally {
@@ -689,9 +713,26 @@ export default function RequestFormClient() {
     }
   }
 
+  // One composer for every channel a request goes out on by hand, so the
+  // native share sheet, WhatsApp and SMS can't drift apart the way this
+  // and the emailed version already had.
+  function shareTextForRequest(): string {
+    if (!sentTo) return "";
+    return meetingRequestShareText({
+      recipientName: sentTo.name,
+      venueName: sentTo.venueName,
+      date: sentTo.date,
+      time: sentTo.time,
+      // A phone-only request is accepted straight from the link; an
+      // email-addressed one needs a Google sign-in, so only the first
+      // can honestly promise "sans compte à créer".
+      noAccountNeeded: !sentTo.hasEmail,
+    });
+  }
+
   async function handleShareRequestLink() {
     if (!sentTo) return;
-    await shareLink({ title: "Ittsui", text: `Je te propose un rendez-vous sur Ittsui :`, url: sentTo.requestUrl });
+    await shareLink({ title: "Ittsui", text: shareTextForRequest(), url: sentTo.requestUrl });
   }
 
   return (
@@ -772,7 +813,7 @@ export default function RequestFormClient() {
                 </p>
                 <div className="mt-4 space-y-2">
                   {(() => {
-                    const text = `Je te propose un rendez-vous sur Ittsui : ${sentTo.requestUrl}`;
+                    const text = `${shareTextForRequest()} ${sentTo.requestUrl}`;
                     const whatsappHref = whatsappLinkForNumber(sentTo.phone, text);
                     const smsHref = smsLinkForNumber(sentTo.phone, text);
                     return (
