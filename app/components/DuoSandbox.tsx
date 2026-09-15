@@ -79,7 +79,9 @@ export function DuoSandbox() {
         })}
       </div>
 
-      <p className="mt-5 text-center text-sm" style={{ color: MUTED }}>
+      {/* Over the hero footage, so light rather than MUTED — at #565049
+          this line was effectively invisible on the dark scrim. */}
+      <p className="mt-5 text-center text-sm" style={{ color: "rgba(255,253,249,0.82)" }}>
         Voici la proposition qu&apos;Ittsui enverrait. Glissez la carte, échangez le lieu, ou validez —
         c&apos;est exactement l&apos;application.
       </p>

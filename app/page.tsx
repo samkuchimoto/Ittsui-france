@@ -47,11 +47,12 @@
 
 import Link from "next/link";
 import { Fraunces, Work_Sans } from "next/font/google";
-import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 import { HeaderNav } from "@/app/components/HeaderNav";
 import { Reveal } from "@/app/components/Reveal";
 import { EarlyAccessForm } from "@/app/components/EarlyAccessForm";
 import { DuoSandbox } from "@/app/components/DuoSandbox";
+import { AmbientHeroVideo } from "@/app/components/AmbientHeroVideo";
 import { GestureTiles } from "@/app/components/GestureTiles";
 import { StartRitualField } from "@/app/components/StartRitualField";
 import { IconArrowRight, IconCheck, IconSparkles, IconCalendarX } from "@/app/components/HomeIcons";
@@ -110,13 +111,25 @@ export default function Home() {
 
       {/* Hero — the copy on the left, a working demonstration on the
           right, both on the first screen at lg: and stacked in that order
-          on mobile. */}
-      <section className="px-6 pb-10 pt-2 sm:pb-14">
-        <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
+          on mobile.
+
+          The ambient footage is a background layer on this section, not a
+          card inside it: the sandbox has to stay the only thing that looks
+          tappable. See AmbientHeroVideo.tsx. `relative` here is what the
+          absolutely-positioned layer anchors to; `isolate` keeps the
+          stacking context local so the sticky header is unaffected. */}
+      <section className="relative isolate -mt-[68px] flex min-h-[86vh] items-center overflow-hidden px-6 pb-16 pt-[104px] sm:pb-24 lg:min-h-[92vh]">
+        <AmbientHeroVideo />
+        <div className="relative mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
           <Reveal className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <span
               className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
-              style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
+              style={{
+                backgroundColor: "rgba(255,253,249,0.10)",
+                color: CREAM,
+                border: "1px solid rgba(255,253,249,0.22)",
+                backdropFilter: "blur(6px)",
+              }}
             >
               Pour vos proches, votre partenaire et vos ami(e)s qui comptent déjà
             </span>
@@ -126,17 +139,26 @@ export default function Home() {
                 which is the one thing this rewrite exists to prevent. */}
             <h1
               className="mt-3.5 leading-[1.08]"
-              style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.9rem, 4.6vw, 3.5rem)" }}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 500,
+                fontSize: "clamp(2rem, 4.8vw, 3.75rem)",
+                color: CREAM,
+                textShadow: "0 1px 30px rgba(12,10,9,0.55)",
+              }}
             >
               Un rendez-vous par semaine avec les personnes qui comptent.
             </h1>
-            <p className="mx-auto mt-4 max-w-md text-[15px] sm:text-[17px] lg:mx-0" style={{ color: MUTED }}>
+            <p
+              className="mx-auto mt-4 max-w-md text-[15px] sm:text-[17px] lg:mx-0"
+              style={{ color: "rgba(255,253,249,0.82)", textShadow: "0 1px 18px rgba(12,10,9,0.5)" }}
+            >
               Ittsui choisit le lieu et l&apos;horaire. Vous validez en 1 clic. Votre invité(e) n&apos;a besoin
               d&apos;aucune application, ni même d&apos;un compte.
             </p>
 
             <div className="mx-auto mt-5 max-w-md sm:mt-7 lg:mx-0">
-              <StartRitualField />
+              <StartRitualField onDark />
             </div>
 
             {/* Two lower-commitment entry points, kept as one quiet row.
@@ -144,15 +166,15 @@ export default function Home() {
                 ready for a standing weekly ritual, and "envoyer un geste"
                 existing but being undiscoverable outside the dashboard. */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm lg:justify-start">
-              <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
+              <Link href="/request/new" className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
                 Proposer un rendez-vous ponctuel
               </Link>
               {/* Hidden where the row wraps — a lone middot stranded at
                   the end of a line reads as a typo. */}
-              <span aria-hidden="true" className="hidden sm:inline" style={{ color: BORDER }}>
+              <span aria-hidden="true" className="hidden sm:inline" style={{ color: "rgba(255,253,249,0.35)" }}>
                 ·
               </span>
-              <Link href="/geste/nouveau" className="underline underline-offset-4" style={{ color: MUTED }}>
+              <Link href="/geste/nouveau" className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
                 Envoyer un geste
               </Link>
             </div>
@@ -161,7 +183,7 @@ export default function Home() {
                 graphic next to an opaque name was half of "le nom ne lui
                 parle pas" — a footnote costs one line and turns it from
                 a barrier into the thing that makes the name memorable. */}
-            <p className="mt-4 text-xs sm:mt-6" style={{ color: `${MUTED}CC` }}>
+            <p className="mt-4 text-xs sm:mt-6" style={{ color: "rgba(255,253,249,0.62)" }}>
               <span style={{ fontFamily: "var(--font-display)" }}>Ittsui (一対)</span> : l&apos;art d&apos;entretenir
               le lien à deux.
             </p>
@@ -262,7 +284,7 @@ export default function Home() {
                   un clic.
                 </p>
                 <p className="mt-2 text-sm">
-                  <Link href="/request/new" className="underline underline-offset-4" style={{ color: MUTED }}>
+                  <Link href="/request/new" className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
                     Vous savez déjà quoi faire ? Proposez votre propre rendez-vous →
                   </Link>
                 </p>

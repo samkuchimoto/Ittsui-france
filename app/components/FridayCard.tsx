@@ -273,7 +273,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
           {skipped ? (
             <div className="flex flex-col items-center gap-2">
               <MascotPair size={30} />
-              <p className="text-xs" style={{ color: MUTED }}>
+              <p className="text-xs" style={{ color: "rgba(255,253,249,0.82)" }}>
                 Pas de pression cette semaine. On s&apos;occupe du reste — à la semaine prochaine.
               </p>
             </div>
@@ -282,7 +282,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
               type="button"
               onClick={skipWeek}
               className="text-xs underline underline-offset-4 transition-colors"
-              style={{ color: MUTED }}
+              style={{ color: "rgba(255,253,249,0.78)" }}
             >
               Passer cette semaine
             </button>
@@ -291,7 +291,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
       )}
 
       <p className="mt-3 text-center text-xs">
-        <Link href="/a-propos" className="underline underline-offset-4" style={{ color: MUTED }}>
+        <Link href="/a-propos" className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
           Pourquoi on a créé Ittsui →
         </Link>
       </p>

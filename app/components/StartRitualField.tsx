@@ -18,10 +18,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 import { IconArrowRight } from "@/app/components/HomeIcons";
 
-export function StartRitualField() {
+// onDark: the hero sits over cinematic footage now, so the label and the
+// helper line have to read as light-on-dark there. Everywhere else the
+// component is unchanged ink-on-cream — this is a prop rather than a
+// rewrite because /setup may well reuse it on the pale background later.
+export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) {
   const router = useRouter();
   const [name, setName] = useState("");
 
@@ -33,7 +37,11 @@ export function StartRitualField() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <label htmlFor="avec-qui" className="block text-sm font-medium" style={{ color: INK }}>
+      <label
+        htmlFor="avec-qui"
+        className="block text-sm font-medium"
+        style={onDark ? { color: CREAM, textShadow: "0 1px 14px rgba(12,10,9,0.5)" } : { color: INK }}
+      >
         Avec qui voulez-vous bloquer un moment ?
       </label>
       <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
@@ -45,7 +53,7 @@ export function StartRitualField() {
           placeholder="Thomas, Maman, Camille…"
           autoComplete="off"
           className="w-full rounded-full border bg-white px-5 py-3.5 text-base outline-none transition-colors focus:border-current"
-          style={{ borderColor: BORDER }}
+          style={{ borderColor: onDark ? "rgba(255,253,249,0.55)" : BORDER }}
         />
         <button
           type="submit"
@@ -56,7 +64,10 @@ export function StartRitualField() {
           <IconArrowRight className="h-4 w-4" />
         </button>
       </div>
-      <p className="mt-2.5 text-sm" style={{ color: MUTED }}>
+      <p
+        className="mt-2.5 text-sm"
+        style={onDark ? { color: "rgba(255,253,249,0.72)" } : { color: MUTED }}
+      >
         Gratuit · Configuration en 1 minute · Aucun agenda à synchroniser
       </p>
     </form>

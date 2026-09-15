@@ -35,7 +35,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 
 export function HeaderNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -62,21 +62,39 @@ export function HeaderNav() {
             stays as a quiet editorial mark beside it, not as the thing
             carrying the meaning. */}
         <Link href="/" className="flex items-baseline gap-2.5">
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.35rem", color: INK }}>
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              fontSize: "1.35rem",
+              // Light over the hero footage, ink once the bar has its own
+              // cream background. Without this the header read as a white
+              // band pasted on top of a cinematic hero.
+              color: scrolled ? INK : CREAM,
+              textShadow: scrolled ? undefined : "0 1px 14px rgba(12,10,9,0.55)",
+              transition: "color 0.3s ease",
+            }}
+          >
             Ittsui
           </span>
-          <span className="hidden text-[13px] sm:inline" style={{ color: MUTED }}>
+          <span
+            className="hidden text-[13px] sm:inline"
+            style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.78)", transition: "color 0.3s ease" }}
+          >
             L&apos;organisateur de vos moments partagés
           </span>
-          <span className="text-sm sm:hidden" style={{ color: MUTED }}>
+          <span
+            className="text-sm sm:hidden"
+            style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.78)", transition: "color 0.3s ease" }}
+          >
             一対
           </span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: MUTED }}>
+          <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.82)" }}>
             App mobile
           </Link>
-          <Link href="/setup" className="text-sm transition-colors" style={{ color: MUTED }}>
+          <Link href="/setup" className="text-sm transition-colors" style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.82)" }}>
             Connexion
           </Link>
           <Link
