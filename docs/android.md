@@ -18,6 +18,69 @@
   consistency with how this project handles all Firebase/signing config (`android/.gitignore`; it
   was previously listed there but commented out — fixed in an earlier pass).
 
+## JDK requirement — JDK 21 or newer, and why 17 fails
+
+Measured on this machine 2026-09-15, not inferred.
+
+```
+JDK 17 (the bundled bubblewrap one at ~/.bubblewrap/jdk17)
+  -> FAILS: "Execution failed for task ':capacitor-android:compileReleaseJavaWithJavac'
+             > Java compilation initialization error
+               error: invalid source release: 21"
+
+JDK 25 (Android Studio's bundled JBR)
+  -> BUILDS, signs, and verifies clean with Gradle 8.14.3
+```
+
+Capacitor 8's own Android modules compile at source/target **21**, so a JDK that cannot emit
+class files for 21 cannot build this project at all — that is the whole error. JDK 17 is two
+releases short. It is not a Gradle-vs-JDK incompatibility, which is what the note in
+"Verified vs. not yet verified" used to say.
+
+The bubblewrap JDK is 17 because Bubblewrap pins it for the TWA toolchain; it is the wrong JDK
+for this Capacitor project even though it is the one sitting in a convenient place. Reach for
+Android Studio's JBR instead.
+
+### Building a signed release locally
+
+```bash
+cd android
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"   # JDK 21+; 17 will not work
+export ANDROID_HOME="$HOME/AppData/Local/Android/Sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+./gradlew bundleRelease --no-daemon
+# -> android/app/build/outputs/bundle/release/app-release.aab
+```
+
+Requires `android/keystore.properties` to exist (gitignored — copy
+`keystore.properties.example` and fill it in). Without it the build still succeeds but produces
+an *unsigned* AAB, which Play will reject on upload.
+
+Verify before uploading:
+
+```bash
+"$JAVA_HOME/bin/jarsigner" -verify app/build/outputs/bundle/release/app-release.aab
+"$JAVA_HOME/bin/keytool" -printcert -jarfile app/build/outputs/bundle/release/app-release.aab
+```
+
+The `BUNDLE-METADATA ... signed in JarFile but is not signed in JarInputStream` warnings from
+`jarsigner` are normal for an AAB and are not a signing problem.
+
+## webDir is `native-shell`, not `public`
+
+`capacitor.config.ts` sets `server.url` to the live site, so the WebView loads
+`https://ittsui.fr` and **nothing in `webDir` is ever served**. Capacitor still copies the whole
+of `webDir` into `android/app/src/main/assets/public` on every `cap sync`, though, which had
+quietly baked ~14 MB of stale pre-optimisation images into the native project — including
+`mother-daughter-kitchen.jpg`, which this repo's own hygiene notes record as deleted from the web
+app for being dead weight. The next sync would have added the hero video on top of that.
+
+`webDir` now points at `native-shell/`, which holds a single small offline fallback page — the
+only thing a remote-URL shell has any local use for. Native assets: **14 MB -> 9 KB**, and the
+signed AAB comes out at 4.5 MB rather than ~19 MB.
+
+Do not point `webDir` back at `public/` unless `server.url` is also removed.
+
 ## Release signing
 
 `android/app/build.gradle` reads signing credentials from two possible sources, checked in this
@@ -80,11 +143,15 @@ independent of whether signing is configured yet.
 
 - **VERIFIED**: `android.yml` already builds a debug APK successfully on every push to `main`
   (existing workflow, unchanged by this pass).
-- **IMPLEMENTED BUT NOT VERIFIED**: the `bundleRelease` step and signing wiring added in this
-  pass — this machine has no working local Gradle/JDK combination (Gradle 8.14.3 can't run on the
-  only JDK present, a bundled JDK 25), so this was configured but not run locally. It needs an
-  actual CI run (push to `main` or a manual `workflow_dispatch`) to move from "implemented" to
-  "verified."
+- **VERIFIED 2026-09-15**: `bundleRelease` and the signing wiring. A signed
+  `app-release.aab` was produced locally and checked — `jarsigner -verify` reports "jar
+  verified", the certificate is `CN=Ittsui App Signing, O=Ittsui, L=Paris, C=FR`, and its
+  SHA-256 matches the fingerprint recorded in the keystore credentials file exactly.
+
+  This supersedes an earlier note here claiming "this machine has no working local Gradle/JDK
+  combination (Gradle 8.14.3 can't run on the only JDK present, a bundled JDK 25)". That is not
+  what goes wrong. Gradle 8.14.3 runs fine on JDK 25 — see the JDK section below for what the
+  real constraint is.
 - **BLOCKED / REQUIRES HUMAN ACTION**: adding the four secrets above to GitHub — this repository
   doesn't have `gh` CLI authenticated in the environment this was built in, and setting
   production signing secrets is something the repo owner should do directly rather than have
