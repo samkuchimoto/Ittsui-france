@@ -1,44 +1,48 @@
 "use client";
 // /lib/geoVenueSuggestions.ts
-// Real, free, keyless geocoding + nearby-venue lookup for the
-// /request/new postal-code suggestion chips — replaces a static 5-metro
-// hardcoded bucket (STATIC_CATALOG, still used elsewhere as the
-// dependency-free fallback tier — see weekly-propose/route.ts) that
-// showed the exact same handful of Paris landmarks for every postal code
-// in that metro, a real reported bug ("the five suggestions are the
-// same"). Uses the same two free government/OSM APIs already relied on
-// elsewhere in this app, both already allowlisted in next.config.js's CSP:
-//   1. api-adresse.data.gouv.fr (BAN) — postal code -> real coordinates.
-//      useUserLocation.ts already calls this API's reverse direction
-//      (coordinates -> postal code); this is the forward direction,
-//      confirmed working for both major cities and small towns via a
-//      real query before writing this (?q=<code>&postcode=<code>&type=
-//      municipality&limit=1 reliably returns that commune's centroid).
-//   2. overpass-api.de (OpenStreetMap) — real, currently-mapped venues
-//      near those coordinates. useNearbyVenue.ts already uses this same
-//      source for a single GPS-based suggestion; this generalizes it to
-//      several results across more categories, for a picker UI that
-//      needs distinct options rather than one auto-suggestion.
+// Real, free, keyless place search for /request/new: the postal-code
+// suggestion chips, the "Nom du lieu" search-as-you-type, and the
+// per-type lists behind the Café/Restaurant/Parc/Musée tiles. Two free
+// services, both allowlisted in next.config.js's CSP:
+//   1. api-adresse.data.gouv.fr (BAN) — postal code <-> coordinates, and
+//      the postcode for a place that has none of its own. BAN only knows
+//      street addresses: "parc montsouris" matches "Rue du Parc de
+//      Montsouris" and never the park itself.
+//   2. photon.komoot.io (Photon) — OpenStreetMap search that knows named
+//      places, including parks, which are mapped as areas.
 //
-// Bounded to hard timeouts and fails completely silently (empty array)
-// on any error — RequestFormClient.tsx falls back to the static catalog
-// when this returns nothing, same "enhancement layered on top of an
-// already-working fallback" philosophy useNearbyVenue.ts documents.
+// Photon replaced overpass-api.de on 2026-09-28. Overpass answered these
+// queries in 8-16s against a 4s abort, so every lookup timed out and the
+// form silently showed the static Paris landmark list for every postal
+// code — Café de Flore for 75014. Its query also asked for nodes only,
+// and parks are ways/relations, so no park could ever have been found.
+// Photon measured 1.5-4.5s for the same jobs.
+//
+// Everything here fails silently to an empty result: RequestFormClient.tsx
+// keeps the static catalog and the manual fields as its fallback.
 
 import type { VenueType } from "@/lib/types";
 
 export interface GeoVenueSuggestion {
   name: string;
   address: string;
-  venueType: VenueType;
+  venueType?: VenueType;
+  /** Set by searchVenuesByName — how well the typed text names this place:
+   *  3 same name, 2 one contains the other, 1 every word appears, 0 only
+   *  Photon thought it similar. See nameScore(). */
+  matchScore?: number;
+}
+
+export interface Coords {
+  lat: number;
+  lon: number;
 }
 
 const GEOCODE_TIMEOUT_MS = 3000;
-const OVERPASS_TIMEOUT_MS = 4000;
-const SEARCH_RADIUS_M = 1500;
-const MAX_RESULTS = 6;
+const PHOTON_TIMEOUT_MS = 7000;
+const PHOTON_URL = "https://photon.komoot.io";
 
-async function postalCodeToCoords(postalCode: string): Promise<{ lat: number; lon: number } | null> {
+export async function postalCodeToCoords(postalCode: string): Promise<Coords | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
   try {
@@ -57,36 +61,6 @@ async function postalCodeToCoords(postalCode: string): Promise<{ lat: number; lo
   }
 }
 
-interface OverpassTags {
-  name?: string;
-  amenity?: string;
-  leisure?: string;
-  tourism?: string;
-  "addr:housenumber"?: string;
-  "addr:street"?: string;
-  "addr:city"?: string;
-  "addr:postcode"?: string;
-}
-
-interface OverpassElement {
-  tags?: OverpassTags;
-}
-
-function typeForTags(tags: OverpassTags | undefined): VenueType | null {
-  if (!tags) return null;
-  if (tags.amenity === "cafe") return "cafe";
-  if (tags.amenity === "restaurant") return "restaurant";
-  if (tags.leisure === "park") return "park";
-  if (tags.tourism === "museum") return "museum";
-  return null;
-}
-
-function addressFromTags(tags: OverpassTags | undefined, fallbackPostalCode: string): string {
-  if (!tags) return fallbackPostalCode;
-  const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
-  const cityLine = [tags["addr:postcode"] ?? fallbackPostalCode, tags["addr:city"]].filter(Boolean).join(" ");
-  return [street, cityLine].filter(Boolean).join(", ") || fallbackPostalCode;
-}
 
 // Great-circle distance in km. Only used to rank BAN candidates against a
 // known reference point, so the cheap spherical formula is far more
@@ -236,41 +210,276 @@ export async function placeNameToPostalCode(
   }
 }
 
-export async function fetchNearbyVenueSuggestions(postalCode: string): Promise<GeoVenueSuggestion[]> {
-  const coords = await postalCodeToCoords(postalCode);
-  if (!coords) return [];
+// --- Photon -----------------------------------------------------------------
 
-  const ql =
-    `[out:json][timeout:4];(` +
-    `node["amenity"="cafe"]["name"](around:${SEARCH_RADIUS_M},${coords.lat},${coords.lon});` +
-    `node["amenity"="restaurant"]["name"](around:${SEARCH_RADIUS_M},${coords.lat},${coords.lon});` +
-    `node["leisure"="park"]["name"](around:${SEARCH_RADIUS_M},${coords.lat},${coords.lon});` +
-    `node["tourism"="museum"]["name"](around:${SEARCH_RADIUS_M},${coords.lat},${coords.lon});` +
-    `);out body ${MAX_RESULTS * 3};`;
+interface PhotonProps {
+  name?: string;
+  osm_key?: string;
+  osm_value?: string;
+  housenumber?: string;
+  street?: string;
+  postcode?: string;
+  city?: string;
+}
 
+interface PhotonFeature {
+  properties?: PhotonProps;
+  geometry?: { coordinates?: unknown };
+}
+
+async function photon(endpoint: "api" | "reverse", params: URLSearchParams): Promise<PhotonFeature[]> {
+  params.set("lang", "fr");
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), PHOTON_TIMEOUT_MS);
   try {
-    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(ql)}`, {
-      signal: controller.signal,
-    });
+    const res = await fetch(`${PHOTON_URL}/${endpoint}?${params}`, { signal: controller.signal });
     if (!res.ok) return [];
-    const data: { elements?: OverpassElement[] } = await res.json();
-
-    const seen = new Set<string>();
-    const results: GeoVenueSuggestion[] = [];
-    for (const el of data.elements ?? []) {
-      const name = el.tags?.name;
-      const venueType = typeForTags(el.tags);
-      if (!name || !venueType || seen.has(name)) continue;
-      seen.add(name);
-      results.push({ name, address: addressFromTags(el.tags, postalCode), venueType });
-      if (results.length >= MAX_RESULTS) break;
-    }
-    return results;
+    const data: { features?: PhotonFeature[] } = await res.json();
+    return data.features ?? [];
   } catch {
     return [];
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function venueTypeFor(key?: string, value?: string): VenueType | undefined {
+  if (key === "amenity") {
+    if (value === "cafe" || value === "bar" || value === "pub" || value === "ice_cream") return "cafe";
+    if (value === "restaurant" || value === "fast_food" || value === "food_court" || value === "biergarten") {
+      return "restaurant";
+    }
+    if (value === "arts_centre") return "museum";
+  }
+  if (key === "leisure" && (value === "park" || value === "garden" || value === "nature_reserve")) return "park";
+  if (key === "landuse" && (value === "forest" || value === "recreation_ground")) return "park";
+  if (key === "tourism" && (value === "museum" || value === "gallery")) return "museum";
+  return undefined;
+}
+
+// Named places that aren't one of the app's four types but are still
+// somewhere to meet. Anything else Photon returns — bus and tram stops,
+// map boards, streets, districts, shops — is dropped: a search for "parc
+// montsouris" otherwise lists two bus stops and an information board.
+const OTHER_MEETING_PLACES: Record<string, ReadonlySet<string> | "any"> = {
+  amenity: new Set(["theatre", "cinema", "library", "marketplace", "community_centre", "nightclub"]),
+  leisure: new Set(["playground", "sports_centre", "swimming_pool", "marina", "stadium"]),
+  tourism: new Set(["attraction", "viewpoint", "zoo", "aquarium", "theme_park", "artwork", "hotel", "picnic_site"]),
+  historic: "any",
+  place: new Set(["square"]),
+  natural: new Set(["beach", "peak"]),
+};
+
+function isMeetingPlace(key?: string, value?: string): boolean {
+  if (venueTypeFor(key, value)) return true;
+  const allowed = key ? OTHER_MEETING_PLACES[key] : undefined;
+  return allowed === "any" || Boolean(allowed && value && allowed.has(value));
+}
+
+// Punctuation- and space-blind, so "PARC MONT-souris", "parc mont souris"
+// and "Parc Montsouris" all compare equal.
+function compact(value: string): string {
+  return normalizePlaceText(value).replace(/[^a-z0-9]/g, "");
+}
+
+// Photon's own ranking is not enough on its own: for "PARC MONT-souris"
+// near 75014 it ranks Parc du Mont-Valérien (8km away) and a cemetery
+// above Parc Montsouris itself. 3 = the same name, 2 = one contains the
+// other, 1 = every typed word appears, 0 = only Photon thought it similar.
+function nameScore(query: string, name: string): number {
+  const q = compact(query);
+  const n = compact(name);
+  if (!q || !n) return 0;
+  if (n === q) return 3;
+  if (n.includes(q) || q.includes(n)) return 2;
+  const words = normalizePlaceText(query).split(" ").filter((w) => w.length >= 3);
+  return words.length > 0 && words.every((w) => n.includes(w)) ? 1 : 0;
+}
+
+function bboxAround(c: Coords, km: number): string {
+  const dLat = km / 111;
+  const dLon = km / (111 * Math.cos((c.lat * Math.PI) / 180));
+  return [c.lon - dLon, c.lat - dLat, c.lon + dLon, c.lat + dLat].map((v) => v.toFixed(4)).join(",");
+}
+
+// Mainland France plus Corsica, for name searches with no reference point.
+const FRANCE_BBOX = "-5.3,41.2,9.8,51.2";
+
+interface Candidate {
+  name: string;
+  props: PhotonProps;
+  coords: Coords;
+  distance: number;
+  venueType?: VenueType;
+}
+
+function toCandidates(features: PhotonFeature[], near: Coords | null): Candidate[] {
+  const out: Candidate[] = [];
+  for (const f of features) {
+    const props = f.properties ?? {};
+    const coords = f.geometry?.coordinates;
+    if (!props.name || !isMeetingPlace(props.osm_key, props.osm_value)) continue;
+    if (!Array.isArray(coords) || typeof coords[0] !== "number" || typeof coords[1] !== "number") continue;
+    const point = { lon: coords[0], lat: coords[1] };
+    out.push({
+      name: props.name,
+      props,
+      coords: point,
+      distance: near ? distanceKm(near, point) : 0,
+      venueType: venueTypeFor(props.osm_key, props.osm_value),
+    });
+  }
+  return out;
+}
+
+// Photon returns one place several times (a park mapped as two areas, a
+// museum as both a building and a point). Same name = same place here;
+// the copy nearest the reference wins.
+function dedupeByName(candidates: Candidate[]): Candidate[] {
+  const best = new Map<string, Candidate>();
+  for (const c of candidates) {
+    const key = compact(c.name);
+    const existing = best.get(key);
+    if (!existing || c.distance < existing.distance) best.set(key, c);
+  }
+  return [...best.values()];
+}
+
+async function postcodeAt(c: Coords): Promise<{ postcode: string; city: string } | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${c.lon}&lat=${c.lat}&limit=1`, {
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const p = data?.features?.[0]?.properties;
+    return typeof p?.postcode === "string" && typeof p?.city === "string" ? { postcode: p.postcode, city: p.city } : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// A park or a big museum is an area with no street of its own, and Photon
+// often leaves its postcode empty too (Parc Montsouris comes back as just
+// "Paris"). BAN fills the postcode in from the coordinates, and the name
+// goes in front so the address still locates the place on a map.
+async function toSuggestion(c: Candidate): Promise<GeoVenueSuggestion> {
+  const p = c.props;
+  let postcode = p.postcode;
+  let city = p.city;
+  if (!postcode) {
+    const found = await postcodeAt(c.coords);
+    postcode = found?.postcode;
+    city = city ?? found?.city;
+  }
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+  const cityLine = [postcode, city].filter(Boolean).join(" ");
+  const address = street ? [street, cityLine].filter(Boolean).join(", ") : [c.name, cityLine].filter(Boolean).join(", ");
+  return { name: c.name, address, venueType: c.venueType };
+}
+
+/**
+ * Search-as-you-type for the "Nom du lieu" field. `near` is the postal
+ * code's centre or the person's position; without one the search covers
+ * France. Best name matches first, then nearest.
+ */
+export async function searchVenuesByName(query: string, near: Coords | null): Promise<GeoVenueSuggestion[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const params = new URLSearchParams({ q, limit: "15" });
+  if (near) {
+    params.set("lat", String(near.lat));
+    params.set("lon", String(near.lon));
+    params.set("bbox", bboxAround(near, 30));
+  } else {
+    params.set("bbox", FRANCE_BBOX);
+  }
+  const ranked = dedupeByName(toCandidates(await photon("api", params), near))
+    .map((c) => ({ c, score: nameScore(q, c.name) }))
+    .sort((a, b) => b.score - a.score || a.c.distance - b.c.distance)
+    .slice(0, 6);
+  return Promise.all(
+    ranked.map(async ({ c, score }) => ({ ...(await toSuggestion(c)), matchScore: score })),
+  );
+}
+
+type SearchableType = Exclude<VenueType, "home">;
+
+const TYPE_SEARCH: Record<SearchableType, { words: string[]; tags: string[] }> = {
+  cafe: { words: ["café"], tags: ["amenity:cafe"] },
+  restaurant: { words: ["restaurant"], tags: ["amenity:restaurant"] },
+  park: { words: ["parc", "jardin"], tags: ["leisure:park"] },
+  museum: { words: ["musée"], tags: ["tourism:museum", "tourism:gallery"] },
+};
+
+// How far around the postal code (or position) a type list reaches.
+const TYPE_RADIUS_KM = 3;
+
+// The best-known places of a type in the area — Photon ranks text matches
+// by prominence, which is what puts Parc Montsouris at the top for 75014.
+async function notable(near: Coords, word: string, tags: string[], limit: number): Promise<Candidate[]> {
+  const params = new URLSearchParams({
+    q: word,
+    lat: String(near.lat),
+    lon: String(near.lon),
+    bbox: bboxAround(near, TYPE_RADIUS_KM),
+    limit: String(limit),
+  });
+  for (const t of tags) params.append("osm_tag", t);
+  return toCandidates(await photon("api", params), near);
+}
+
+// The closest places of a type, whatever they're called — this is what
+// finds the "Square ..." and "Jardin ..." a text search for "parc" misses.
+async function nearest(near: Coords, tags: string[], limit: number): Promise<Candidate[]> {
+  const params = new URLSearchParams({
+    lat: String(near.lat),
+    lon: String(near.lon),
+    radius: String(TYPE_RADIUS_KM),
+    limit: String(limit),
+  });
+  for (const t of tags) params.append("osm_tag", t);
+  return toCandidates(await photon("reverse", params), near);
+}
+
+/** The list shown when a Café/Restaurant/Parc/Musée tile is picked: the
+ *  best-known few in the area first, then everything else nearest first.
+ *  Nearest-only buried the big parks — 75014 has ten small squares closer
+ *  to its centre than Parc Montsouris, so a pure distance sort cut it. */
+export async function fetchVenuesOfType(type: SearchableType, near: Coords): Promise<GeoVenueSuggestion[]> {
+  const { words, tags } = TYPE_SEARCH[type];
+  const [close, ...wordBatches] = await Promise.all([
+    nearest(near, tags, 12),
+    ...words.map((w) => notable(near, w, tags, 6)),
+  ]);
+  const inArea = (c: Candidate) => c.distance <= TYPE_RADIUS_KM * 1.5;
+  const famous = dedupeByName(wordBatches.flat().filter(inArea)).slice(0, 4);
+  const taken = new Set(famous.map((c) => compact(c.name)));
+  const rest = dedupeByName(close.filter(inArea))
+    .filter((c) => !taken.has(compact(c.name)))
+    .sort((a, b) => a.distance - b.distance);
+  return Promise.all([...famous, ...rest].slice(0, 12).map(toSuggestion));
+}
+
+/** The mixed chips shown as soon as a postal code is known: the nearest
+ *  cafés and restaurants, and the best-known parks and museums. */
+export async function fetchNearbyVenueSuggestions(near: Coords): Promise<GeoVenueSuggestion[]> {
+  const [eateries, parks, museums] = await Promise.all([
+    nearest(near, [...TYPE_SEARCH.cafe.tags, ...TYPE_SEARCH.restaurant.tags], 16),
+    notable(near, "parc", TYPE_SEARCH.park.tags, 4),
+    notable(near, "musée", TYPE_SEARCH.museum.tags, 4),
+  ]);
+  const pick = (list: Candidate[], type: SearchableType, n: number) =>
+    dedupeByName(list.filter((c) => c.venueType === type)).slice(0, n);
+  const chosen = [
+    ...pick(eateries, "cafe", 2),
+    ...pick(eateries, "restaurant", 2),
+    ...pick(parks, "park", 2),
+    ...pick(museums, "museum", 2),
+  ];
+  return Promise.all(chosen.map(toSuggestion));
 }

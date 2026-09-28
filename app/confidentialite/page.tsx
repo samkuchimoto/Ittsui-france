@@ -86,10 +86,12 @@ export default function ConfidentialitePage() {
             <br />
             Pour proposer un lieu réel près d&apos;un code postal (dans le formulaire de demande de
             rendez-vous), votre navigateur convertit ce code postal en coordonnées approximatives via ce
-            même service de l&apos;État français, puis interroge OpenStreetMap (overpass-api.de, un service
-            cartographique libre et public) pour trouver des cafés, restaurants, parcs ou musées à
-            proximité. Ni le code postal ni ces coordonnées ne sont envoyés à Ittsui ni stockés par
-            Ittsui — l&apos;échange se fait uniquement entre votre navigateur et ces deux services publics.
+            même service de l&apos;État français, puis interroge Photon (photon.komoot.io, un moteur de
+            recherche libre fondé sur les données OpenStreetMap, exploité par Komoot en Allemagne) pour
+            trouver des cafés, restaurants, parcs ou musées à proximité. Quand vous tapez le nom d&apos;un
+            lieu, ce texte est lui aussi envoyé à Photon pour retrouver le lieu et son adresse. Ni le
+            code postal, ni ces coordonnées, ni ce texte ne sont envoyés à Ittsui ni stockés par
+            Ittsui — l&apos;échange se fait uniquement entre votre navigateur et ces deux services.
           </Item>
           <Item title="Notifications">
             Si vous les activez, un jeton de notification push (via Firebase Cloud Messaging) ou votre

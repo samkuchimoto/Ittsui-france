@@ -19,7 +19,15 @@ import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
-import { fetchNearbyVenueSuggestions, placeNameToPostalCode } from "@/lib/geoVenueSuggestions";
+import {
+  fetchNearbyVenueSuggestions,
+  fetchVenuesOfType,
+  placeNameToPostalCode,
+  postalCodeToCoords,
+  searchVenuesByName,
+  type Coords,
+  type GeoVenueSuggestion,
+} from "@/lib/geoVenueSuggestions";
 import { isValidEmail } from "@/lib/validation";
 import { pickNativeContact, type PickedContact } from "@/lib/nativeContacts";
 import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
@@ -98,6 +106,13 @@ function extractNameFromVoiceTranscript(transcript: string): string {
 // illustration fallback, which has no FAL_API_KEY configured (see
 // app/api/ai-venue-mood/route.ts's own honest 501), meaning all five
 // tiles have always rendered as a blank tinted block in production.
+const TYPE_PLURAL: Record<Exclude<VenueType, "home">, string> = {
+  cafe: "cafés",
+  restaurant: "restaurants",
+  park: "parcs",
+  museum: "musées",
+};
+
 const VENUE_TYPE_TILES: DiscoveryTile[] = [
   { value: "cafe", label: "Café", image: VENUE_PHOTOS.cafe },
   { value: "restaurant", label: "Restaurant", image: VENUE_PHOTOS.restaurant },
@@ -190,6 +205,18 @@ export default function RequestFormClient() {
   } | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  // The postal code's centre, once resolved — the reference point for the
+  // name search and the per-type lists (the detected position is used
+  // when there's no postal code).
+  const [areaCoords, setAreaCoords] = useState<Coords | null>(null);
+  // Only ever set by typing in "Nom du lieu", never by picking a place, so
+  // picking one doesn't immediately reopen the list.
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameMatches, setNameMatches] = useState<GeoVenueSuggestion[]>([]);
+  const [nameSearching, setNameSearching] = useState(false);
+  const [nameNotFound, setNameNotFound] = useState(false);
+  const [typeResults, setTypeResults] = useState<GeoVenueSuggestion[]>([]);
+  const [typeLoading, setTypeLoading] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseMessage, setParseMessage] = useState<string | null>(null);
@@ -330,29 +357,85 @@ export default function RequestFormClient() {
 
   // Debounced so this fires once someone's actually done typing a 5-digit
   // code, not on every keystroke — real network calls (geocode, then
-  // Overpass), not the instant static lookup this replaces. Falls back to
+  // Photon), not the instant static lookup this replaces. Falls back to
   // the static catalog only when the real lookup comes back empty (a
   // genuine failure or nothing OSM has mapped nearby), never overwriting
   // a set of real results with the static ones.
   useEffect(() => {
     if (!/^\d{5}$/.test(draft.postalCode)) {
       setSuggestions([]);
+      setSuggestionsLoading(false);
+      setAreaCoords(null);
       return;
     }
     let cancelled = false;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       setSuggestionsLoading(true);
-      fetchNearbyVenueSuggestions(draft.postalCode).then((results) => {
-        if (cancelled) return;
-        setSuggestionsLoading(false);
-        setSuggestions(results.length > 0 ? results : staticSuggestionsForPostalCode(draft.postalCode));
-      });
+      const coords = await postalCodeToCoords(draft.postalCode);
+      if (cancelled) return;
+      setAreaCoords(coords);
+      const results = coords ? await fetchNearbyVenueSuggestions(coords) : [];
+      if (cancelled) return;
+      setSuggestionsLoading(false);
+      setSuggestions(results.length > 0 ? results : staticSuggestionsForPostalCode(draft.postalCode));
     }, 500);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
   }, [draft.postalCode]);
+
+  const reference: Coords | null = areaCoords ?? detectedCoords ?? null;
+
+  // Search-as-you-type for "Nom du lieu": "PARC MONT-souris" should find
+  // Parc Montsouris and fill in its address, not stay as raw text.
+  useEffect(() => {
+    const q = nameQuery.trim();
+    setNameNotFound(false);
+    if (q.length < 3) {
+      setNameMatches([]);
+      setNameSearching(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setNameSearching(true);
+      searchVenuesByName(q, reference).then((results) => {
+        if (cancelled) return;
+        setNameSearching(false);
+        setNameMatches(results);
+        setNameNotFound(results.length === 0);
+      });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameQuery, reference?.lat, reference?.lon]);
+
+  // Picking the Café/Restaurant/Parc/Musée tile lists every place of that
+  // type around the postal code (or the person's position).
+  const searchableType = draft.venueType && draft.venueType !== "home" ? draft.venueType : null;
+  useEffect(() => {
+    if (!searchableType || !reference) {
+      setTypeResults([]);
+      setTypeLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setTypeLoading(true);
+    setTypeResults([]);
+    fetchVenuesOfType(searchableType, reference).then((results) => {
+      if (cancelled) return;
+      setTypeLoading(false);
+      setTypeResults(results);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchableType, reference?.lat, reference?.lon]);
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -517,29 +600,29 @@ export default function RequestFormClient() {
       venueAddress: v.address,
       venueType: v.venueType ?? d.venueType,
     }));
+    setNameQuery("");
+    setNameMatches([]);
+    setNameNotFound(false);
   }
 
   // Picking a type tile (Café/Musée/...) used to only change the
   // illustration, silently leaving whatever venue was already selected in
   // place — so tapping "Musée" while a suggestion chip like "Mariage
   // Frères" (a tea salon) was selected sent an invitation claiming a
-  // museum at a tea salon's address. Now it actually tries to find a
-  // nearby suggestion of that type and switches to it; when there isn't
-  // one, it clears the mismatched name/address instead of leaving a wrong
-  // one in place — the manual fields right above stay visible in this
-  // (non-simple) mode, so there's a real way to fill them back in, not a
-  // dead end.
+  // museum at a tea salon's address. A venue already known to be a
+  // different type is still cleared for that reason; a name typed by hand
+  // has no known type, so it's kept. The list of places of the new type
+  // then appears under the tiles (see the searchableType effect).
   function pickVenueType(v: VenueType) {
     if (draft.venueType === v) {
       update("venueType", null);
       return;
     }
-    const match = suggestions.find((s) => s.venueType === v);
-    if (match) {
-      pickVenue(match);
-      return;
-    }
-    setDraft((d) => ({ ...d, venueType: v, venueName: "", venueAddress: "" }));
+    setDraft((d) =>
+      d.venueType && d.venueType !== v
+        ? { ...d, venueType: v, venueName: "", venueAddress: "" }
+        : { ...d, venueType: v },
+    );
   }
 
   // Only pre-fills fields — never sends anything. Someone still reviews
@@ -589,6 +672,30 @@ export default function RequestFormClient() {
       if (result.venueName) {
         filledLabels.push("lieu");
         update("venueName", result.venueName);
+        // Look the place up like a typed name. With a reference point, a
+        // place that is clearly the one meant is taken straight away,
+        // address included: the same name ("parc montsouris" -> Parc
+        // Montsouris), or a partial name of the type the sentence asked
+        // for. A partial name alone isn't enough — "un café vers
+        // Bastille" would otherwise pick the Opéra Bastille. Anything
+        // weaker is only offered in the list. With no reference point the
+        // list alone is shown: a France-wide guess isn't safe to fill in.
+        if (!result.venueAddress) {
+          if (reference) {
+            const wantedType = result.venueType;
+            searchVenuesByName(result.venueName, reference).then((matches) => {
+              const top = matches[0];
+              const score = top?.matchScore ?? 0;
+              if (top && (score === 3 || (score === 2 && wantedType && top.venueType === wantedType))) {
+                pickVenue(top);
+              } else {
+                setNameMatches(matches);
+              }
+            });
+          } else {
+            setNameQuery(result.venueName);
+          }
+        }
         // An extracted venueName is often an area/landmark reference
         // ("Bastille"), not a specific business with its own address — it
         // was only ever a place to search NEAR, the same job
@@ -1246,12 +1353,46 @@ export default function RequestFormClient() {
                 <>
                   <input
                     type="text"
-                    placeholder="Nom du lieu"
+                    placeholder="Nom du lieu (ex. Parc Montsouris)"
                     value={draft.venueName}
-                    onChange={(e) => update("venueName", e.target.value)}
+                    onChange={(e) => {
+                      update("venueName", e.target.value);
+                      setNameQuery(e.target.value);
+                    }}
+                    autoComplete="off"
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
                     style={{ borderColor: BORDER }}
                   />
+                  {nameSearching && nameMatches.length === 0 && (
+                    <p className="mt-1 text-xs" style={{ color: MUTED }}>
+                      Recherche du lieu...
+                    </p>
+                  )}
+                  {nameNotFound && !nameSearching && (
+                    <p className="mt-1 text-xs" style={{ color: MUTED }}>
+                      Aucun lieu trouvé sous ce nom — gardez-le et indiquez l&apos;adresse ci-dessous.
+                    </p>
+                  )}
+                  {nameMatches.length > 0 && (
+                    <div className="mt-1 overflow-hidden rounded-lg border" style={{ borderColor: BORDER }}>
+                      {nameMatches.map((m) => (
+                        <button
+                          key={`${m.name}|${m.address}`}
+                          type="button"
+                          onClick={() => pickVenue(m)}
+                          className="block w-full border-b px-3 py-2 text-left last:border-b-0"
+                          style={{ borderColor: BORDER }}
+                        >
+                          <span className="block text-sm" style={{ color: INK }}>
+                            {m.name}
+                          </span>
+                          <span className="block text-xs" style={{ color: MUTED }}>
+                            {m.address}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input
                     type="text"
                     placeholder="Adresse"
@@ -1272,12 +1413,56 @@ export default function RequestFormClient() {
               {!simpleMode && (
                 <>
                   <p className="mt-4 text-xs" style={{ color: MUTED }}>
-                    Type de lieu (optionnel — cherche un lieu de ce type parmi les suggestions, ou vide le lieu
-                    choisi pour en indiquer un nouveau)
+                    Type de lieu (optionnel — affiche les lieux de ce type à proximité)
                   </p>
                   <div className="mt-2">
                     <DiscoveryGrid tiles={VENUE_TYPE_TILES} selected={draft.venueType ? [draft.venueType] : []} onToggle={pickVenueType} />
                   </div>
+                  {searchableType && (
+                    <div className="mt-3">
+                      {!reference && (
+                        <p className="text-xs" style={{ color: MUTED }}>
+                          Indiquez un code postal ou utilisez votre position pour voir les {TYPE_PLURAL[searchableType]} à
+                          proximité.
+                        </p>
+                      )}
+                      {reference && typeLoading && (
+                        <p className="text-xs" style={{ color: MUTED }}>
+                          Recherche des {TYPE_PLURAL[searchableType]} à proximité...
+                        </p>
+                      )}
+                      {reference && !typeLoading && typeResults.length === 0 && (
+                        <p className="text-xs" style={{ color: MUTED }}>
+                          Aucun lieu de ce type trouvé à proximité — indiquez-en un ci-dessus.
+                        </p>
+                      )}
+                      {typeResults.length > 0 && (
+                        <>
+                          <p className="text-xs" style={{ color: MUTED }}>
+                            {TYPE_PLURAL[searchableType].charAt(0).toUpperCase() + TYPE_PLURAL[searchableType].slice(1)} à
+                            proximité{/^\d{5}$/.test(draft.postalCode) ? ` de ${draft.postalCode}` : ""} :
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {typeResults.map((v) => (
+                              <button
+                                key={`${v.name}|${v.address}`}
+                                type="button"
+                                title={v.address}
+                                onClick={() => pickVenue(v)}
+                                className="rounded-full border px-3 py-1.5 text-xs"
+                                style={{
+                                  borderColor: draft.venueName === v.name ? ACCENT : BORDER,
+                                  color: draft.venueName === v.name ? ACCENT : INK,
+                                }}
+                              >
+                                {v.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </section>

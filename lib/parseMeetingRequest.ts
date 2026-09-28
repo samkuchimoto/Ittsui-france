@@ -157,6 +157,6 @@ export async function parseMeetingRequestText(text: string): Promise<ParsedMeeti
   const mistralResult = toParsedResult(fromMistral, dateStr, weekday);
   if (mistralResult) return mistralResult;
 
-  const fromGroq = await groqComplete(systemPrompt, text, { maxTokens: 200, temperature: 0.2 });
+  const fromGroq = await groqComplete(systemPrompt, text, { maxTokens: 300, temperature: 0.2, json: true });
   return toParsedResult(fromGroq, dateStr, weekday);
 }

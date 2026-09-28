@@ -19,6 +19,14 @@
 // in testing is exactly why every call here is wrapped in a hard timeout
 // and a try/catch that falls back to the caller's next option — never
 // something that blocks or breaks the actual weekly notification.
+//
+// 2026-09-28: groq/compound-mini was retired — every call returned 404
+// model_not_found, so every Groq caller had been failing silently, and
+// with no MISTRAL_API_KEY in production "Décrire en une phrase" never
+// worked at all. The reasoning models' token-burn problem above goes away
+// with Groq's reasoning_effort parameter, so they are usable now; see
+// GROQ_MODELS. A list rather than one model so that one retirement can't
+// take every caller down again.
 
 import {
   CONFIRMATION_SYSTEM_PROMPT,
@@ -29,10 +37,20 @@ import {
 
 const GROQ_TIMEOUT_MS = 3000;
 
+// Tried in order until one answers. Measured 2026-09-28 on French meeting-
+// request extraction: qwen 0.2-0.4s and gpt-oss-120b 0.5-0.8s, both correct
+// on every test sentence (gpt-oss-20b was not — it resolved "demain" to
+// Tuesday and dropped the name "maman").
+const GROQ_MODELS: { model: string; reasoningEffort: string }[] = [
+  { model: "qwen/qwen3.8-27b", reasoningEffort: "none" },
+  { model: "openai/gpt-oss-120b", reasoningEffort: "low" },
+];
+
 interface GroqOptions {
-  model?: string;
   maxTokens?: number;
   temperature?: number;
+  /** Ask for a JSON object (Groq's response_format). */
+  json?: boolean;
 }
 
 // Generic completion call — mirrors lib/mistral.ts's mistralComplete
@@ -58,49 +76,54 @@ export async function groqComplete(
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
+  for (const { model, reasoningEffort } of GROQ_MODELS) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: options.maxTokens ?? 100,
+          temperature: options.temperature ?? 0.7,
+          reasoning_effort: reasoningEffort,
+          ...(options.json ? { response_format: { type: "json_object" } } : {}),
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        // Same visibility fix as mistralComplete (2026-08-28) — was silently
+        // swallowed before, meaning a real failure on BOTH vendors in a row
+        // (the actual worst case for any caller) left zero trail either.
+        const body = await res.text().catch(() => "");
+        console.error(`groqComplete: ${model} ${res.status} ${body.slice(0, 300)}`);
+        continue;
+      }
 
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: options.model ?? "groq/compound-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: options.maxTokens ?? 100,
-        temperature: options.temperature ?? 0.7,
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      // Same visibility fix as mistralComplete (2026-08-28) — was silently
-      // swallowed before, meaning a real failure on BOTH vendors in a row
-      // (the actual worst case for any caller) left zero trail either.
-      const body = await res.text().catch(() => "");
-      console.error(`groqComplete: ${res.status} ${body.slice(0, 300)}`);
-      return null;
+      const data = await res.json();
+      const content: unknown = data?.choices?.[0]?.message?.content;
+      // Defensive: a reasoning model that ignores reasoning_effort would put
+      // its chain of thought inline.
+      const text = typeof content === "string" ? content.replace(/<think>[\s\S]*?<\/think>/g, "").trim() : "";
+      if (text) return text;
+    } catch (err) {
+      // Timeout (AbortError), network error, or bad JSON — all the same:
+      // move on to the next model, and log, since this is the last vendor
+      // in the chain for callers like parseMeetingRequestText.
+      console.error(`groqComplete: ${model} request threw`, err);
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const data = await res.json();
-    const content: unknown = data?.choices?.[0]?.message?.content;
-    return typeof content === "string" ? content.trim() : null;
-  } catch (err) {
-    // Timeout (AbortError), network error, or bad JSON — all the same:
-    // the caller's next option is the correct fallback, but still worth
-    // logging now that this is the last vendor in the chain for callers
-    // like parseMeetingRequestText.
-    console.error("groqComplete: request threw", err);
-    return null;
-  } finally {
-    clearTimeout(timeout);
   }
+  return null;
 }
 
 // Returns the warm one-liner, or null on any failure — missing key,

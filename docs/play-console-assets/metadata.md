@@ -48,9 +48,10 @@ but the actual questionnaire answers are the real determination, not this docume
     a typed or detected postal code is sent to `api-adresse.data.gouv.fr` (French government,
     address/geocoding) for both reverse geocoding (GPS → postal code) and, since 2026-08-23,
     forward geocoding (postal code → coordinates) to power real venue suggestions on
-    `/request/new`; those coordinates are then sent to `overpass-api.de` (OpenStreetMap) to find
-    nearby venues. Neither the postal code nor the coordinates are sent to or stored by Ittsui
-    itself in this flow — see `lib/geoVenueSuggestions.ts`.
+    `/request/new`; those coordinates, and any place name typed into the venue field, are then
+    sent to `photon.komoot.io` (Komoot's OpenStreetMap search, replacing `overpass-api.de` since
+    2026-09-28) to find nearby venues. None of the postal code, coordinates or typed name is sent
+    to or stored by Ittsui itself in this flow — see `lib/geoVenueSuggestions.ts`.
   - Declared: no data sold, no third-party advertising trackers (per `confidentialite`'s own
     "ce qu'Ittsui ne fait pas" section).
   - Push token stored for notifications (`app/api/register-push-token/route.ts`).

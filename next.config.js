@@ -62,7 +62,7 @@ const CSP = [
   // images will silently fail to load under this CSP.
   "img-src 'self' data: blob: https://*.giphy.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de",
+  "connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de https://photon.komoot.io",
   "frame-src 'self' https://*.firebaseapp.com https://apis.google.com",
   "object-src 'none'",
   "base-uri 'self'",
