@@ -10,6 +10,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 const bodySchema = z.object({
   email: z.string().trim().toLowerCase().email().max(320),
+  // The page's language (/, /en, /ja), so testers can be invited in it.
+  lang: z.enum(["fr", "en", "ja"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "e-mail invalide" }, { status: 400 });
   }
-  const { email } = parsed.data;
+  const { email, lang = "fr" } = parsed.data;
 
   // The email itself as the document ID: simplest possible dedup (a
   // second signup with the same address just overwrites, never creates a
@@ -29,6 +31,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "already_registered" });
   }
 
-  await ref.set({ email, createdAt: new Date().toISOString() });
+  await ref.set({ email, lang, createdAt: new Date().toISOString() });
   return NextResponse.json({ status: "registered" });
 }

@@ -95,6 +95,11 @@ export interface Pair {
   // api/mark-invite-opened/route.ts. Absent means "not opened yet", not
   // "unknown"; every pair created after this field existed can trust that.
   inviteOpenedAt?: string; // ISO date
+  // The inviter's app language when the invite was sent ("fr" | "en" |
+  // "ja", lib/i18n.ts). Emails about this pair go out in it, and the
+  // invite page opens in it unless the visitor already chose one.
+  // Absent on older pairs, which are French.
+  lang?: "fr" | "en" | "ja";
 }
 
 export interface VenueOption {
@@ -209,6 +214,10 @@ export interface MeetingRequest {
   expiresAt: string; // ISO date — same 14-day window as a Pair invite
   respondedAt?: string; // ISO date
   recipientEmailSent?: boolean; // real delivery record, not an assumption
+  // The sender's app language, same meaning as Pair.lang: the request's
+  // emails use it, and /request/{id} opens in it for a recipient with no
+  // language of their own yet. Absent on older requests, which are French.
+  lang?: "fr" | "en" | "ja";
 }
 
 // Ittsui Partenaires — real booking infrastructure for venues that

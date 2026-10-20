@@ -42,5 +42,7 @@ export async function POST(request: Request) {
     await pairRef.update({ inviteOpenedAt: new Date().toISOString() });
   }
 
-  return NextResponse.json({ status: "ok" });
+  // The inviter's language: the invite page opens in it for a visitor who
+  // hasn't chosen one (see LangProvider's suggestLang).
+  return NextResponse.json({ status: "ok", lang: pair.lang ?? "fr" });
 }

@@ -14,6 +14,8 @@
 import { useEffect, useState } from "react";
 import { MascotPair } from "./MascotPair";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { useT } from "@/app/components/site/LangProvider";
+import { COMPONENTS } from "./components.i18n";
 
 const STORAGE_KEY = "ittsui_seen_origin_story";
 
@@ -43,6 +45,7 @@ const SLIDES = [
 // this sheet's own, larger pair rendered on screen at the same time,
 // duplicating the same graphic and eating vertical space on mobile.
 export function OriginStorySheet({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) {
+  const t = useT(COMPONENTS);
   const [open, setOpen] = useState(false);
   const [slide, setSlide] = useState(0);
 
@@ -82,25 +85,26 @@ export function OriginStorySheet({ onOpenChange }: { onOpenChange?: (open: boole
         <p className="mt-5 text-[15px] leading-relaxed" style={{ color: INK }}>
           {"quote" in current && (
             <span className="mb-3 block italic" style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: ACCENT }}>
-              {current.quote}
+              {t(current.quote ?? "")}
             </span>
           )}
-          {current.body}
+          {t(current.body)}
         </p>
 
         {"scenario" in current && (
           <div className="mt-3 rounded-xl border p-4 text-left" style={{ borderColor: BORDER }}>
-            <p className="text-xs" style={{ color: MUTED }}>Exemple — Samedi 15h30</p>
-            <p className="mt-1 text-sm font-medium">Le Café des Tilleuls</p>
+            <p className="text-xs" style={{ color: MUTED }}>{t("Exemple — Samedi 15h30")}</p>
+            {/* A café's name: a proper noun, the same in every language. */}
+            <p className="mt-1 text-sm font-medium">{"Le Café des Tilleuls"}</p>
             <div className="mt-3 flex gap-2">
               <span
                 className="flex-1 rounded-full py-2 text-center text-xs font-medium text-white"
                 style={{ backgroundColor: ACCENT }}
               >
-                Oui
+                {t("Oui")}
               </span>
               <span className="flex-1 rounded-full border py-2 text-center text-xs font-medium" style={{ borderColor: BORDER }}>
-                Non
+                {t("Non")}
               </span>
             </div>
           </div>
@@ -122,10 +126,10 @@ export function OriginStorySheet({ onOpenChange }: { onOpenChange?: (open: boole
           className="mt-6 min-h-[48px] w-full rounded-full text-sm font-medium text-white"
           style={{ backgroundColor: ACCENT }}
         >
-          {isLast ? "Découvrir Ittsui" : "Suivant"}
+          {isLast ? t("Découvrir Ittsui") : t("Suivant")}
         </button>
         <button type="button" onClick={dismiss} className="mt-3 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Passer
+          {t("Passer")}
         </button>
       </div>
     </div>

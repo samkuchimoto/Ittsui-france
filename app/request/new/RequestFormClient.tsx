@@ -45,6 +45,10 @@ import { Mascot } from "@/app/components/Mascot";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import type { Contact, Pair, VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { pagePath } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { localeTypography } from "@/app/components/site/typography";
+import { REQUEST_NEW } from "./request-new.i18n";
 
 const LOCATION_STEPS: StatusStep[] = [
   { key: "locating", label: "Détection de votre position..." },
@@ -80,6 +84,10 @@ const VOICE_FILLER_WORDS = new Set([
   "rdv",
   "avec",
   "with",
+  "a",
+  "an",
+  "the",
+  "for",
   "un",
   "une",
   "le",
@@ -185,6 +193,12 @@ function staticSuggestionsForPostalCode(postalCode: string): { name: string; add
 
 export default function RequestFormClient() {
   const router = useRouter();
+  const { lang } = useLang();
+  const t = useT(REQUEST_NEW);
+  // Japanese runs inline text and links together with no space.
+  const sp = lang === "ja" ? "" : " ";
+  const locationSteps = LOCATION_STEPS.map((step) => ({ ...step, label: t(step.label) }));
+  const venueTypeTiles = VENUE_TYPE_TILES.map((tile) => ({ ...tile, label: t(tile.label) }));
   const searchParams = useSearchParams();
   const contactId = searchParams.get("contactId");
   const [user, setUser] = useState<User | false | null>(null);
@@ -496,7 +510,7 @@ export default function RequestFormClient() {
     const hasPhone = Boolean(picked.phone);
 
     if (!hasValidEmail && !hasPhone) {
-      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+      setError(t("Ce contact n'a ni e-mail ni numéro de téléphone enregistré."));
       if (picked.name) update("recipientName", picked.name);
       return;
     }
@@ -522,7 +536,7 @@ export default function RequestFormClient() {
     if (simpleMode) {
       const identity = { ...(hasValidEmail ? { email } : {}), ...(hasPhone ? { phone } : {}) };
       const result = await saveContactIfNew(picked.name || email || phone, identity);
-      if (result === "failed") setError("Contact importé mais pas encore enregistré — réessayez.");
+      if (result === "failed") setError(t("Contact importé mais pas encore enregistré — réessayez."));
     }
   }
 
@@ -568,9 +582,9 @@ export default function RequestFormClient() {
     setVoiceCandidate(null);
     setListeningForName(true);
     try {
-      const transcript = await listenOnce();
+      const transcript = await listenOnce(lang);
       if (!transcript) {
-        setError("Rien entendu — réessayez, ou choisissez un contact ci-dessous.");
+        setError(t("Rien entendu — réessayez, ou choisissez un contact ci-dessous."));
         return;
       }
       const name = extractNameFromVoiceTranscript(transcript) || transcript;
@@ -581,7 +595,7 @@ export default function RequestFormClient() {
       if (match) {
         setVoiceCandidate(match);
       } else {
-        setError(`Aucun contact ne correspond à « ${name} » — choisissez ci-dessous.`);
+        setError(t("Aucun contact ne correspond à « {name} » — choisissez ci-dessous.", { name }));
       }
     } finally {
       setListeningForName(false);
@@ -630,7 +644,7 @@ export default function RequestFormClient() {
   async function handleParseFreeText() {
     if (!freeText.trim()) return;
     if (!user) {
-      setParseMessage("Connectez-vous pour utiliser le remplissage automatique.");
+      setParseMessage(t("Connectez-vous pour utiliser le remplissage automatique."));
       return;
     }
     setParsing(true);
@@ -640,7 +654,7 @@ export default function RequestFormClient() {
       const res = await fetch("/api/parse-meeting-request", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ text: freeText }),
+        body: JSON.stringify({ text: freeText, lang }),
       });
       const data = await res.json().catch(() => null);
       const result = data?.result as
@@ -655,7 +669,7 @@ export default function RequestFormClient() {
         | undefined;
 
       if (!res.ok || !result) {
-        setParseMessage("Rien n'a pu être deviné — complétez ci-dessous.");
+        setParseMessage(t("Rien n'a pu être deviné — complétez ci-dessous."));
         return;
       }
 
@@ -749,11 +763,13 @@ export default function RequestFormClient() {
       // reads as partial, not as a false "it worked."
       setParseMessage(
         filledLabels.length > 0
-          ? `Deviné : ${filledLabels.join(", ")} — complétez le reste vous-même.`
-          : "Rien n'a pu être deviné — complétez ci-dessous."
+          ? t("Deviné : {fields} — complétez le reste vous-même.", {
+              fields: filledLabels.map((label) => t(label)).join(t(", ")),
+            })
+          : t("Rien n'a pu être deviné — complétez ci-dessous.")
       );
     } catch {
-      setParseMessage("Rien n'a pu être deviné — complétez ci-dessous.");
+      setParseMessage(t("Rien n'a pu être deviné — complétez ci-dessous."));
     } finally {
       setParsing(false);
     }
@@ -769,7 +785,7 @@ export default function RequestFormClient() {
     try {
       await signInWithGoogle();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de la connexion.");
+      setError(err instanceof Error ? err.message : t("Échec de la connexion."));
     } finally {
       setSigningIn(false);
     }
@@ -780,21 +796,21 @@ export default function RequestFormClient() {
     setError(null);
 
     if (!draft.recipientName.trim()) {
-      setError("Le nom du destinataire est requis.");
+      setError(t("Le nom du destinataire est requis."));
       return;
     }
     const hasEmail = draft.recipientEmail.trim().length > 0;
     const hasPhone = draft.recipientPhone.trim().length > 0;
     if (!hasEmail && !hasPhone) {
-      setError("Indiquez un e-mail ou un numéro de téléphone.");
+      setError(t("Indiquez un e-mail ou un numéro de téléphone."));
       return;
     }
     if (hasEmail && !isValidEmail(draft.recipientEmail)) {
-      setError("Cette adresse e-mail ne semble pas valide.");
+      setError(t("Cette adresse e-mail ne semble pas valide."));
       return;
     }
     if (!draft.venueName.trim() || !draft.venueAddress.trim()) {
-      setError("Le lieu et l'adresse sont requis.");
+      setError(t("Le lieu et l'adresse sont requis."));
       return;
     }
 
@@ -824,10 +840,11 @@ export default function RequestFormClient() {
           ...(draft.venueType ? { venueType: draft.venueType } : {}),
           date: draft.date,
           time: draft.time,
+          lang,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(t(data?.error ?? "Une erreur est survenue."));
 
       sessionStorage.removeItem(DRAFT_KEY);
       // Venue/date/time are snapshotted here rather than read off `draft`
@@ -845,7 +862,7 @@ export default function RequestFormClient() {
         time: draft.time,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de l'envoi.");
+      setError(err instanceof Error ? err.message : t("Échec de l'envoi."));
     } finally {
       setSubmitting(false);
     }
@@ -865,6 +882,7 @@ export default function RequestFormClient() {
       // email-addressed one needs a Google sign-in, so only the first
       // can honestly promise "sans compte à créer".
       noAccountNeeded: !sentTo.hasEmail,
+      lang,
     });
   }
 
@@ -874,10 +892,14 @@ export default function RequestFormClient() {
   }
 
   return (
-    <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
+    <main
+      lang={lang === "fr" ? undefined : lang}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
+    >
       <div className="mx-auto max-w-md px-6 py-12">
         <div className="flex items-center justify-between">
-          <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+          <Link href={pagePath("home", lang)} style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
             Ittsui
           </Link>
           <button
@@ -890,33 +912,34 @@ export default function RequestFormClient() {
                 : { borderColor: BORDER, color: MUTED }
             }
           >
-            Mode simple {simpleMode ? "activé" : ""}
+            {simpleMode ? t("Mode simple activé") : t("Mode simple")}
           </button>
         </div>
         <PageMascotHeader />
-        {/* Both relationship actions shown as equal-weight tabs, not one
-            primary flow with a gesture link buried three screens deep —
-            real feedback: someone landing directly on this page had no way
-            to discover "envoyer un geste" existed at all. */}
+        {/* Ittsui's two actions shown as equal-weight tabs, not one
+            primary flow with the other buried three screens deep — real
+            feedback: someone landing directly on this page had no way to
+            discover the second one existed at all. Since 2026-10-20 that
+            second one is the email summary; "Envoyer un geste" is hidden. */}
         {!sentTo && (
           <div className="mt-4 flex gap-2">
             <span
               className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-medium text-white"
               style={{ backgroundColor: ACCENT }}
             >
-              ☕ Se voir
+              {t("☕ Se voir")}
             </span>
             <Link
-              href="/geste/nouveau"
+              href="/triage"
               className="flex-1 rounded-full border px-4 py-2.5 text-center text-sm font-medium"
               style={{ borderColor: BORDER, color: INK }}
             >
-              🎁 Envoyer un geste
+              {t("📬 Résumer mes e-mails")}
             </Link>
           </div>
         )}
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: simpleMode ? "2rem" : "1.75rem" }}>
-          Proposer un rendez-vous
+          {t("Proposer un rendez-vous")}
         </h1>
 
         {sentTo ? (
@@ -930,7 +953,7 @@ export default function RequestFormClient() {
             </div>
             {sentTo.hasEmail && (
               <p className="text-sm" style={{ color: MUTED }}>
-                Demande envoyée à {sentTo.name}. Vous serez notifié(e) par e-mail dès qu&apos;elle répond.
+                {t("Demande envoyée à {name}. Vous serez notifié(e) par e-mail dès qu'elle répond.", { name: sentTo.name })}
               </p>
             )}
             {/* Phone-based instant share shown whenever a phone number was
@@ -946,8 +969,11 @@ export default function RequestFormClient() {
               <>
                 <p className={sentTo.hasEmail ? "mt-4 text-sm" : "text-sm"} style={{ color: MUTED }}>
                   {sentTo.hasEmail
-                    ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
-                    : `Presque : ${sentTo.name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.`}
+                    ? t("Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :")
+                    : t(
+                        "Presque : {name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.",
+                        { name: sentTo.name }
+                      )}
                 </p>
                 <div className="mt-4 space-y-2">
                   {(() => {
@@ -964,7 +990,7 @@ export default function RequestFormClient() {
                             className="flex w-full items-center justify-center rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
                             style={{ backgroundColor: "#25D366" }}
                           >
-                            Envoyer par WhatsApp
+                            {t("Envoyer par WhatsApp")}
                           </a>
                         )}
                         {smsHref && (
@@ -973,7 +999,7 @@ export default function RequestFormClient() {
                             className="flex w-full items-center justify-center rounded-full border py-3.5 text-sm font-medium"
                             style={{ borderColor: BORDER, color: INK }}
                           >
-                            Envoyer par SMS
+                            {t("Envoyer par SMS")}
                           </a>
                         )}
                       </>
@@ -995,7 +1021,7 @@ export default function RequestFormClient() {
                     className="w-full rounded-full border py-3 text-sm font-medium"
                     style={{ borderColor: BORDER, color: MUTED }}
                   >
-                    Snapchat, Messenger, ou une autre appli...
+                    {t("Snapchat, Messenger, ou une autre appli...")}
                   </button>
                 </div>
 
@@ -1007,8 +1033,10 @@ export default function RequestFormClient() {
                 <div className="mt-4 flex items-start gap-3 rounded-xl border p-3 text-left" style={{ borderColor: BORDER }}>
                   <MascotAvatar characterId="hikari" variant="bust" size={28} className="shrink-0" />
                   <p className="text-xs" style={{ color: MUTED }}>
-                    Ce lien peut voyager par SMS, WhatsApp ou ailleurs — mais une fois ouvert, plus besoin de
-                    négocier un horaire par message : {sentTo.name} n&apos;a qu&apos;à dire oui.
+                    {t(
+                      "Ce lien peut voyager par SMS, WhatsApp ou ailleurs — mais une fois ouvert, plus besoin de négocier un horaire par message : {name} n'a qu'à dire oui.",
+                      { name: sentTo.name }
+                    )}
                   </p>
                 </div>
               </>
@@ -1022,7 +1050,7 @@ export default function RequestFormClient() {
               }
               style={sentTo.phone.trim().length > 0 ? { color: MUTED } : { backgroundColor: ACCENT }}
             >
-              Retour au tableau de bord
+              {t("Retour au tableau de bord")}
             </button>
 
             {/* Plus CTA added 2026-08-28 (direct feedback: this was a real
@@ -1038,7 +1066,7 @@ export default function RequestFormClient() {
               className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-3 text-sm font-medium transition-transform hover:scale-[1.01]"
               style={{ borderColor: ACCENT, color: ACCENT }}
             >
-              Devenir membre fondateur — 1&nbsp;€/mois →
+              {t("Devenir membre fondateur — 1\u00a0€/mois →")}
             </Link>
           </div>
         ) : (
@@ -1046,12 +1074,15 @@ export default function RequestFormClient() {
             {!simpleMode && (
               <section>
                 <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-                  Décrire en une phrase <span className="font-normal normal-case" style={{ color: MUTED }}>(optionnel)</span>
+                  {t("Décrire en une phrase")}{sp}
+                  <span className="font-normal normal-case" style={{ color: MUTED }}>
+                    {t("(optionnel)")}
+                  </span>
                 </label>
                 <textarea
                   value={freeText}
                   onChange={(e) => setFreeText(e.target.value)}
-                  placeholder="Ex. un café avec Marie mardi soir vers Bastille"
+                  placeholder={t("Ex. un café avec Marie mardi soir vers Bastille")}
                   rows={2}
                   className="mt-2 w-full resize-none rounded-lg border px-3 py-2.5 text-sm"
                   style={{ borderColor: BORDER }}
@@ -1063,7 +1094,7 @@ export default function RequestFormClient() {
                   className="mt-2 text-xs font-medium underline underline-offset-4 disabled:opacity-50"
                   style={{ color: ACCENT }}
                 >
-                  {parsing ? "Analyse..." : "Remplir automatiquement"}
+                  {parsing ? t("Analyse...") : t("Remplir automatiquement")}
                 </button>
                 {parseMessage && (
                   <p className="mt-1 text-xs" style={{ color: MUTED }}>
@@ -1075,7 +1106,7 @@ export default function RequestFormClient() {
 
             <section>
               <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-                Destinataire
+                {t("Destinataire")}
               </label>
               {isNative && contacts.length > 0 && !voiceCandidate && !browsingPhoneContacts && (
                 <button
@@ -1089,7 +1120,7 @@ export default function RequestFormClient() {
                   }
                   style={{ borderColor: ACCENT, color: ACCENT }}
                 >
-                  {listeningForName ? "🎤 Écoute..." : "🎤 Dire un nom"}
+                  {listeningForName ? t("🎤 Écoute...") : t("🎤 Dire un nom")}
                 </button>
               )}
               {voiceCandidate && (
@@ -1098,7 +1129,7 @@ export default function RequestFormClient() {
                   style={{ borderColor: ACCENT, backgroundColor: `${ACCENT}14` }}
                 >
                   <p className={simpleMode ? "text-lg font-medium" : "text-sm font-medium"} style={{ color: INK }}>
-                    {voiceCandidate.name} ?
+                    {t("{name} ?", { name: voiceCandidate.name })}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <button
@@ -1111,7 +1142,7 @@ export default function RequestFormClient() {
                       }
                       style={{ backgroundColor: ACCENT }}
                     >
-                      Oui
+                      {t("Oui")}
                     </button>
                     <button
                       type="button"
@@ -1123,7 +1154,7 @@ export default function RequestFormClient() {
                       }
                       style={{ borderColor: BORDER, color: INK }}
                     >
-                      Non
+                      {t("Non")}
                     </button>
                   </div>
                 </div>
@@ -1140,7 +1171,7 @@ export default function RequestFormClient() {
                   }
                   style={{ borderColor: BORDER, color: INK }}
                 >
-                  {importingContact ? "Import..." : "Importer depuis mes contacts"}
+                  {importingContact ? t("Import...") : t("Importer depuis mes contacts")}
                 </button>
               )}
               {isNative && !voiceCandidate && (
@@ -1195,7 +1226,7 @@ export default function RequestFormClient() {
                       className="flex items-center rounded-full px-3 py-1.5 text-xs underline underline-offset-4"
                       style={{ color: MUTED }}
                     >
-                      Voir tous ({contacts.length}) →
+                      {t("Voir tous ({n}) →", { n: contacts.length })}
                     </Link>
                   )}
                 </div>
@@ -1204,11 +1235,13 @@ export default function RequestFormClient() {
                 <>
                   {contacts.length === 0 && (
                     <p className="mt-2 text-sm" style={{ color: MUTED }}>
-                      Aucun contact enregistré.{" "}
+                      {t("Aucun contact enregistré.")}
+                      {sp}
                       <Link href="/contacts" className="underline underline-offset-4" style={{ color: ACCENT }}>
-                        En ajouter un
-                      </Link>{" "}
-                      d&apos;abord.
+                        {t("En ajouter un")}
+                      </Link>
+                      {sp}
+                      {t("d'abord.")}
                     </p>
                   )}
                   {/* An imported phone-only contact (or a stale voice/import
@@ -1218,7 +1251,9 @@ export default function RequestFormClient() {
                       could be genuinely invisible here. */}
                   {draft.recipientName && (
                     <p className="mt-2 text-sm" style={{ color: MUTED }}>
-                      Sélectionné : <span style={{ color: INK, fontWeight: 500 }}>{draft.recipientName}</span>
+                      {t("Sélectionné :")}
+                      {sp}
+                      <span style={{ color: INK, fontWeight: 500 }}>{draft.recipientName}</span>
                     </p>
                   )}
                 </>
@@ -1226,7 +1261,7 @@ export default function RequestFormClient() {
                 <>
                   <input
                     type="text"
-                    placeholder="Nom"
+                    placeholder={t("Nom")}
                     value={draft.recipientName}
                     onChange={(e) => update("recipientName", e.target.value)}
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -1237,7 +1272,7 @@ export default function RequestFormClient() {
                       desk — see this file's header comment. */}
                   <input
                     type="tel"
-                    placeholder="Numéro de téléphone"
+                    placeholder={t("Numéro de téléphone")}
                     value={draft.recipientPhone}
                     onChange={(e) => update("recipientPhone", e.target.value)}
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -1246,11 +1281,11 @@ export default function RequestFormClient() {
                   {showEmailField || draft.recipientEmail.trim().length > 0 ? (
                     <>
                       <p className="mt-3 text-xs" style={{ color: MUTED }}>
-                        Ou, si vous l&apos;avez, son e-mail :
+                        {t("Ou, si vous l'avez, son e-mail :")}
                       </p>
                       <input
                         type="email"
-                        placeholder="E-mail (optionnel)"
+                        placeholder={t("E-mail (optionnel)")}
                         value={draft.recipientEmail}
                         onChange={(e) => update("recipientEmail", e.target.value)}
                         className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -1264,7 +1299,7 @@ export default function RequestFormClient() {
                       className="mt-3 text-xs font-medium underline underline-offset-4"
                       style={{ color: MUTED }}
                     >
-                      + Ajouter aussi un e-mail
+                      {t("+ Ajouter aussi un e-mail")}
                     </button>
                   )}
                 </>
@@ -1273,7 +1308,7 @@ export default function RequestFormClient() {
 
             <section>
               <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-                Lieu
+                {t("Lieu")}
               </label>
 
               {/* Postal code input only shown when there isn't one already —
@@ -1283,7 +1318,7 @@ export default function RequestFormClient() {
                 <>
                   <input
                     type="text"
-                    placeholder="Code postal (suggestions de lieux)"
+                    placeholder={t("Code postal (suggestions de lieux)")}
                     value={draft.postalCode}
                     onChange={(e) => update("postalCode", e.target.value)}
                     className={simpleMode ? "mt-2 min-h-[56px] w-full rounded-2xl border px-4 text-lg" : "mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"}
@@ -1296,37 +1331,41 @@ export default function RequestFormClient() {
                       friend's email address. */}
                   {(locationStatus === "locating" || locationStatus === "resolving") && (
                     <div className="mt-2">
-                      <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+                      <StatusBanner steps={locationSteps} currentKey={locationStatus} />
                     </div>
                   )}
                   {locationStatus === "idle" && (
                     <button type="button" onClick={detectLocation} className="mt-2 text-xs font-medium underline underline-offset-4" style={{ color: ACCENT }}>
-                      Utiliser ma position actuelle
+                      {t("Utiliser ma position actuelle")}
                     </button>
                   )}
                   {locationStatus === "denied" && (
                     <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-                      Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec
-                      le code postal.{" "}
+                      {t(
+                        "Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec le code postal."
+                      )}
+                      {sp}
                       <button type="button" onClick={detectLocation} className="underline underline-offset-4">
-                        Réessayer
+                        {t("Réessayer")}
                       </button>
                     </p>
                   )}
                   {locationStatus === "error" && (
                     <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-                      Impossible de déterminer votre position.{" "}
+                      {t("Impossible de déterminer votre position.")}
+                      {sp}
                       <button type="button" onClick={detectLocation} className="underline underline-offset-4">
-                        Réessayer
-                      </button>{" "}
-                      ou continuez avec le code postal.
+                        {t("Réessayer")}
+                      </button>
+                      {sp}
+                      {t("ou continuez avec le code postal.")}
                     </p>
                   )}
                 </>
               )}
               {suggestionsLoading && (
                 <p className="mt-2 text-xs" style={{ color: MUTED }}>
-                  Recherche de lieux près de {draft.postalCode}...
+                  {t("Recherche de lieux près de {code}...", { code: draft.postalCode })}
                 </p>
               )}
               {suggestions.length > 0 && (
@@ -1353,7 +1392,7 @@ export default function RequestFormClient() {
                 <>
                   <input
                     type="text"
-                    placeholder="Nom du lieu (ex. Parc Montsouris)"
+                    placeholder={t("Nom du lieu (ex. Parc Montsouris)")}
                     value={draft.venueName}
                     onChange={(e) => {
                       update("venueName", e.target.value);
@@ -1365,12 +1404,12 @@ export default function RequestFormClient() {
                   />
                   {nameSearching && nameMatches.length === 0 && (
                     <p className="mt-1 text-xs" style={{ color: MUTED }}>
-                      Recherche du lieu...
+                      {t("Recherche du lieu...")}
                     </p>
                   )}
                   {nameNotFound && !nameSearching && (
                     <p className="mt-1 text-xs" style={{ color: MUTED }}>
-                      Aucun lieu trouvé sous ce nom — gardez-le et indiquez l&apos;adresse ci-dessous.
+                      {t("Aucun lieu trouvé sous ce nom — gardez-le et indiquez l'adresse ci-dessous.")}
                     </p>
                   )}
                   {nameMatches.length > 0 && (
@@ -1395,7 +1434,7 @@ export default function RequestFormClient() {
                   )}
                   <input
                     type="text"
-                    placeholder="Adresse"
+                    placeholder={t("Adresse")}
                     value={draft.venueAddress}
                     onChange={(e) => update("venueAddress", e.target.value)}
                     className="mt-2 w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -1413,34 +1452,40 @@ export default function RequestFormClient() {
               {!simpleMode && (
                 <>
                   <p className="mt-4 text-xs" style={{ color: MUTED }}>
-                    Type de lieu (optionnel — affiche les lieux de ce type à proximité)
+                    {t("Type de lieu (optionnel — affiche les lieux de ce type à proximité)")}
                   </p>
                   <div className="mt-2">
-                    <DiscoveryGrid tiles={VENUE_TYPE_TILES} selected={draft.venueType ? [draft.venueType] : []} onToggle={pickVenueType} />
+                    <DiscoveryGrid tiles={venueTypeTiles} selected={draft.venueType ? [draft.venueType] : []} onToggle={pickVenueType} />
                   </div>
                   {searchableType && (
                     <div className="mt-3">
                       {!reference && (
                         <p className="text-xs" style={{ color: MUTED }}>
-                          Indiquez un code postal ou utilisez votre position pour voir les {TYPE_PLURAL[searchableType]} à
-                          proximité.
+                          {t("Indiquez un code postal ou utilisez votre position pour voir les {types} à proximité.", {
+                            types: t(TYPE_PLURAL[searchableType]),
+                          })}
                         </p>
                       )}
                       {reference && typeLoading && (
                         <p className="text-xs" style={{ color: MUTED }}>
-                          Recherche des {TYPE_PLURAL[searchableType]} à proximité...
+                          {t("Recherche des {types} à proximité...", { types: t(TYPE_PLURAL[searchableType]) })}
                         </p>
                       )}
                       {reference && !typeLoading && typeResults.length === 0 && (
                         <p className="text-xs" style={{ color: MUTED }}>
-                          Aucun lieu de ce type trouvé à proximité — indiquez-en un ci-dessus.
+                          {t("Aucun lieu de ce type trouvé à proximité — indiquez-en un ci-dessus.")}
                         </p>
                       )}
                       {typeResults.length > 0 && (
                         <>
                           <p className="text-xs" style={{ color: MUTED }}>
-                            {TYPE_PLURAL[searchableType].charAt(0).toUpperCase() + TYPE_PLURAL[searchableType].slice(1)} à
-                            proximité{/^\d{5}$/.test(draft.postalCode) ? ` de ${draft.postalCode}` : ""} :
+                            {(() => {
+                              const plural = t(TYPE_PLURAL[searchableType]);
+                              const types = plural.charAt(0).toUpperCase() + plural.slice(1);
+                              return /^\d{5}$/.test(draft.postalCode)
+                                ? t("{types} à proximité de {code} :", { types, code: draft.postalCode })
+                                : t("{types} à proximité :", { types });
+                            })()}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {typeResults.map((v) => (
@@ -1469,15 +1514,15 @@ export default function RequestFormClient() {
 
             <section>
               <label className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-                Date et heure
+                {t("Date et heure")}
               </label>
               {simpleMode ? (
                 <>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {[
-                      { label: "Aujourd'hui", value: isoDateInDays(0) },
-                      { label: "Demain", value: isoDateInDays(1) },
-                      { label: "Après-demain", value: isoDateInDays(2) },
+                      { label: t("Aujourd'hui"), value: isoDateInDays(0) },
+                      { label: t("Demain"), value: isoDateInDays(1) },
+                      { label: t("Après-demain"), value: isoDateInDays(2) },
                     ].map((d) => (
                       <button
                         key={d.value}
@@ -1511,12 +1556,12 @@ export default function RequestFormClient() {
                     className="rounded-lg border px-3 py-2.5 text-sm"
                     style={{ borderColor: BORDER }}
                   />
-                  <TimeSelect value={draft.time} onChange={(v) => update("time", v)} label="Heure du rendez-vous" />
+                  <TimeSelect value={draft.time} onChange={(v) => update("time", v)} label={t("Heure du rendez-vous")} />
                 </div>
               )}
               {simpleMode && (
                 <div className="mt-2">
-                  <TimeSelect value={draft.time} onChange={(v) => update("time", v)} label="Heure du rendez-vous" />
+                  <TimeSelect value={draft.time} onChange={(v) => update("time", v)} label={t("Heure du rendez-vous")} />
                 </div>
               )}
             </section>
@@ -1551,7 +1596,7 @@ export default function RequestFormClient() {
                 }
                 style={{ backgroundColor: ACCENT }}
               >
-                {submitting ? "Envoi..." : "Envoyer"}
+                {submitting ? t("Envoi...") : t("Envoyer")}
               </button>
             ) : (
               <div>
@@ -1565,10 +1610,10 @@ export default function RequestFormClient() {
                   }
                   style={{ backgroundColor: ACCENT }}
                 >
-                  {signingIn ? "Connexion..." : "Se connecter pour envoyer"}
+                  {signingIn ? t("Connexion...") : t("Se connecter pour envoyer")}
                 </button>
                 <p className="mt-2 text-center text-xs" style={{ color: MUTED }}>
-                  Via Google, juste pour vérifier que c&apos;est bien vous.
+                  {t("Via Google, juste pour vérifier que c'est bien vous.")}
                 </p>
               </div>
             )}

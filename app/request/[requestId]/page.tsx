@@ -26,6 +26,12 @@ import { VenueDirections } from "@/app/components/VenueDirections";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import type { VenueType } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { isLocale, pagePath, type Locale } from "@/lib/i18n";
+import { frenchDateLabel } from "@/lib/proposalMessage";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
+import { localeTypography } from "@/app/components/site/typography";
+import { REQUEST_PAGE } from "./request-page.i18n";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -72,13 +78,28 @@ const workSans = Work_Sans({
 
 type Status = "checking" | "ready" | "not_found" | "declining" | "declined" | "accepting" | "accepted" | "error";
 
+// The stored date stays as it was in French ("2026-09-20 à 15:30"); English
+// and Japanese get a written-out day.
+function whenLabel(t: (text: string, vars?: Record<string, string>) => string, lang: Locale, date: string, time: string) {
+  return t("{date} à {time}", { date: lang === "fr" ? date : frenchDateLabel(date, lang), time });
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
+  const { lang } = useLang();
   return (
-    <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
+    <main
+      lang={lang === "fr" ? undefined : lang}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
+    >
       <div className="mx-auto max-w-md px-6 py-14 text-center">
-        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+        <Link href={pagePath("home", lang)} className="text-sm" style={{ color: MUTED }}>
           ← Ittsui
         </Link>
+        {/* No first-open language question on a page someone else's link
+            opens (see LangProvider.tsx): it opens in the sender's language,
+            and this switch is there for anyone who reads another. */}
+        <AppLangSwitch className="mt-3 justify-center" />
         <PageMascotHeader />
         {children}
       </div>
@@ -87,6 +108,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
+  const { lang } = useLang();
+  const t = useT(REQUEST_PAGE);
   return (
     <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
       {/* Collapses to nothing rather than an empty box when there's no
@@ -97,7 +120,7 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
           <DiscoveryTileButton
             tile={{
               value: preview.venueType,
-              label: VENUE_TYPE_LABEL[preview.venueType] ?? "",
+              label: VENUE_TYPE_LABEL[preview.venueType] ? t(VENUE_TYPE_LABEL[preview.venueType]) : "",
               image: VENUE_PHOTOS[preview.venueType],
             }}
             active={false}
@@ -112,7 +135,7 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
           its sharpest. */}
       <VenueDirections venueName={preview.venueName} venueAddress={preview.venueAddress} className="mt-0.5" />
       <p className="mt-2 text-sm" style={{ color: MUTED }}>
-        {preview.date} à {preview.time}
+        {whenLabel(t, lang, preview.date, preview.time)}
       </p>
     </div>
   );
@@ -121,6 +144,8 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
 export default function RequestResponsePage() {
   const router = useRouter();
   const params = useParams<{ requestId: string }>();
+  const { lang, suggestLang } = useLang();
+  const t = useT(REQUEST_PAGE);
 
   const [status, setStatus] = useState<Status>("checking");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -146,6 +171,7 @@ export default function RequestResponsePage() {
           setStatus(res.status === 410 ? "declined" : "not_found");
           return;
         }
+        if (isLocale(data.lang)) suggestLang(data.lang);
         if (data.status === "declined" || data.status === "expired") {
           setStatus("declined");
           return;
@@ -226,7 +252,7 @@ export default function RequestResponsePage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(t(data?.error ?? "Une erreur est survenue."));
       setAccepted({
         venueName: data.venueName,
         venueAddress: data.venueAddress,
@@ -236,7 +262,7 @@ export default function RequestResponsePage() {
       });
       setStatus("accepted");
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setErrorMsg(err instanceof Error ? err.message : t("Une erreur est survenue."));
       setStatus("error");
     }
   }
@@ -251,10 +277,10 @@ export default function RequestResponsePage() {
         body: JSON.stringify({ requestId: params.requestId, decline: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(t(data?.error ?? "Une erreur est survenue."));
       setStatus("declined");
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setErrorMsg(err instanceof Error ? err.message : t("Une erreur est survenue."));
       setStatus("error");
     }
   }
@@ -286,7 +312,7 @@ export default function RequestResponsePage() {
     try {
       await signInWithGoogle();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Échec de la connexion.");
+      setErrorMsg(err instanceof Error ? err.message : t("Échec de la connexion."));
     } finally {
       setSigningIn(false);
     }
@@ -296,7 +322,7 @@ export default function RequestResponsePage() {
     if (!accepted) return;
     const content = buildICSContent({
       title: `${accepted.venueName} — Ittsui`,
-      description: "Rendez-vous confirmé via Ittsui.",
+      description: t("Rendez-vous confirmé via Ittsui."),
       venueAddress: accepted.venueAddress,
       date: accepted.date,
       time: accepted.time,
@@ -314,15 +340,16 @@ export default function RequestResponsePage() {
         {slowConnection && status === "checking" && (
           <div className="mt-6">
             <p className="text-sm" style={{ color: MUTED }}>
-              Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut
-              qu&apos;il bloque la connexion à Google — essayez avec les données mobiles.
+              {t(
+                "Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut qu'il bloque la connexion à Google — essayez avec les données mobiles."
+              )}
             </p>
             <button
               onClick={() => window.location.reload()}
               className="mt-4 rounded-full border px-4 py-2 text-sm font-medium"
               style={{ borderColor: BORDER, color: INK }}
             >
-              Réessayer
+              {t("Réessayer")}
             </button>
           </div>
         )}
@@ -334,10 +361,10 @@ export default function RequestResponsePage() {
     return (
       <Shell>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Demande introuvable
+          {t("Demande introuvable")}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Ce lien n&apos;est plus valide, ou n&apos;a jamais existé.
+          {t("Ce lien n'est plus valide, ou n'a jamais existé.")}
         </p>
       </Shell>
     );
@@ -349,18 +376,21 @@ export default function RequestResponsePage() {
         {accepted?.venueType && (
           <div className="mx-auto mb-5 h-32 w-32 overflow-hidden rounded-2xl">
             <DiscoveryTileButton
-              tile={{ value: accepted.venueType, label: VENUE_TYPE_LABEL[accepted.venueType] ?? "" }}
+              tile={{
+                value: accepted.venueType,
+                label: VENUE_TYPE_LABEL[accepted.venueType] ? t(VENUE_TYPE_LABEL[accepted.venueType]) : "",
+              }}
               active={false}
               onClick={() => {}}
             />
           </div>
         )}
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Rendez-vous confirmé
+          {t("Rendez-vous confirmé")}
         </h1>
         {accepted && (
           <p className="mt-2 text-sm font-medium">
-            {accepted.venueName} · {accepted.date} à {accepted.time}
+            {accepted.venueName} · {whenLabel(t, lang, accepted.date, accepted.time)}
           </p>
         )}
         {/* Honest status, not just a checkmark and a venue name: "Calé sur
@@ -376,22 +406,24 @@ export default function RequestResponsePage() {
             className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
             style={{ backgroundColor: "#1E7A4C1A", color: "#1E7A4C" }}
           >
-            ✓ Calé sur l&apos;agenda
+            {t("✓ Calé sur l'agenda")}
           </span>
         )}
         {accepted && (accepted.venueType === "restaurant" || accepted.venueType === "museum") && (
           <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
             <p className="text-sm font-medium" style={{ color: "#B08900" }}>
-              ⚠ Réservation requise
+              {t("⚠ Réservation requise")}
             </p>
             <p className="mt-1 text-xs" style={{ color: MUTED }}>
-              {accepted.venueName} n&apos;a pas été réservé pour vous — pensez à appeler ou réserver directement.
+              {t("{venue} n'a pas été réservé pour vous — pensez à appeler ou réserver directement.", {
+                venue: accepted.venueName,
+              })}
               {accepted.venueAddress && ` ${accepted.venueAddress}.`}
             </p>
           </div>
         )}
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Vous recevrez un e-mail de confirmation. L&apos;autre personne a été notifiée.
+          {t("Vous recevrez un e-mail de confirmation. L'autre personne a été notifiée.")}
         </p>
         {accepted && (
           <button
@@ -399,7 +431,7 @@ export default function RequestResponsePage() {
             className="mt-4 block w-full text-sm underline underline-offset-4"
             style={{ color: ACCENT }}
           >
-            Ajouter à mon agenda
+            {t("Ajouter à mon agenda")}
           </button>
         )}
         <button
@@ -407,7 +439,7 @@ export default function RequestResponsePage() {
           className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
           style={{ backgroundColor: ACCENT }}
         >
-          Aller au tableau de bord
+          {t("Aller au tableau de bord")}
         </button>
         {/* Right after confirming is the one moment this person has just
             felt Ittsui's actual value from the receiving side — the
@@ -419,7 +451,7 @@ export default function RequestResponsePage() {
           className="mt-4 block text-sm underline underline-offset-4"
           style={{ color: MUTED }}
         >
-          Proposer un rendez-vous à quelqu&apos;un d&apos;autre
+          {t("Proposer un rendez-vous à quelqu'un d'autre")}
         </Link>
       </Shell>
     );
@@ -429,10 +461,10 @@ export default function RequestResponsePage() {
     return (
       <Shell>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Demande déclinée
+          {t("Demande déclinée")}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Aucune donnée n&apos;a été conservée. Rien d&apos;autre à faire.
+          {t("Aucune donnée n'a été conservée. Rien d'autre à faire.")}
         </p>
       </Shell>
     );
@@ -443,23 +475,27 @@ export default function RequestResponsePage() {
   // Two genuinely different paths from here, decided entirely by the
   // preview's requiresLogin — never by anything the client itself infers.
   const instantAcceptAvailable = preview && !preview.requiresLogin;
+  const wrongAccount = Boolean(errorMsg && errorMsg === t("cette demande ne correspond pas à votre compte"));
 
   return (
     <Shell>
-      <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+      <Link href={pagePath("home", lang)} style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
         Ittsui
       </Link>
       <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-        {preview?.senderName ? `${preview.senderName} vous invite à un rendez-vous` : "Vous avez reçu une demande de rendez-vous"}
+        {preview?.senderName
+          ? t("{name} vous invite à un rendez-vous", { name: preview.senderName })
+          : t("Vous avez reçu une demande de rendez-vous")}
       </h1>
       <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
-        Pas une appli de rencontre : quelqu&apos;un que vous connaissez vous propose un lieu, une date et une
-        heure via Ittsui, un outil de maintien relationnel.
+        {t(
+          "Pas une appli de rencontre : quelqu'un que vous connaissez vous propose un lieu, une date et une heure via Ittsui, un outil de maintien relationnel."
+        )}
       </p>
 
       {preview && <VenuePreviewCard preview={preview} />}
 
-      {errorMsg && errorMsg.includes("ne correspond pas") && (
+      {errorMsg && wrongAccount && (
         <div className="mt-4 flex justify-center">
           <Mascot name="kokoro" variant="confused" size="lg" />
         </div>
@@ -467,8 +503,8 @@ export default function RequestResponsePage() {
       {errorMsg && (
         <p className="mt-4 text-sm" style={{ color: ACCENT }}>
           {errorMsg}
-          {errorMsg.includes("ne correspond pas") &&
-            ". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu la demande."}
+          {wrongAccount &&
+            t(". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu la demande.")}
         </p>
       )}
 
@@ -484,20 +520,20 @@ export default function RequestResponsePage() {
             className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
             style={{ backgroundColor: ACCENT }}
           >
-            Oui, je viens
+            {t("Oui, je viens")}
           </button>
           <button
             onClick={handleDecline}
             className="mt-3 w-full rounded-full border py-3 text-sm font-medium"
             style={{ borderColor: BORDER, color: INK }}
           >
-            Pas disponible
+            {t("Pas disponible")}
           </button>
         </>
       ) : (
         <>
           <p className="mx-auto mt-3 max-w-xs text-sm" style={{ color: MUTED }}>
-            Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à l&apos;accepter.
+            {t("Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à l'accepter.")}
           </p>
           <button
             onClick={handleAcceptTap}
@@ -505,19 +541,19 @@ export default function RequestResponsePage() {
             className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
             style={{ backgroundColor: ACCENT }}
           >
-            {signingIn ? "Connexion..." : errorMsg ? "Se connecter avec un autre compte" : "J'accepte"}
+            {signingIn ? t("Connexion...") : errorMsg ? t("Se connecter avec un autre compte") : t("J'accepte")}
           </button>
           {!errorMsg && (
             <>
               <p className="mt-3 text-xs" style={{ color: MUTED }}>
-                Via Google, juste pour vérifier que c&apos;est bien vous.
+                {t("Via Google, juste pour vérifier que c'est bien vous.")}
               </p>
               <button
                 onClick={handleDecline}
                 className="mt-4 w-full rounded-full border py-3 text-sm font-medium"
                 style={{ borderColor: BORDER, color: INK }}
               >
-                Pas disponible
+                {t("Pas disponible")}
               </button>
             </>
           )}

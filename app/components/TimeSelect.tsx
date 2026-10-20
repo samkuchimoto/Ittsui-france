@@ -11,16 +11,21 @@
 // guaranteed French 24h ("15h", "15h30"), not locale-dependent.
 
 import { BORDER } from "@/lib/theme";
+import { useT } from "@/app/components/site/LangProvider";
+import { COMPONENTS } from "./components.i18n";
 
 const HOURS_24H = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
 const MINUTES_15MIN = ["00", "15", "30", "45"];
 
+// The hour reads "15h" in French, "15" in English, 「15時」 in Japanese —
+// always the 24-hour clock, the reason this control exists.
 export function TimeSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const t = useT(COMPONENTS);
   const [hh, mm] = value.split(":");
   return (
     <div className="flex items-center gap-1">
       <select
-        aria-label={`${label} — heure`}
+        aria-label={t("{label} — heure", { label })}
         value={hh}
         onChange={(e) => onChange(`${e.target.value}:${mm}`)}
         className="rounded-lg border bg-white px-2 py-2 text-sm"
@@ -28,12 +33,12 @@ export function TimeSelect({ value, onChange, label }: { value: string; onChange
       >
         {HOURS_24H.map((h) => (
           <option key={h} value={h}>
-            {h}h
+            {t("{h}h", { h })}
           </option>
         ))}
       </select>
       <select
-        aria-label={`${label} — minutes`}
+        aria-label={t("{label} — minutes", { label })}
         value={mm}
         onChange={(e) => onChange(`${hh}:${e.target.value}`)}
         className="rounded-lg border bg-white px-2 py-2 text-sm"

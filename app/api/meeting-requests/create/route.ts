@@ -11,6 +11,10 @@ import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
+import { frenchDateLabel } from "@/lib/proposalMessage";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -46,6 +50,9 @@ const createSchema = z
     venueType: z.enum(VENUE_TYPES).optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date invalide"),
     time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure invalide"),
+    // The sender's app language: the email below goes out in it, and
+    // /request/{id} opens in it (see lib/types.ts MeetingRequest.lang).
+    lang: z.enum(["fr", "en", "ja"]).optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, {
     message: "indiquez un e-mail ou un numéro de téléphone",
@@ -63,9 +70,13 @@ export async function POST(request: Request) {
   const { recipientName, venueName, venueAddress, venueType, date, time } = parsed.data;
   const recipientEmail = parsed.data.recipientEmail?.toLowerCase();
   const recipientPhone = parsed.data.recipientPhone;
+  const lang = langOf(parsed.data.lang);
+  const t = makeT(lang, EMAILS);
+  // French keeps the stored "2026-09-20"; English and Japanese get the day written out.
+  const dateLabel = lang === "fr" ? date : frenchDateLabel(date, lang);
 
   const senderSnap = await adminDb.collection("users").doc(uid).get();
-  const senderName: string = senderSnap.data()?.displayName ?? "Quelqu'un sur Ittsui";
+  const senderName: string = senderSnap.data()?.displayName ?? t("Quelqu'un sur Ittsui");
   const senderEmail: string | null = senderSnap.data()?.email ?? null;
 
   if (recipientEmail && senderEmail && senderEmail.toLowerCase() === recipientEmail) {
@@ -88,6 +99,7 @@ export async function POST(request: Request) {
     ...(venueType ? { venueType } : {}),
     date,
     time,
+    lang,
     status: "pending",
     createdAt: new Date().toISOString(),
     expiresAt: expiresAt.toISOString(),
@@ -105,36 +117,41 @@ export async function POST(request: Request) {
   let recipientEmailSent: boolean | undefined;
   if (recipientEmail) {
     const calendarUrl = googleCalendarLink({
-      title: `${venueName} avec ${senderName} — Ittsui`,
-      details: `Proposition de rendez-vous via Ittsui. Répondre ici : ${requestUrl}`,
+      title: t("{venue} avec {sender} — Ittsui", { venue: venueName, sender: senderName }),
+      details: t("Proposition de rendez-vous via Ittsui. Répondre ici : {url}", { url: requestUrl }),
       venueAddress,
       date,
       time,
     });
     recipientEmailSent = await sendEmail({
       to: recipientEmail,
-      subject: `${senderName} vous propose un rendez-vous sur Ittsui`,
+      subject: t("{sender} vous propose un rendez-vous sur Ittsui", { sender: senderName }),
       text:
-        `${senderName} vous propose de vous retrouver :\n\n` +
-        `Lieu : ${venueName} (${venueAddress})\n` +
-        `Date : ${date} à ${time}\n\n` +
-        `Pour accepter ou décliner, connectez-vous ici : ${requestUrl}\n` +
-        `Ajouter à Google Agenda (dès maintenant, avant même de répondre) : ${calendarUrl}\n\n` +
-        `Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.`,
+        t("{sender} vous propose de vous retrouver :", { sender: senderName }) +
+        "\n\n" +
+        t("Lieu : {venue} ({address})", { venue: venueName, address: venueAddress }) +
+        "\n" +
+        t("Date : {date} à {time}", { date: dateLabel, time }) +
+        "\n\n" +
+        t("Pour accepter ou décliner, connectez-vous ici : {url}", { url: requestUrl }) +
+        "\n" +
+        t("Ajouter à Google Agenda (dès maintenant, avant même de répondre) : {url}", { url: calendarUrl }) +
+        "\n\n" +
+        t("Cette demande expire dans {n} jours.", { n: REQUEST_EXPIRY_DAYS }),
       html: emailShell({
         mascotName: "pika",
-        title: `${escapeHtml(senderName)} vous propose un rendez-vous`,
+        title: t("{sender} vous propose un rendez-vous", { sender: escapeHtml(senderName) }),
         bodyHtml: `
           <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
             <strong style="color: #1C1917;">${escapeHtml(venueName)}</strong> (${escapeHtml(venueAddress)})<br>
-            ${escapeHtml(date)} à ${escapeHtml(time)}
+            ${t("{date} à {time}", { date: escapeHtml(dateLabel), time: escapeHtml(time) })}
           </p>
-          ${emailButton(requestUrl, "Accepter ou décliner")}
+          ${emailButton(requestUrl, t("Accepter ou décliner"))}
           <p style="text-align: center; font-size: 13px;">
-            <a href="${calendarUrl}" style="color: #565049;">Ajouter à Google Agenda</a> (dès maintenant, avant même de répondre)
+            <a href="${calendarUrl}" style="color: #565049;">${t("Ajouter à Google Agenda")}</a>${lang === "ja" ? "" : " "}${t("(dès maintenant, avant même de répondre)")}
           </p>
           <p style="font-size: 12px; color: #8A8378; text-align: center;">
-            Cette demande expire dans ${REQUEST_EXPIRY_DAYS} jours.
+            ${t("Cette demande expire dans {n} jours.", { n: REQUEST_EXPIRY_DAYS })}
           </p>
         `,
       }),

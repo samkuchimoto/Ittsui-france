@@ -34,14 +34,21 @@
 // "au Maison de la Radio" is not, and this has no gender data for a
 // free-text venue name someone typed in.
 
+import type { Locale } from "@/lib/i18n";
+
 const FRENCH_DATE = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+// "Saturday 20 September", 「9月20日(土)」.
+const DATE_FORMAT: Record<Exclude<Locale, "fr">, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }),
+  ja: new Intl.DateTimeFormat("ja-JP", { weekday: "short", day: "numeric", month: "long" }),
+};
 
 /**
  * "2026-09-20" -> "samedi 20 septembre".
  * Returns the input unchanged if it isn't a parseable ISO date — the
  * message degrades to showing the raw value rather than "Invalid Date".
  */
-export function frenchDateLabel(isoDate: string): string {
+export function frenchDateLabel(isoDate: string, lang: Locale = "fr"): string {
   // Parsed as local midnight, not UTC: `new Date("2026-09-20")` is UTC
   // midnight, which renders as the 19th for anyone behind UTC and would
   // silently name the wrong day.
@@ -49,13 +56,14 @@ export function frenchDateLabel(isoDate: string): string {
   if (!match) return isoDate;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   if (Number.isNaN(date.getTime())) return isoDate;
-  return FRENCH_DATE.format(date);
+  return (lang === "fr" ? FRENCH_DATE : DATE_FORMAT[lang]).format(date);
 }
 
-/** "15:30" -> "15h30", "20:00" -> "20h". French reads the round hour bare. */
-export function frenchTimeLabel(time: string): string {
+/** "15:30" -> "15h30", "20:00" -> "20h". French reads the round hour bare; English and Japanese keep "15:30". */
+export function frenchTimeLabel(time: string, lang: Locale = "fr"): string {
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
   if (!match) return time;
+  if (lang !== "fr") return `${Number(match[1])}:${match[2]}`;
   return match[2] === "00" ? `${Number(match[1])}h` : `${Number(match[1])}h${match[2]}`;
 }
 
@@ -75,14 +83,29 @@ export function meetingRequestShareText({
   date,
   time,
   noAccountNeeded,
+  lang = "fr",
 }: {
   recipientName: string;
   venueName: string;
   date: string;
   time: string;
   noAccountNeeded: boolean;
+  /** The sender's language: the message goes out in their words. */
+  lang?: Locale;
 }): string {
   const name = recipientName.trim();
+  const venue = venueName.trim();
+  if (lang === "en") {
+    const where = venue ? ` at ${venue}` : "";
+    const tail = noAccountNeeded ? "Answer in one tap, no account needed:" : "You can answer here:";
+    return `${name ? `Hi ${name}, how` : "How"} about we meet${where} on ${frenchDateLabel(date, "en")} at ${frenchTimeLabel(time, "en")}? Are you in? ${tail}`;
+  }
+  if (lang === "ja") {
+    // Casual, the way friends write to each other.
+    const where = venue ? `「${venue}」で` : "";
+    const tail = noAccountNeeded ? "アカウントなしで、ワンタップで返事できるよ：" : "ここから返事できるよ：";
+    return `${name ? `${name}、` : ""}${frenchDateLabel(date, "ja")} ${frenchTimeLabel(time, "ja")}に${where}会わない？ ${tail}`;
+  }
   const when = `${frenchDateLabel(date)} à ${frenchTimeLabel(time)}`;
   const where = venueName.trim() ? ` — ${venueName.trim()}` : "";
   const tail = noAccountNeeded ? "Réponds en un tap, sans compte à créer :" : "Tu peux répondre ici :";

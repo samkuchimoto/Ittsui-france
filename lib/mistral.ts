@@ -14,7 +14,7 @@
 // failure — falls straight through to Groq, same as any other outage.
 
 import {
-  CONFIRMATION_SYSTEM_PROMPT,
+  confirmationSystemPrompt,
   buildConfirmationUserContent,
   isValidConfirmationLine,
   type WarmConfirmationParams,
@@ -88,7 +88,7 @@ export async function mistralComplete(
 }
 
 export async function generateWarmConfirmationMistral(params: WarmConfirmationParams): Promise<string | null> {
-  const content = await mistralComplete(CONFIRMATION_SYSTEM_PROMPT, buildConfirmationUserContent(params), {
+  const content = await mistralComplete(confirmationSystemPrompt(params.lang), buildConfirmationUserContent(params), {
     model: "mistral-small-latest",
     maxTokens: 100,
     temperature: 0.8,

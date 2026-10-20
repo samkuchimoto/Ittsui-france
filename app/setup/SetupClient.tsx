@@ -65,6 +65,10 @@ import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { isValidEmail } from "@/lib/validation";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
+import { pagePath } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { localeTypography } from "@/app/components/site/typography";
+import { SETUP } from "./setup.i18n";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -220,17 +224,19 @@ function Shell({ children, showOriginStory = false }: { children: React.ReactNod
   // once duplicated the same graphic (confirmed live, and flagged
   // independently in the Gemini audit as "redundant branding").
   const [storySheetOpen, setStorySheetOpen] = useState(false);
+  const { lang } = useLang();
   return (
     <main
+      lang={lang === "fr" ? undefined : lang}
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
-      style={{ color: INK }}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
     >
       {showOriginStory && <OriginStorySheet onOpenChange={setStorySheetOpen} />}
       <div className="mx-auto max-w-md px-6 py-14">
         {/* One-tap way back to the homepage from any step/state on this
             page — real feedback: there was no way out of some screens
             short of the browser's own back button. */}
-        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+        <Link href={pagePath("home", lang)} className="text-sm" style={{ color: MUTED }}>
           ← Ittsui
         </Link>
         {!storySheetOpen && <PageMascotHeader />}
@@ -242,6 +248,8 @@ function Shell({ children, showOriginStory = false }: { children: React.ReactNod
 
 export default function SetupClient() {
   const router = useRouter();
+  const t = useT(SETUP);
+  const { lang } = useLang();
 
   // Auth state: null = not checked yet, false = checked and not signed in
   const [user, setUser] = useState<User | null | false>(null);
@@ -398,7 +406,7 @@ export default function SetupClient() {
     try {
       await signInWithGoogle();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de la connexion.");
+      setError(err instanceof Error ? err.message : t("Échec de la connexion."));
     } finally {
       setSigningIn(false);
     }
@@ -411,7 +419,7 @@ export default function SetupClient() {
   async function handlePasskeySignIn() {
     setError(null);
     const result = await signInWithPasskey();
-    if (!result.ok) setError(result.error);
+    if (!result.ok) setError(t(result.error));
   }
 
   // Sunday auto-suggests the 15h-17h quiet window, but stays editable
@@ -456,7 +464,7 @@ export default function SetupClient() {
     setPartnerEmail(hasValidEmail ? picked.email! : "");
     setPartnerPhone(hasPhone ? picked.phone! : "");
     if (!hasValidEmail && !hasPhone) {
-      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+      setError(t("Ce contact n'a ni e-mail ni numéro de téléphone enregistré."));
     }
   }
 
@@ -479,17 +487,17 @@ export default function SetupClient() {
   function goToStep2() {
     setError(null);
     if (!partnerName.trim()) {
-      setError("Indiquez le prénom de votre proche.");
+      setError(t("Indiquez le prénom de votre proche."));
       return;
     }
     const hasPhone = partnerPhone.trim().length > 0;
     const hasEmail = partnerEmail.trim().length > 0;
     if (!hasPhone && !hasEmail) {
-      setError("Indiquez son numéro de téléphone ou son e-mail.");
+      setError(t("Indiquez son numéro de téléphone ou son e-mail."));
       return;
     }
     if (hasEmail && !isValidEmail(partnerEmail)) {
-      setError("Cette adresse e-mail ne semble pas valide.");
+      setError(t("Cette adresse e-mail ne semble pas valide."));
       return;
     }
     setStep(2);
@@ -503,11 +511,11 @@ export default function SetupClient() {
     setError(null);
 
     if (!user) {
-      setError("Vous devez être connecté(e).");
+      setError(t("Vous devez être connecté(e)."));
       return;
     }
     if (venueTypes.length === 0) {
-      setError("Choisissez au moins un type de lieu.");
+      setError(t("Choisissez au moins un type de lieu."));
       return;
     }
 
@@ -521,7 +529,10 @@ export default function SetupClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inviterUid: user.uid,
-          inviterName: user.displayName ?? "Quelqu'un",
+          inviterName: user.displayName ?? t("Quelqu'un"),
+          // The inviter's language: the invitation is written in it, and
+          // the pair keeps it for the weekly proposals (additive field).
+          lang,
           partnerName,
           ...(hasEmail ? { partnerEmail } : {}),
           ...(hasPhone ? { partnerPhone } : {}),
@@ -537,11 +548,11 @@ export default function SetupClient() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(data?.error ?? t("Une erreur est survenue."));
 
       setInvited({ name: partnerName, hasEmail, phone: partnerPhone, pairId: data.pairId, inviteUrl: data.inviteUrl, cadence });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setError(err instanceof Error ? err.message : t("Une erreur est survenue."));
     } finally {
       setSubmitting(false);
     }
@@ -555,8 +566,8 @@ export default function SetupClient() {
   async function handleShare() {
     if (!invited) return;
     const result = await shareLink({
-      title: "Ittsui - Notre moment",
-      text: `Je t'ai préparé ${CADENCE_MOMENT_PHRASE[invited.cadence]} ! Rejoins-moi sur Ittsui :`,
+      title: t("Ittsui - Notre moment"),
+      text: t("Je t'ai préparé {moment} ! Rejoins-moi sur Ittsui :", { moment: t(CADENCE_MOMENT_PHRASE[invited.cadence]) }),
       url: invited.inviteUrl,
     });
     if (result === "copied") {
@@ -592,10 +603,10 @@ export default function SetupClient() {
             Ittsui
           </Link>
           <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-            Configuration
+            {t("Configuration")}
           </h1>
           <p className="mt-2 text-sm" style={{ color: MUTED }}>
-            Connectez-vous pour continuer.
+            {t("Connectez-vous pour continuer.")}
           </p>
           {error && (
             <p className="mt-4 text-sm" style={{ color: ACCENT }}>
@@ -608,14 +619,14 @@ export default function SetupClient() {
             className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
             style={{ backgroundColor: ACCENT }}
           >
-            {signingIn ? "Connexion..." : "Se connecter avec Google"}
+            {signingIn ? t("Connexion...") : t("Se connecter avec Google")}
           </button>
           <button
             onClick={handlePasskeySignIn}
             className="mt-3 w-full rounded-full border py-3.5 text-sm font-medium transition-colors"
             style={{ borderColor: BORDER, color: INK }}
           >
-            Se connecter avec une clé d&apos;accès
+            {t("Se connecter avec une clé d'accès")}
           </button>
         </div>
       </Shell>
@@ -634,20 +645,20 @@ export default function SetupClient() {
             ✓
           </span>
           <h1 className="mt-5" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-            {invited.hasEmail ? "Invitation envoyée" : "Invitation prête"}
+            {invited.hasEmail ? t("Invitation envoyée") : t("Invitation prête")}
           </h1>
           {invited.hasEmail && (
             <>
               <p className="mt-3 text-sm" style={{ color: MUTED }}>
-                Un e-mail a été envoyé à {invited.name}.
+                {t("Un e-mail a été envoyé à {name}.", { name: invited.name })}
               </p>
               <div className="mt-4 flex justify-center">
                 <StatusBanner
-                  steps={SENT_STEPS}
+                  steps={SENT_STEPS.map((s) => ({ ...s, label: t(s.label) }))}
                   currentKey="sent"
                   doneSlot={
                     <button type="button" onClick={handleShare} className="ml-1 font-medium underline underline-offset-4">
-                      Partager l&apos;invitation
+                      {t("Partager l'invitation")}
                     </button>
                   }
                 />
@@ -663,12 +674,18 @@ export default function SetupClient() {
             <>
               <p className={invited.hasEmail ? "mt-4 text-sm" : "mt-3 text-sm"} style={{ color: MUTED }}>
                 {invited.hasEmail
-                  ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
-                  : `Presque : ${invited.name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.`}
+                  ? t("Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :")
+                  : t("Presque : {name} n'a pas d'e-mail enregistré, alors envoyez-lui ce lien vous-même — un tap suffit.", {
+                      name: invited.name,
+                    })}
               </p>
               <div className="mt-4 space-y-2">
                 {(() => {
-                  const text = `${invited.name}, je t'ai préparé ${CADENCE_MOMENT_PHRASE[invited.cadence]} sur Ittsui : ${invited.inviteUrl}`;
+                  const text = t("{name}, je t'ai préparé {moment} sur Ittsui : {url}", {
+                    name: invited.name,
+                    moment: t(CADENCE_MOMENT_PHRASE[invited.cadence]),
+                    url: invited.inviteUrl,
+                  });
                   const whatsappHref = whatsappLinkForNumber(invited.phone, text);
                   const smsHref = smsLinkForNumber(invited.phone, text);
                   return (
@@ -681,7 +698,7 @@ export default function SetupClient() {
                           className="flex w-full items-center justify-center rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
                           style={{ backgroundColor: "#25D366" }}
                         >
-                          Envoyer par WhatsApp
+                          {t("Envoyer par WhatsApp")}
                         </a>
                       )}
                       {smsHref && (
@@ -690,7 +707,7 @@ export default function SetupClient() {
                           className="flex w-full items-center justify-center rounded-full border py-3.5 text-sm font-medium"
                           style={{ borderColor: BORDER, color: INK }}
                         >
-                          Envoyer par SMS
+                          {t("Envoyer par SMS")}
                         </a>
                       )}
                     </>
@@ -707,7 +724,7 @@ export default function SetupClient() {
                   className="w-full rounded-full border py-3 text-sm font-medium"
                   style={{ borderColor: BORDER, color: MUTED }}
                 >
-                  Snapchat, Messenger, ou une autre appli...
+                  {t("Snapchat, Messenger, ou une autre appli...")}
                 </button>
               </div>
             </>
@@ -717,17 +734,21 @@ export default function SetupClient() {
               className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
               style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}
             >
-              Lien copié !
+              {t("Lien copié !")}
             </p>
           )}
 
           <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
-            <p className="text-sm font-medium">Et maintenant ?</p>
+            <p className="text-sm font-medium">{t("Et maintenant ?")}</p>
             <p className="mt-1 text-sm" style={{ color: MUTED }}>
-              Rien à faire de votre côté. Dès que {invited.name} se connecte, votre rituel{" "}
-              {invited.cadence === "weekly" ? "hebdomadaire" : invited.cadence === "monthly" ? "mensuel" : "annuel"}{" "}
-              s&apos;active automatiquement — vous recevrez un e-mail à ce moment-là.
-              {postalCode && ` Les propositions seront centrées autour du ${postalCode}.`}
+              {t(
+                "Rien à faire de votre côté. Dès que {name} se connecte, votre rituel {kind} s'active automatiquement — vous recevrez un e-mail à ce moment-là.",
+                {
+                  name: invited.name,
+                  kind: t(invited.cadence === "weekly" ? "hebdomadaire" : invited.cadence === "monthly" ? "mensuel" : "annuel"),
+                },
+              )}
+              {postalCode && ` ${t("Les propositions seront centrées autour du {postalCode}.", { postalCode })}`}
             </p>
           </div>
           <button
@@ -735,7 +756,7 @@ export default function SetupClient() {
             className="mt-6 w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
             style={{ backgroundColor: ACCENT }}
           >
-            Voir le statut de l&apos;invitation
+            {t("Voir le statut de l'invitation")}
           </button>
         </div>
       </Shell>
@@ -747,12 +768,12 @@ export default function SetupClient() {
     <Shell showOriginStory>
       <div className="mb-8 text-center">
         <p className="text-xs uppercase tracking-[0.14em]" style={{ color: MUTED }}>
-          Étape {step} sur 3
+          {t("Étape {step} sur 3", { step })}
         </p>
         <h1 className="mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-          {step === 1 && "La personne"}
-          {step === 2 && "Le moment"}
-          {step === 3 && "Les lieux"}
+          {step === 1 && t("La personne")}
+          {step === 2 && t("Le moment")}
+          {step === 3 && t("Les lieux")}
         </h1>
         <div className="mt-4">
           <StepDots step={step} />
@@ -763,8 +784,9 @@ export default function SetupClient() {
         {step === 1 && (
           <section className="space-y-6">
             <p className="text-sm" style={{ color: MUTED }}>
-              Ittsui protège un moment chaque semaine avec une personne qui compte pour vous. Indiquez qui —
-              ensuite, on s&apos;occupe de tout : proposer, rappeler, organiser.
+              {t(
+                "Ittsui protège un moment chaque semaine avec une personne qui compte pour vous. Indiquez qui — ensuite, on s'occupe de tout : proposer, rappeler, organiser.",
+              )}
             </p>
             {isNative && (
               <button
@@ -774,7 +796,7 @@ export default function SetupClient() {
                 className="w-full rounded-xl border bg-white py-3 text-sm font-medium disabled:opacity-60"
                 style={{ borderColor: BORDER, color: INK }}
               >
-                {importingPartner ? "Import..." : "Importer depuis mes contacts"}
+                {importingPartner ? t("Import...") : t("Importer depuis mes contacts")}
               </button>
             )}
             {isNative && (
@@ -785,7 +807,7 @@ export default function SetupClient() {
               />
             )}
             <div>
-              <label className="block text-sm font-medium">Prénom de votre proche</label>
+              <label className="block text-sm font-medium">{t("Prénom de votre proche")}</label>
               <input
                 type="text"
                 required
@@ -793,7 +815,7 @@ export default function SetupClient() {
                 onChange={(e) => setPartnerName(e.target.value)}
                 className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
                 style={{ borderColor: BORDER }}
-                placeholder="Prénom"
+                placeholder={t("Prénom")}
               />
               {/* Phone first, on purpose: real people know a friend's
                   phone number, not their email, especially away from a
@@ -804,12 +826,12 @@ export default function SetupClient() {
                 onChange={(e) => setPartnerPhone(e.target.value)}
                 className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
                 style={{ borderColor: BORDER }}
-                placeholder="Son numéro de téléphone"
+                placeholder={t("Son numéro de téléphone")}
               />
               {showPartnerEmail || partnerEmail.trim().length > 0 ? (
                 <>
                   <p className="mt-3 text-xs" style={{ color: MUTED }}>
-                    Ou, si vous l&apos;avez, son e-mail :
+                    {t("Ou, si vous l'avez, son e-mail :")}
                   </p>
                   <input
                     type="email"
@@ -817,7 +839,7 @@ export default function SetupClient() {
                     onChange={(e) => setPartnerEmail(e.target.value)}
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-current"
                     style={{ borderColor: BORDER }}
-                    placeholder="Son e-mail (optionnel)"
+                    placeholder={t("Son e-mail (optionnel)")}
                   />
                 </>
               ) : (
@@ -827,13 +849,13 @@ export default function SetupClient() {
                   className="mt-3 text-xs font-medium underline underline-offset-4"
                   style={{ color: MUTED }}
                 >
-                  + Ajouter aussi un e-mail
+                  {t("+ Ajouter aussi un e-mail")}
                 </button>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium">C&apos;est qui, pour vous ?</label>
+              <label className="block text-sm font-medium">{t("C'est qui, pour vous ?")}</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {DUO_TYPES.map((d) => {
                   const [repCharacter] = MASCOT_PAIRS[RELATIONSHIP_PAIR[d.value]];
@@ -853,7 +875,7 @@ export default function SetupClient() {
                       }
                     >
                       <MascotAvatar characterId={repCharacter} variant="bust" size={22} className="shrink-0" />
-                      {d.label}
+                      {t(d.label)}
                     </motion.button>
                   );
                 })}
@@ -873,7 +895,7 @@ export default function SetupClient() {
               className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
-              Continuer vers le moment →
+              {t("Continuer vers le moment →")}
             </button>
           </section>
         )}
@@ -881,7 +903,7 @@ export default function SetupClient() {
         {step === 2 && (
           <section className="space-y-6">
             <div>
-              <label className="block text-sm font-medium">À quelle fréquence ?</label>
+              <label className="block text-sm font-medium">{t("À quelle fréquence ?")}</label>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {CADENCE_OPTIONS.map((c) => (
                   <motion.button
@@ -897,14 +919,14 @@ export default function SetupClient() {
                         : { borderColor: BORDER, color: INK, backgroundColor: "white" }
                     }
                   >
-                    {c.label}
+                    {t(c.label)}
                   </motion.button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Quand, {CADENCE_ADVERB[cadence]} ?</label>
+              <label className="block text-sm font-medium">{t("Quand, {cadence} ?", { cadence: t(CADENCE_ADVERB[cadence]) })}</label>
               <div className="mt-2 grid grid-cols-1 gap-2">
                 {TIME_PRESETS.map((p) => (
                   <motion.button
@@ -920,7 +942,7 @@ export default function SetupClient() {
                         : { borderColor: BORDER, backgroundColor: "white" }
                     }
                   >
-                    {p.label}
+                    {t(p.label)}
                   </motion.button>
                 ))}
                 <button
@@ -933,7 +955,7 @@ export default function SetupClient() {
                       : { borderColor: BORDER, backgroundColor: "white" }
                   }
                 >
-                  Personnalisé
+                  {t("Personnalisé")}
                 </button>
               </div>
             </div>
@@ -942,7 +964,7 @@ export default function SetupClient() {
               <div className="space-y-4 rounded-xl border p-4" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
                 <div>
                   <label className="block text-xs font-medium" style={{ color: MUTED }}>
-                    Jour de la semaine
+                    {t("Jour de la semaine")}
                   </label>
                   <div className="mt-2 grid grid-cols-4 gap-2">
                     {DAYS.map((d) => (
@@ -957,26 +979,26 @@ export default function SetupClient() {
                             : { borderColor: BORDER, color: INK, backgroundColor: "white" }
                         }
                       >
-                        {d.label}
+                        {t(d.label)}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium" style={{ color: MUTED }}>
-                    Créneau
+                    {t("Créneau")}
                   </label>
                   <div className="mt-2 flex items-center gap-3">
-                    <TimeSelect value={windowStart} onChange={setWindowStart} label="Début du créneau" />
+                    <TimeSelect value={windowStart} onChange={setWindowStart} label={t("Début du créneau")} />
                     <span style={{ color: MUTED }}>—</span>
-                    <TimeSelect value={windowEnd} onChange={setWindowEnd} label="Fin du créneau" />
+                    <TimeSelect value={windowEnd} onChange={setWindowEnd} label={t("Fin du créneau")} />
                   </div>
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium">Quand recevoir la proposition ?</label>
+              <label className="block text-sm font-medium">{t("Quand recevoir la proposition ?")}</label>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -988,7 +1010,7 @@ export default function SetupClient() {
                       : { borderColor: BORDER, backgroundColor: "white" }
                   }
                 >
-                  Le jour même
+                  {t("Le jour même")}
                 </button>
                 <button
                   type="button"
@@ -1000,11 +1022,11 @@ export default function SetupClient() {
                       : { borderColor: BORDER, backgroundColor: "white" }
                   }
                 >
-                  La veille
+                  {t("La veille")}
                 </button>
               </div>
               <p className="mt-2 text-xs" style={{ color: MUTED }}>
-                Utile si votre créneau tombe un jour où vous ne consultez pas vos messages (ex. Shabbat).
+                {t("Utile si votre créneau tombe un jour où vous ne consultez pas vos messages (ex. Shabbat).")}
               </p>
             </div>
 
@@ -1015,7 +1037,7 @@ export default function SetupClient() {
                 className="flex-1 rounded-full border py-3.5 text-sm font-medium transition-colors"
                 style={{ borderColor: BORDER, color: INK }}
               >
-                Retour
+                {t("Retour")}
               </button>
               <button
                 type="button"
@@ -1023,7 +1045,7 @@ export default function SetupClient() {
                 className="flex-1 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01]"
                 style={{ backgroundColor: ACCENT }}
               >
-                Continuer
+                {t("Continuer")}
               </button>
             </div>
           </section>
@@ -1032,10 +1054,10 @@ export default function SetupClient() {
         {step === 3 && (
           <section className="space-y-6">
             <div>
-              <label className="block text-sm font-medium">L&apos;ambiance</label>
+              <label className="block text-sm font-medium">{t("L'ambiance")}</label>
               <div className="mt-2">
                 <DiscoveryGrid
-                  tiles={DISCOVERY_TILES}
+                  tiles={DISCOVERY_TILES.map((tile) => ({ ...tile, label: t(tile.label) }))}
                   selected={venueTypes}
                   onToggle={(value) => toggle(venueTypes, value, setVenueTypes)}
                 />
@@ -1053,13 +1075,13 @@ export default function SetupClient() {
                 }
               >
                 <span>{SECONDARY_VENUE.emoji}</span>
-                {SECONDARY_VENUE.label}
+                {t(SECONDARY_VENUE.label)}
               </motion.button>
             </div>
 
             <div>
               <label className="block text-sm font-medium">
-                Code postal <span className="font-normal" style={{ color: MUTED }}>(facultatif)</span>
+                {t("Code postal")} <span className="font-normal" style={{ color: MUTED }}>{t("(facultatif)")}</span>
               </label>
               <input
                 type="text"
@@ -1073,7 +1095,7 @@ export default function SetupClient() {
               />
               {(locationStatus === "locating" || locationStatus === "resolving") && (
                 <div className="mt-2">
-                  <StatusBanner steps={LOCATION_STEPS} currentKey={locationStatus} />
+                  <StatusBanner steps={LOCATION_STEPS.map((s) => ({ ...s, label: t(s.label) }))} currentKey={locationStatus} />
                 </div>
               )}
               {locationStatus === "idle" && (
@@ -1083,7 +1105,7 @@ export default function SetupClient() {
                   className="mt-2 text-xs font-medium underline underline-offset-4"
                   style={{ color: ACCENT }}
                 >
-                  Utiliser ma position actuelle
+                  {t("Utiliser ma position actuelle")}
                 </button>
               )}
               {/* denied/unavailable/error used to render nothing at all —
@@ -1094,35 +1116,36 @@ export default function SetupClient() {
                   too; this is the other half. */}
               {locationStatus === "denied" && (
                 <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-                  Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec le
-                  code postal.{" "}
+                  {t(
+                    "Localisation refusée — autorisez-la dans les réglages de votre navigateur, ou continuez avec le code postal.",
+                  )}{" "}
                   <button type="button" onClick={detectLocation} className="underline underline-offset-4">
-                    Réessayer
+                    {t("Réessayer")}
                   </button>
                 </p>
               )}
               {locationStatus === "unavailable" && (
                 <p className="mt-2 text-xs" style={{ color: MUTED }}>
-                  Localisation indisponible sur cet appareil — continuez avec le code postal.
+                  {t("Localisation indisponible sur cet appareil — continuez avec le code postal.")}
                 </p>
               )}
               {locationStatus === "error" && (
                 <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-                  Impossible de déterminer votre position.{" "}
+                  {t("Impossible de déterminer votre position.")}{" "}
                   <button type="button" onClick={detectLocation} className="underline underline-offset-4">
-                    Réessayer
+                    {t("Réessayer")}
                   </button>{" "}
-                  ou continuez avec le code postal.
+                  {t("ou continuez avec le code postal.")}
                 </p>
               )}
               <p className="mt-2 text-xs" style={{ color: MUTED }}>
-                Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.
+                {t("Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.")}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium">
-                Filtres <span className="font-normal" style={{ color: MUTED }}>(facultatif)</span>
+                {t("Filtres")} <span className="font-normal" style={{ color: MUTED }}>{t("(facultatif)")}</span>
               </label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {DIETARY_OPTIONS.map((f) => (
@@ -1139,7 +1162,7 @@ export default function SetupClient() {
                         : { borderColor: BORDER, color: MUTED }
                     }
                   >
-                    {f}
+                    {t(f)}
                   </motion.button>
                 ))}
               </div>
@@ -1158,7 +1181,7 @@ export default function SetupClient() {
                 className="flex-1 rounded-full border py-3.5 text-sm font-medium transition-colors"
                 style={{ borderColor: BORDER, color: INK }}
               >
-                Retour
+                {t("Retour")}
               </button>
               <button
                 type="submit"
@@ -1166,7 +1189,11 @@ export default function SetupClient() {
                 className="flex-1 rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-50"
                 style={{ backgroundColor: ACCENT }}
               >
-                {submitting ? "Envoi…" : `Créer notre rituel${partnerName ? " avec " + capitalizeName(partnerName) : ""}`}
+                {submitting
+                  ? t("Envoi…")
+                  : partnerName
+                    ? t("Créer notre rituel avec {name}", { name: capitalizeName(partnerName) })
+                    : t("Créer notre rituel")}
               </button>
             </div>
           </section>

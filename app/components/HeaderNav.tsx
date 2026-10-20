@@ -36,8 +36,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
+import { pagePath, type Locale } from "@/lib/i18n";
+import { LangSwitch } from "@/app/components/site/LangSwitch";
 
-export function HeaderNav() {
+const COPY: Record<Locale, { tagline: string; app: string; signIn: string; start: string }> = {
+  fr: {
+    tagline: "L'organisateur de vos moments partagés",
+    app: "App mobile",
+    signIn: "Connexion",
+    start: "Commencer",
+  },
+  en: { tagline: "Your shared moments, organised", app: "Mobile app", signIn: "Sign in", start: "Get started" },
+  ja: { tagline: "大切な人との時間をつくるアプリ", app: "アプリ", signIn: "ログイン", start: "はじめる" },
+};
+
+export function HeaderNav({ lang = "fr" }: { lang?: Locale } = {}) {
+  const t = COPY[lang];
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -61,7 +75,7 @@ export function HeaderNav() {
             descriptor is the first thing that has to be legible — 一対
             stays as a quiet editorial mark beside it, not as the thing
             carrying the meaning. */}
-        <Link href="/" className="flex items-baseline gap-2.5">
+        <Link href={pagePath("home", lang)} className="flex items-baseline gap-2.5">
           <span
             style={{
               fontFamily: "var(--font-display)",
@@ -81,7 +95,7 @@ export function HeaderNav() {
             className="hidden text-[13px] sm:inline"
             style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.78)", transition: "color 0.3s ease" }}
           >
-            L&apos;organisateur de vos moments partagés
+            {t.tagline}
           </span>
           <span
             className="text-sm sm:hidden"
@@ -91,20 +105,38 @@ export function HeaderNav() {
           </span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link href="/download" className="hidden text-sm transition-colors sm:inline" style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.82)" }}>
-            App mobile
+          {/* Wide screens; phones get the row under the bar, below. */}
+          <LangSwitch
+            page="home"
+            lang={lang}
+            color={scrolled ? MUTED : "rgba(255,253,249,0.82)"}
+            className="hidden lg:flex"
+          />
+          <Link href={pagePath("download", lang)} className="hidden text-sm transition-colors sm:inline" style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.82)" }}>
+            {t.app}
           </Link>
           <Link href="/setup" className="text-sm transition-colors" style={{ color: scrolled ? MUTED : "rgba(255,253,249,0.82)" }}>
-            Connexion
+            {t.signIn}
           </Link>
           <Link
             href="/setup"
             className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm text-white transition-transform hover:scale-[1.02]"
             style={{ backgroundColor: ACCENT }}
           >
-            Commencer
+            {t.start}
           </Link>
         </div>
+      </div>
+      {/* Phones and tablets: no room in the bar beside the two sign-in
+          links, so the switch sits just under it, over the top of the hero,
+          where a visitor looking for another language looks first. Out of
+          the layout (absolute), so nothing moves; it fades out once the
+          page scrolls, and the footer has it too. */}
+      <div
+        className="absolute right-6 top-full transition-opacity duration-300 lg:hidden"
+        style={{ opacity: scrolled ? 0 : 1, pointerEvents: scrolled ? "none" : "auto" }}
+      >
+        <LangSwitch page="home" lang={lang} color="rgba(255,253,249,0.9)" textClass="text-sm" className="py-1" />
       </div>
     </header>
   );

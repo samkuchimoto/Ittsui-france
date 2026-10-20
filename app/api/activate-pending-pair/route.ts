@@ -9,6 +9,9 @@ import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 // ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
 // call to Resend's /domains API before removing the old TODO here, not
@@ -46,6 +49,8 @@ export async function POST(request: Request) {
   }
 
   const pair = pairSnap.data()!;
+  // The inviter's language (Pair.lang), for the emails sent to them below.
+  const t = makeT(langOf(pair.lang), EMAILS);
 
   // A pair already active for this same user isn't an error case — reopening
   // the invite link (refresh, back button, an old email clicked again)
@@ -90,7 +95,13 @@ export async function POST(request: Request) {
     // screen keeps working; invitedEmail/invitedPhone genuinely serve no
     // purpose once declined.
     await pairRef.update({ status: "declined", invitedEmail: FieldValue.delete(), invitedPhone: FieldValue.delete() });
-    const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "La personne invitée"} a décliné l'invitation.`);
+    const sent = await notifyInviter(
+      inviterUid,
+      pair.partnerName
+        ? t("{name} a décliné l'invitation.", { name: pair.partnerName })
+        : t("La personne invitée a décliné l'invitation."),
+      t("Mise à jour de votre invitation")
+    );
     if (!sent) console.warn(`activate-pending-pair: decline notification failed for inviter ${inviterUid}`);
     return NextResponse.json({ status: "declined" });
   }
@@ -110,7 +121,13 @@ export async function POST(request: Request) {
   });
   logEvent("invite_activated", { pairId });
 
-  const sent = await notifyInviter(inviterUid, `${pair.partnerName ?? "Votre invité(e)"} a rejoint Ittsui. Le lien est actif.`);
+  const sent = await notifyInviter(
+    inviterUid,
+    pair.partnerName
+      ? t("{name} a rejoint Ittsui. Le lien est actif.", { name: pair.partnerName })
+      : t("Votre invité(e) a rejoint Ittsui. Le lien est actif."),
+    t("Mise à jour de votre invitation")
+  );
   if (!sent) console.warn(`activate-pending-pair: activation notification failed for inviter ${inviterUid}`);
 
   // partnerName/agreedDay/agreedWindowStart were already fetched above —
@@ -129,7 +146,7 @@ export async function POST(request: Request) {
   });
 }
 
-async function notifyInviter(inviterUid: string, text: string): Promise<boolean> {
+async function notifyInviter(inviterUid: string, text: string, subject: string): Promise<boolean> {
   const inviterSnap = await adminDb.collection("users").doc(inviterUid).get();
   const email = inviterSnap.data()?.email;
   if (!email) {
@@ -143,7 +160,7 @@ async function notifyInviter(inviterUid: string, text: string): Promise<boolean>
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
-    body: JSON.stringify({ from: FROM_ADDRESS, to: email, subject: "Mise à jour de votre invitation", text }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to: email, subject, text }),
   });
 
   if (!res.ok) {

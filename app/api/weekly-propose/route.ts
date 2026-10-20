@@ -84,6 +84,7 @@ import { getWeatherSignal } from "@/lib/weather";
 import type { Pair, VenueOption, VenueType } from "@/lib/types";
 import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from "@/lib/timezone";
+import { langOf } from "@/lib/i18n";
 
 const RAG_TIMEOUT_MS = 1500;
 
@@ -184,7 +185,9 @@ export async function GET(request: Request) {
     }
 
     const confirmationText =
-      proposal.source === "rag-service" ? proposal.confirmationText : await withWarmConfirmation(pair, proposal, swapNote);
+      proposal.source === "rag-service" && langOf(pair.lang) === "fr"
+        ? proposal.confirmationText
+        : await withWarmConfirmation(pair, proposal, swapNote);
 
     const proposedTime = buildProposedTime(pair.agreedWindowStart);
 
@@ -277,16 +280,21 @@ async function isCadenceDue(pair: Pair, weekOf: string): Promise<boolean> {
 // alters a proposal, only its wording.
 async function withWarmConfirmation(pair: Pair, proposal: VenueProposal, weatherSwapNote: string | null): Promise<string> {
   const streakCount = await getConfirmedStreakCount(pair.id);
+  const lang = langOf(pair.lang);
   const warm = await generateWarmConfirmation({
     venueName: proposal.optionA.venueName,
-    day: dayLabel(pair.agreedDay),
+    day: dayLabel(pair.agreedDay, lang),
     time: pair.agreedWindowStart,
     partnerName: pair.partnerName,
     streakCount,
     cadence: pair.cadence ?? "weekly",
     weatherSwapNote,
+    lang,
   });
-  return warm ?? proposal.confirmationText;
+  if (warm) return warm;
+  return lang === "fr"
+    ? proposal.confirmationText
+    : `${proposal.optionA.venueName}, ${dayLabel(pair.agreedDay, lang)} ${pair.agreedWindowStart}`;
 }
 
 // Filters "park" out of a pair's venue-type preferences, for this run

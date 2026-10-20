@@ -25,6 +25,8 @@
 // same mistake as inventing a venue photo. `ambience` is a plain
 // descriptive tag instead, which is honest about being a description.
 
+import type { Locale } from "@/lib/i18n";
+
 export type DuoContext = "amis" | "partenaire" | "famille" | "parents";
 
 export interface SandboxVenue {
@@ -152,6 +154,182 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
   },
 ];
 
-export function scenarioFor(id: DuoContext): SandboxScenario {
-  return SANDBOX_SCENARIOS.find((s) => s.id === id) ?? SANDBOX_SCENARIOS[0];
+// The English and Japanese homepages run the same demo: the same five
+// real places (French names and addresses, because they are French
+// addresses), with the descriptions, the duo labels and the sample names
+// translated. The invitee's message is shown in the page's language,
+// which is the language the app writes invitations in for that reader.
+
+type VenueText = Pick<SandboxVenue, "shortLabel" | "metro" | "ambience" | "photoAlt">;
+const translated = (venue: SandboxVenue, text: VenueText): SandboxVenue => ({ ...venue, ...text });
+
+const EN = {
+  industrie: translated(CAFE_INDUSTRIE, {
+    shortLabel: "Café de l'Industrie · Paris 11th",
+    metro: "Bréguet-Sabin (line 5) · Bastille (1, 5, 8)",
+    ambience: ["Good for talking", "Big tables", "Bastille"],
+    photoAlt: "Two friends talk on a café terrace, on a cobbled street.",
+  }),
+  flore: translated(CAFE_FLORE, {
+    shortLabel: "Café de Flore · Paris 6th",
+    metro: "Saint-Germain-des-Prés (line 4)",
+    ambience: ["Terrace", "Saint-Germain-des-Prés", "Open late"],
+    photoAlt: "A Parisian café, two people seated by the window.",
+  }),
+  janou: translated(CHEZ_JANOU, {
+    shortLabel: "Chez Janou · Paris 3rd",
+    metro: "Chemin Vert (line 8)",
+    ambience: ["Provençal bistro", "Le Marais", "Booking advised"],
+    photoAlt: "A couple talking in the warm evening light.",
+  }),
+  luxembourg: translated(LUXEMBOURG, {
+    shortLabel: "Jardin du Luxembourg · Paris 6th",
+    metro: "Odéon (4, 10) · RER B Luxembourg",
+    ambience: ["Outdoors", "Quiet", "Free"],
+    photoAlt: "A grandmother and her granddaughter sitting on a park bench.",
+  }),
+  rodin: translated(RODIN, {
+    shortLabel: "Musée Rodin · Paris 7th",
+    metro: "Varenne (line 13) · Invalides (8, 13, RER C)",
+    ambience: ["Sculpture garden", "Quiet", "An hour is enough"],
+    photoAlt: "A father and his adult son walking side by side.",
+  }),
+};
+
+const JA = {
+  industrie: translated(CAFE_INDUSTRIE, {
+    shortLabel: "Café de l'Industrie · パリ11区",
+    metro: "Bréguet-Sabin（メトロ5号線）· Bastille（1・5・8号線）",
+    ambience: ["ゆっくり話せる", "大きなテーブル", "バスティーユ"],
+    photoAlt: "石畳の通りのテラス席で話す二人の友人。",
+  }),
+  flore: translated(CAFE_FLORE, {
+    shortLabel: "Café de Flore · パリ6区",
+    metro: "Saint-Germain-des-Prés（メトロ4号線）",
+    ambience: ["テラス席", "サン＝ジェルマン＝デ＝プレ", "夜遅くまで営業"],
+    photoAlt: "パリのカフェ。窓辺の席に座る二人。",
+  }),
+  janou: translated(CHEZ_JANOU, {
+    shortLabel: "Chez Janou · パリ3区",
+    metro: "Chemin Vert（メトロ8号線）",
+    ambience: ["プロヴァンス料理のビストロ", "マレ地区", "予約がおすすめ"],
+    photoAlt: "夕方のやわらかな光の中で話すカップル。",
+  }),
+  luxembourg: translated(LUXEMBOURG, {
+    shortLabel: "Jardin du Luxembourg · パリ6区",
+    metro: "Odéon（メトロ4・10号線）· RER B線 Luxembourg",
+    ambience: ["屋外", "静か", "入場無料"],
+    photoAlt: "公園のベンチに座る祖母と孫娘。",
+  }),
+  rodin: translated(RODIN, {
+    shortLabel: "Musée Rodin · パリ7区",
+    metro: "Varenne（メトロ13号線）· Invalides（8・13号線、RER C線）",
+    ambience: ["彫刻の庭園", "静か", "1時間で回れる"],
+    photoAlt: "並んで歩く父と成人した息子。",
+  }),
+};
+
+const SCENARIOS_BY_LOCALE: Record<Locale, SandboxScenario[]> = {
+  fr: SANDBOX_SCENARIOS,
+  en: [
+    {
+      id: "amis",
+      label: "Your close friends",
+      sampleRecipient: "Thomas",
+      when: "Saturday · 15:30",
+      whenSentence: "on Saturday at 15:30",
+      tilePhoto: "/friends-cafe-terrace.jpg",
+      tileAlt: "Two friends talk on a café terrace, on a cobbled street.",
+      primary: EN.industrie,
+      alternative: EN.luxembourg,
+    },
+    {
+      id: "partenaire",
+      label: "Your partner",
+      sampleRecipient: "Camille",
+      when: "Friday · 20:00",
+      whenSentence: "on Friday at 20:00",
+      tilePhoto: "/couple-living-room.jpg",
+      tileAlt: "A couple talking on a sofa in the warm evening light.",
+      primary: EN.janou,
+      alternative: EN.flore,
+    },
+    {
+      id: "famille",
+      label: "Your family",
+      sampleRecipient: "Grandma",
+      when: "Sunday · 15:00",
+      whenSentence: "on Sunday at 15:00",
+      tilePhoto: "/grandmother-granddaughter-park.jpg",
+      tileAlt: "A grandmother and her granddaughter sitting on a park bench.",
+      primary: EN.luxembourg,
+      alternative: EN.flore,
+    },
+    {
+      id: "parents",
+      label: "Your parents",
+      sampleRecipient: "Dad",
+      when: "Sunday · 11:00",
+      whenSentence: "on Sunday at 11:00",
+      tilePhoto: "/hero-father-son-vineyard.jpg.jpg",
+      tileAlt: "A father and his adult son walking side by side through the vineyards.",
+      primary: EN.rodin,
+      alternative: EN.luxembourg,
+    },
+  ],
+  ja: [
+    {
+      id: "amis",
+      label: "親しい友人",
+      sampleRecipient: "トマ",
+      when: "土曜 · 15:30",
+      whenSentence: "土曜の15時30分",
+      tilePhoto: "/friends-cafe-terrace.jpg",
+      tileAlt: "石畳の通りのテラス席で話す二人の友人。",
+      primary: JA.industrie,
+      alternative: JA.luxembourg,
+    },
+    {
+      id: "partenaire",
+      label: "パートナー",
+      sampleRecipient: "カミーユ",
+      when: "金曜 · 20:00",
+      whenSentence: "金曜の20時",
+      tilePhoto: "/couple-living-room.jpg",
+      tileAlt: "夕方のやわらかな光の中、ソファで話すカップル。",
+      primary: JA.janou,
+      alternative: JA.flore,
+    },
+    {
+      id: "famille",
+      label: "家族",
+      sampleRecipient: "おばあちゃん",
+      when: "日曜 · 15:00",
+      whenSentence: "日曜の15時",
+      tilePhoto: "/grandmother-granddaughter-park.jpg",
+      tileAlt: "公園のベンチに座る祖母と孫娘。",
+      primary: JA.luxembourg,
+      alternative: JA.flore,
+    },
+    {
+      id: "parents",
+      label: "両親",
+      sampleRecipient: "お父さん",
+      when: "日曜 · 11:00",
+      whenSentence: "日曜の11時",
+      tilePhoto: "/hero-father-son-vineyard.jpg.jpg",
+      tileAlt: "ぶどう畑を並んで歩く父と成人した息子。",
+      primary: JA.rodin,
+      alternative: JA.luxembourg,
+    },
+  ],
+};
+
+export function sandboxScenarios(lang: Locale = "fr"): SandboxScenario[] {
+  return SCENARIOS_BY_LOCALE[lang];
+}
+
+export function scenarioFor(id: DuoContext, lang: Locale = "fr"): SandboxScenario {
+  const scenarios = SCENARIOS_BY_LOCALE[lang];
+  return scenarios.find((s) => s.id === id) ?? scenarios[0];
 }

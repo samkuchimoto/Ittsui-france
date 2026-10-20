@@ -15,6 +15,9 @@ import { DiscoveryTileButton } from "@/app/components/DiscoveryGrid";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 import { Mascot } from "@/app/components/Mascot";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
+import { DATE_LOCALE, type Locale } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { REQUESTS } from "./requests.i18n";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -43,13 +46,14 @@ const STATUS_COLOR: Record<MeetingRequestStatus, string> = {
 };
 
 function StatusPill({ status }: { status: MeetingRequestStatus }) {
+  const t = useT(REQUESTS);
   const color = STATUS_COLOR[status];
   return (
     <span
       className="rounded-full px-2.5 py-1 text-xs font-medium"
       style={{ backgroundColor: `${color}1A`, color }}
     >
-      {STATUS_LABEL[status]}
+      {t(STATUS_LABEL[status])}
     </span>
   );
 }
@@ -57,11 +61,11 @@ function StatusPill({ status }: { status: MeetingRequestStatus }) {
 // "27 août" instead of a raw "2026-08-27" — real feedback: a bare ISO
 // string getting mid-cut by an ellipsis on narrow screens read as an
 // unfinished dev placeholder rather than a designed empty state.
-function formatFrenchDate(iso: string): string {
-  const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-  const [, month, day] = iso.split("-").map(Number);
+// ("27 Aug" in English, 「8月27日」 in Japanese.)
+function formatShortDate(iso: string, lang: Locale): string {
+  const [year, month, day] = iso.split("-").map(Number);
   if (!month || !day) return iso;
-  return `${day} ${MONTHS[month - 1]}`;
+  return new Intl.DateTimeFormat(DATE_LOCALE[lang], { day: "numeric", month: "short" }).format(new Date(year, month - 1, day));
 }
 
 function RequestRow({
@@ -73,6 +77,8 @@ function RequestRow({
   perspective: "sent" | "received";
   onCancelled: () => void;
 }) {
+  const t = useT(REQUESTS);
+  const { lang } = useLang();
   const otherParty = perspective === "sent" ? request.recipientName : request.senderName;
   const [cancelling, setCancelling] = useState(false);
 
@@ -102,7 +108,7 @@ function RequestRow({
               <DiscoveryTileButton
                 tile={{
                   value: request.venueType,
-                  label: VENUE_TYPE_LABEL[request.venueType] ?? "",
+                  label: VENUE_TYPE_LABEL[request.venueType] ? t(VENUE_TYPE_LABEL[request.venueType]) : "",
                   image: VENUE_PHOTOS[request.venueType],
                 }}
                 active={false}
@@ -121,7 +127,7 @@ function RequestRow({
               {request.venueName}
             </p>
             <p className="text-xs" style={{ color: MUTED }}>
-              {formatFrenchDate(request.date)} à {request.time}
+              {t("{date} à {time}", { date: formatShortDate(request.date, lang), time: request.time })}
             </p>
           </div>
         </div>
@@ -138,7 +144,7 @@ function RequestRow({
         <a
           href={googleCalendarLink({
             title: `${request.venueName} — Ittsui`,
-            details: "Rendez-vous confirmé via Ittsui.",
+            details: t("Rendez-vous confirmé via Ittsui."),
             venueAddress: request.venueAddress,
             date: request.date,
             time: request.time,
@@ -148,7 +154,7 @@ function RequestRow({
           className="mt-1.5 inline-block text-xs underline underline-offset-4"
           style={{ color: ACCENT }}
         >
-          Ajouter à Google Agenda
+          {t("Ajouter à Google Agenda")}
         </a>
       )}
       {/* Real gap found live: a sent request stuck in "En attente" had no
@@ -164,7 +170,7 @@ function RequestRow({
           className="mt-1.5 text-xs underline underline-offset-4 disabled:opacity-50"
           style={{ color: MUTED }}
         >
-          {cancelling ? "Annulation..." : "Annuler cette demande"}
+          {cancelling ? t("Annulation...") : t("Annuler cette demande")}
         </button>
       )}
     </li>
@@ -172,6 +178,7 @@ function RequestRow({
 }
 
 export function RequestsPanel() {
+  const t = useT(REQUESTS);
   const [sent, setSent] = useState<MeetingRequest[] | null>(null);
   const [received, setReceived] = useState<MeetingRequest[] | null>(null);
 
@@ -193,32 +200,34 @@ export function RequestsPanel() {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-        Demandes de rendez-vous
+        {t("Demandes de rendez-vous")}
       </p>
-      {/* Two equal-weight relationship actions, not one primary flow with
-          a gesture link buried as small text underneath — real feedback:
-          the link was there but too quiet to actually be discovered. */}
+      {/* Two equal-weight actions, not one primary flow with the second
+          buried as small text underneath — real feedback: a quiet link
+          there went undiscovered. Since 2026-10-20 the second one is the
+          email summary (Ittsui's other half); "Envoyer un geste" is hidden
+          from the app, its pages kept for links already sent. */}
       <div className="mt-2 flex gap-2">
         <Link
           href="/request/new"
           className="flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium"
           style={{ borderColor: ACCENT, color: ACCENT }}
         >
-          ☕ Nouvelle demande
+          {t("☕ Nouvelle demande")}
         </Link>
         <Link
-          href="/geste/nouveau"
+          href="/triage"
           className="flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium"
           style={{ borderColor: BORDER, color: INK }}
         >
-          🎁 Envoyer un geste
+          {t("📬 Résumer mes e-mails")}
         </Link>
       </div>
 
       {received && received.length > 0 && (
         <div className="mt-3">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: MUTED }}>
-            Reçues
+            {t("Reçues")}
           </p>
           <ul className="divide-y" style={{ borderColor: BORDER }}>
             {received.map((r) => (
@@ -231,7 +240,7 @@ export function RequestsPanel() {
       {sent && sent.length > 0 && (
         <div className="mt-4">
           <p className="text-[11px] uppercase tracking-wide" style={{ color: MUTED }}>
-            Envoyées
+            {t("Envoyées")}
           </p>
           <ul className="divide-y" style={{ borderColor: BORDER }}>
             {sent.map((r) => (
@@ -243,7 +252,7 @@ export function RequestsPanel() {
 
       {sent && received && sent.length === 0 && received.length === 0 && (
         <p className="mt-2 text-sm" style={{ color: MUTED }}>
-          Aucune demande pour l&apos;instant.
+          {t("Aucune demande pour l'instant.")}
         </p>
       )}
     </div>

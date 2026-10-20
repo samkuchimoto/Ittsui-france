@@ -8,6 +8,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
+import type { Locale } from "@/lib/i18n";
+import type { Translate } from "@/lib/translate";
 
 const PENDING_EXPIRY_DAYS = 14;
 
@@ -71,6 +76,9 @@ const bodySchema = z
       venueTypes: z.array(z.enum(["cafe", "restaurant", "home", "park", "museum"])),
       dietaryFilters: z.array(z.string()), // open list — user can add custom tags, see lib/types.ts
     }),
+    // The inviter's app language: both emails below go out in it, and it's
+    // kept on the pair for the ones sent later (see lib/types.ts Pair.lang).
+    lang: z.enum(["fr", "en", "ja"]).optional(),
   })
   .refine((data) => data.partnerEmail || data.partnerPhone, { message: "e-mail ou téléphone requis" });
 
@@ -93,6 +101,8 @@ export async function POST(request: Request) {
     preferences,
   } = parsed.data;
 
+  const lang = langOf(parsed.data.lang);
+  const t = makeT(lang, EMAILS);
   const cleanEmail = parsed.data.partnerEmail?.trim().toLowerCase();
   const partnerPhone = parsed.data.partnerPhone;
 
@@ -132,6 +142,7 @@ export async function POST(request: Request) {
     notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
     ...(typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
     preferences,
+    lang,
     status: "pending",
     subscriptionStatus: "trialing",
     createdAt: new Date().toISOString(),
@@ -149,13 +160,19 @@ export async function POST(request: Request) {
   const partnerEmailSent = cleanEmail
     ? await sendEmail({
         to: cleanEmail,
-        subject: `${inviterName} vous invite sur Ittsui`,
+        subject: t("{inviter} vous invite sur Ittsui", { inviter: inviterName }),
         text:
-          `${inviterName} a proposé de protéger un rendez-vous ${CADENCE_INVITE_ADJ[cadence ?? "weekly"]} avec vous sur Ittsui.\n\n` +
-          `Pour l'activer, connectez-vous ici : ${inviteUrl}\n\n` +
-          `Si vous ne souhaitez pas être lié, ignorez ce message ou déclinez ici : ${inviteUrl}?decline=1\n` +
-          `Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.`,
-        html: inviteEmailHtml({ inviterName, inviteUrl, cadence: cadence ?? "weekly" }),
+          t("{inviter} a proposé de protéger un rendez-vous {adj} avec vous sur Ittsui.", {
+            inviter: inviterName,
+            adj: t(CADENCE_INVITE_ADJ[cadence ?? "weekly"]),
+          }) +
+          "\n\n" +
+          t("Pour l'activer, connectez-vous ici : {url}", { url: inviteUrl }) +
+          "\n\n" +
+          t("Si vous ne souhaitez pas être lié, ignorez ce message ou déclinez ici : {url}", { url: `${inviteUrl}?decline=1` }) +
+          "\n" +
+          t("Cette invitation expire dans {n} jours.", { n: PENDING_EXPIRY_DAYS }),
+        html: inviteEmailHtml({ inviterName, inviteUrl, cadence: cadence ?? "weekly", lang, t }),
       })
     : undefined;
 
@@ -165,10 +182,16 @@ export async function POST(request: Request) {
   if (inviterEmail) {
     confirmationSent = await sendEmail({
       to: inviterEmail,
-      subject: `Invitation envoyée à ${partnerName}`,
+      subject: t("Invitation envoyée à {name}", { name: partnerName }),
       text: cleanEmail
-        ? `Votre invitation à ${partnerName} (${cleanEmail}) a été envoyée. Vous serez notifié(e) dès que la connexion est active.`
-        : `Votre invitation à ${partnerName} est prête — envoyez-lui le lien vous-même par SMS ou WhatsApp depuis l'écran de suivi. Vous serez notifié(e) dès que la connexion est active.`,
+        ? t(
+            "Votre invitation à {name} ({email}) a été envoyée. Vous serez notifié(e) dès que la connexion est active.",
+            { name: partnerName, email: cleanEmail }
+          )
+        : t(
+            "Votre invitation à {name} est prête — envoyez-lui le lien vous-même par SMS ou WhatsApp depuis l'écran de suivi. Vous serez notifié(e) dès que la connexion est active.",
+            { name: partnerName }
+          ),
     });
   } else {
     console.warn(`invite-partner: no email on file for inviter ${inviterUid}, skipped confirmation`);
@@ -204,23 +227,31 @@ function inviteEmailHtml({
   inviterName,
   inviteUrl,
   cadence,
+  lang,
+  t,
 }: {
   inviterName: string;
   inviteUrl: string;
   cadence: "weekly" | "monthly" | "yearly";
+  lang: Locale;
+  t: Translate;
 }): string {
   const safeName = escapeHtml(inviterName);
+  // Japanese sentences run on with no space between them.
+  const between = lang === "ja" ? "" : "\n        ";
   return emailShell({
     mascotName: "pika",
-    title: `${safeName} vous invite sur Ittsui`,
+    title: t("{inviter} vous invite sur Ittsui", { inviter: safeName }),
     bodyHtml: `
       <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
-        ${safeName} a proposé de protéger un rendez-vous ${CADENCE_INVITE_ADJ[cadence]} avec vous.
+        ${t("{inviter} a proposé de protéger un rendez-vous {adj} avec vous.", { inviter: safeName, adj: t(CADENCE_INVITE_ADJ[cadence]) })}
       </p>
-      ${emailButton(inviteUrl, "Activer l&rsquo;invitation")}
+      ${emailButton(inviteUrl, t("Activer l&rsquo;invitation"))}
       <p style="font-size: 13px; color: #565049; text-align: center;">
-        Si vous ne souhaitez pas être lié(e), <a href="${inviteUrl}?decline=1" style="color: #565049;">déclinez ici</a>.
-        Cette invitation expire dans ${PENDING_EXPIRY_DAYS} jours.
+        ${t("Si vous ne souhaitez pas être lié(e), {link}déclinez ici{end}.", {
+          link: `<a href="${inviteUrl}?decline=1" style="color: #565049;">`,
+          end: "</a>",
+        })}${between}${t("Cette invitation expire dans {n} jours.", { n: PENDING_EXPIRY_DAYS })}
       </p>
     `,
   });

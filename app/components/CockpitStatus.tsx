@@ -11,8 +11,11 @@
 // follow it. Each later stage implies every earlier one already happened
 // — this is a linear progress read, not four independent booleans.
 
+"use client";
 import type { Pair, Week } from "@/lib/types";
 import { ACCENT, BORDER, MUTED } from "@/lib/theme";
+import { useT } from "@/app/components/site/LangProvider";
+import { COMPONENTS } from "./components.i18n";
 
 interface CockpitStatusProps {
   pair: Pair;
@@ -22,6 +25,7 @@ interface CockpitStatusProps {
 type StageState = "done" | "current" | "pending";
 
 export function CockpitStatus({ pair, week }: CockpitStatusProps) {
+  const t = useT(COMPONENTS);
   const opened = Boolean(pair.inviteOpenedAt);
   const active = pair.status === "active";
   const confirmed = active && week?.status === "confirmed";
@@ -34,7 +38,7 @@ export function CockpitStatus({ pair, week }: CockpitStatusProps) {
   ];
 
   return (
-    <div className="flex items-center gap-1.5" role="list" aria-label="Statut du rituel">
+    <div className="flex items-center gap-1.5" role="list" aria-label={t("Statut du rituel")}>
       {stages.map((stage, i) => (
         <div key={stage.label} className="flex items-center gap-1.5" role="listitem">
           {i > 0 && (
@@ -55,7 +59,7 @@ export function CockpitStatus({ pair, week }: CockpitStatusProps) {
             }
           >
             {stage.state === "done" && "✓ "}
-            {stage.label}
+            {t(stage.label)}
           </span>
         </div>
       ))}

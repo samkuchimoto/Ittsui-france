@@ -49,7 +49,14 @@ const CSP = [
   // change) — Next.js's own hydration script and styled-jsx (used in
   // app/page.tsx's FridayCard, app/dashboard's Hitbonenut pause) both
   // need it.
-  "script-src 'self' 'unsafe-inline' https://apis.google.com",
+  // https://cdn.jsdelivr.net + 'wasm-unsafe-eval' + worker-src blob:
+  // (added 2026-10-20): the email summary's screenshot reader
+  // (lib/triage/ocr.ts, tesseract.js) runs in a Web Worker started from a
+  // blob: URL, which loads its script and WebAssembly core from jsDelivr
+  // and compiles the WebAssembly. Only the program and its language files
+  // come from there; the screenshot itself never leaves the browser.
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://apis.google.com https://cdn.jsdelivr.net",
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   // https://*.giphy.com: GIPHY's real, well-documented media CDN
   // pattern (media0-4.giphy.com, i.giphy.com) — needed for the GIF
@@ -62,7 +69,8 @@ const CSP = [
   // images will silently fail to load under this CSP.
   "img-src 'self' data: blob: https://*.giphy.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de https://photon.komoot.io",
+  // https://cdn.jsdelivr.net: the OCR language files (see script-src).
+  "connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://api-adresse.data.gouv.fr https://overpass-api.de https://photon.komoot.io https://cdn.jsdelivr.net",
   "frame-src 'self' https://*.firebaseapp.com https://apis.google.com",
   "object-src 'none'",
   "base-uri 'self'",

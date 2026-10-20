@@ -21,6 +21,10 @@ import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
+import { DATE_LOCALE, type Locale } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { localeTypography } from "@/app/components/site/typography";
+import { REQUESTS } from "../requests.i18n";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -47,13 +51,15 @@ function confirmedVenueType(w: Week): VenueType | undefined {
   return winner === "B" ? w.optionB?.venueType : w.optionA?.venueType;
 }
 
-function formatWeekOf(weekOf: string): string {
+function formatWeekOf(weekOf: string, lang: Locale): string {
   const d = new Date(`${weekOf}T00:00:00`);
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat(DATE_LOCALE[lang], { day: "numeric", month: "long", year: "numeric" }).format(d);
 }
 
 export default function ArchiveClient() {
   const router = useRouter();
+  const { lang } = useLang();
+  const t = useT(REQUESTS);
   const [user, setUser] = useState<User | null | false>(null);
   const [pair, setPair] = useState<Pair | null>(null);
   const [pairChecked, setPairChecked] = useState(false);
@@ -97,15 +103,16 @@ export default function ArchiveClient() {
 
   return (
     <main
+      lang={lang === "fr" ? undefined : lang}
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
-      style={{ color: INK }}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
     >
       <div className="mx-auto max-w-2xl px-6 py-14">
         <Link href="/dashboard" className="text-sm" style={{ color: MUTED }}>
-          ← Tableau de bord
+          {t("← Tableau de bord")}
         </Link>
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-          Vos moments ensemble
+          {t("Vos moments ensemble")}
         </h1>
 
         {loading && (
@@ -116,13 +123,13 @@ export default function ArchiveClient() {
 
         {!loading && (!pair || pair.status !== "active") && (
           <p className="mt-6 text-sm" style={{ color: MUTED }}>
-            Aucune personne liée pour le moment.
+            {t("Aucune personne liée pour le moment.")}
           </p>
         )}
 
         {!loading && pair && pair.status === "active" && weeks && weeks.length === 0 && (
           <p className="mt-6 text-sm" style={{ color: MUTED }}>
-            Vos moments confirmés apparaîtront ici, à mesure qu&apos;ils se confirment.
+            {t("Vos moments confirmés apparaîtront ici, à mesure qu'ils se confirment.")}
           </p>
         )}
 
@@ -145,7 +152,7 @@ export default function ArchiveClient() {
                   <div className="min-w-0 py-3 pr-4">
                     <p className="truncate text-sm font-medium">{w.venueName}</p>
                     <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
-                      {formatWeekOf(w.weekOf)}
+                      {formatWeekOf(w.weekOf, lang)}
                     </p>
                   </div>
                 </div>

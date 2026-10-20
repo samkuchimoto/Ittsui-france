@@ -28,13 +28,20 @@
 import { motion } from "framer-motion";
 import { MascotPair } from "./MascotPair";
 import type { MascotPairId } from "@/lib/mascots.config";
+import type { Locale } from "@/lib/i18n";
+import { useLang } from "@/app/components/site/LangProvider";
 
-export function PageMascotHeader({ pairId, size = 40 }: { pairId?: MascotPairId; size?: number }) {
+const HELLO: Record<Locale, string> = { fr: "Dire bonjour", en: "Say hello", ja: "あいさつする" };
+
+// `lang` for the public pages (language in the URL); inside the app the
+// LangProvider context supplies it.
+export function PageMascotHeader({ pairId, size = 40, lang }: { pairId?: MascotPairId; size?: number; lang?: Locale }) {
+  const context = useLang();
   return (
     <div className="mb-3 flex justify-center">
       <motion.button
         type="button"
-        aria-label="Dire bonjour"
+        aria-label={HELLO[lang ?? context.lang]}
         whileTap={{ scale: 0.82, rotate: [0, -6, 6, -3, 0] }}
         transition={{ type: "spring", stiffness: 420, damping: 12 }}
         className="cursor-pointer rounded-full"

@@ -29,7 +29,7 @@
 // take every caller down again.
 
 import {
-  CONFIRMATION_SYSTEM_PROMPT,
+  confirmationSystemPrompt,
   buildConfirmationUserContent,
   isValidConfirmationLine,
   type WarmConfirmationParams,
@@ -131,7 +131,7 @@ export async function groqComplete(
 // sanity checks. Callers must always have a next option ready; this is a
 // best-effort enhancement, never a dependency.
 export async function generateWarmConfirmationGroq(params: WarmConfirmationParams): Promise<string | null> {
-  const content = await groqComplete(CONFIRMATION_SYSTEM_PROMPT, buildConfirmationUserContent(params), {
+  const content = await groqComplete(confirmationSystemPrompt(params.lang), buildConfirmationUserContent(params), {
     maxTokens: 100,
     temperature: 0.8,
   });

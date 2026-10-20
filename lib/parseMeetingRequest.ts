@@ -85,8 +85,9 @@ function stripCodeFence(s: string): string {
 
 function buildSystemPrompt(todayISO: string, todayWeekdayLabel: string): string {
   return (
-    "Tu extrais des informations structurées d'une courte description en " +
-    "français d'un rendez-vous entre deux proches. Réponds UNIQUEMENT avec " +
+    "Tu extrais des informations structurées d'une courte description " +
+    "(en français, en anglais ou en japonais) d'un rendez-vous entre deux " +
+    "proches. Réponds UNIQUEMENT avec " +
     "un objet JSON valide, sans backticks, sans explication. Champs (null " +
     "si absent ou incertain) : recipientName (prénom ou nom de la " +
     "personne), venueName (nom du lieu OU du quartier/zone mentionné — " +
@@ -104,7 +105,9 @@ function buildSystemPrompt(todayISO: string, todayWeekdayLabel: string): string 
     "thu, fri, sat, sun (ou null si aucun jour n'est mentionné). " +
     `Aujourd'hui nous sommes ${todayWeekdayLabel} (pour référence ` +
     `uniquement, ne sert pas à calculer une date). Exemples : "demain" -> ` +
-    '"tomorrow" ; "mardi" -> "tue" ; "dimanche" -> "sun".'
+    '"tomorrow" ; "mardi" -> "tue" ; "dimanche" -> "sun" ; "next Friday" -> ' +
+    '"fri" ; "明日" -> "tomorrow" ; "火曜" -> "tue". Les noms de personnes et ' +
+    "de lieux restent tels qu'écrits."
   );
 }
 

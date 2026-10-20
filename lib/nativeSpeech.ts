@@ -21,12 +21,16 @@
 // "implemented" to "verified".
 
 import { Capacitor } from "@capacitor/core";
+import type { Locale } from "@/lib/i18n";
+
+// Recognition language follows the app's language (lib/i18n.ts).
+const SPEECH_LANGUAGE: Record<Locale, string> = { fr: "fr-FR", en: "en-GB", ja: "ja-JP" };
 
 // null covers every non-happy path identically (web platform, feature
 // unavailable, permission denied, nothing understood, or the person just
 // didn't say anything) — the caller's fallback is always the same either
 // way: fall back to the existing tap-based contact chips.
-export async function listenOnce(): Promise<string | null> {
+export async function listenOnce(lang: Locale = "fr"): Promise<string | null> {
   if (!Capacitor.isNativePlatform()) return null;
 
   try {
@@ -51,7 +55,7 @@ export async function listenOnce(): Promise<string | null> {
     // using it rather than Android showing a system dialog iOS has no
     // equivalent for.
     const { matches } = await SpeechRecognition.start({
-      language: "fr-FR",
+      language: SPEECH_LANGUAGE[lang],
       maxResults: 1,
       partialResults: false,
       popup: false,

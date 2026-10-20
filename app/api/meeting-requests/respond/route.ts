@@ -24,6 +24,10 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
+import { frenchDateLabel } from "@/lib/proposalMessage";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -53,6 +57,10 @@ export async function POST(request: Request) {
   }
 
   const data = snap.data()!;
+  // The sender's language (MeetingRequest.lang): both emails below use it.
+  const lang = langOf(data.lang);
+  const t = makeT(lang, EMAILS);
+  const dateLabel = lang === "fr" ? data.date : frenchDateLabel(data.date, lang);
 
   // Only an email-addressed request actually needs a signed-in identity
   // to accept — see the file header. A phone-only request accepted with
@@ -101,8 +109,19 @@ export async function POST(request: Request) {
     if (data.senderEmail) {
       const sent = await sendEmail({
         to: data.senderEmail,
-        subject: "Votre demande de rendez-vous a été déclinée",
-        text: `${data.recipientName ?? "La personne invitée"} a décliné votre demande pour ${data.venueName}, le ${data.date} à ${data.time}.`,
+        subject: t("Votre demande de rendez-vous a été déclinée"),
+        text: data.recipientName
+          ? t("{name} a décliné votre demande pour {venue}, le {date} à {time}.", {
+              name: data.recipientName,
+              venue: data.venueName,
+              date: dateLabel,
+              time: data.time,
+            })
+          : t("La personne invitée a décliné votre demande pour {venue}, le {date} à {time}.", {
+              venue: data.venueName,
+              date: dateLabel,
+              time: data.time,
+            }),
       });
       if (!sent) console.warn(`meeting-requests/respond: decline notification failed for request ${requestId}`);
     }
@@ -135,24 +154,34 @@ export async function POST(request: Request) {
   // now that it's an actual confirmed commitment, not just a proposal.
   const calendarUrl = googleCalendarLink({
     title: `${data.venueName} — Ittsui`,
-    details: `Rendez-vous confirmé via Ittsui.`,
+    details: t("Rendez-vous confirmé via Ittsui."),
     venueAddress: data.venueAddress,
     date: data.date,
     time: data.time,
   });
+  const sp = lang === "ja" ? "" : " ";
   const confirmationText =
-    `Rendez-vous confirmé : ${data.venueName} (${data.venueAddress}), le ${data.date} à ${data.time}.\n` +
-    `Ajouter à Google Agenda : ${calendarUrl}`;
+    `${t("Rendez-vous confirmé :")}${sp}` +
+    t("{venue} ({address}), le {date} à {time}.", { venue: data.venueName, address: data.venueAddress, date: dateLabel, time: data.time }) +
+    "\n" +
+    t("Ajouter à Google Agenda : {url}", { url: calendarUrl });
   const confirmationHtml =
-    `<p><strong>Rendez-vous confirmé :</strong> ${escapeHtml(data.venueName)} (${escapeHtml(data.venueAddress)}), le ${escapeHtml(data.date)} à ${escapeHtml(data.time)}.</p>` +
-    `<p><a href="${calendarUrl}">Ajouter à Google Agenda</a></p>`;
+    `<p><strong>${t("Rendez-vous confirmé :")}</strong>${sp}` +
+    t("{venue} ({address}), le {date} à {time}.", {
+      venue: escapeHtml(data.venueName),
+      address: escapeHtml(data.venueAddress),
+      date: escapeHtml(dateLabel),
+      time: escapeHtml(data.time),
+    }) +
+    `</p>` +
+    `<p><a href="${calendarUrl}">${t("Ajouter à Google Agenda")}</a></p>`;
   const [senderSent, recipientSent] = await Promise.all([
     data.senderEmail
       ? sendEmail({
           to: data.senderEmail,
-          subject: "Votre demande de rendez-vous a été acceptée",
-          text: `${data.recipientName} a accepté. ${confirmationText}`,
-          html: `<p>${escapeHtml(data.recipientName ?? "")} a accepté.</p>${confirmationHtml}`,
+          subject: t("Votre demande de rendez-vous a été acceptée"),
+          text: `${t("{name} a accepté.", { name: data.recipientName })}${sp}${confirmationText}`,
+          html: `<p>${t("{name} a accepté.", { name: escapeHtml(data.recipientName ?? "") })}</p>${confirmationHtml}`,
         })
       : Promise.resolve(false),
     // A phone-only request has no recipientEmail on file. If the person
@@ -164,7 +193,7 @@ export async function POST(request: Request) {
     (data.recipientEmail ?? userEmail)
       ? sendEmail({
           to: (data.recipientEmail ?? userEmail)!,
-          subject: "Rendez-vous confirmé sur Ittsui",
+          subject: t("Rendez-vous confirmé sur Ittsui"),
           text: confirmationText,
           html: confirmationHtml,
         })

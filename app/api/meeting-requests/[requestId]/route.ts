@@ -44,5 +44,7 @@ export async function GET(request: Request, { params }: { params: { requestId: s
     // sufficient? Mirrors respond/route.ts's exact security boundary —
     // never duplicated as separate logic that could drift from it.
     requiresLogin: Boolean(data.recipientEmail),
+    // The sender's language, for a recipient who hasn't chosen one.
+    lang: data.lang ?? "fr",
   });
 }

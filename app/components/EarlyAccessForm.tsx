@@ -7,8 +7,55 @@
 
 import { useState } from "react";
 import { MUTED, ACCENT, BORDER } from "@/lib/theme";
+import type { Locale } from "@/lib/i18n";
 
-export function EarlyAccessForm() {
+const COPY: Record<
+  Locale,
+  {
+    already: string;
+    done: string;
+    followUp: string;
+    title: string;
+    lede: string;
+    placeholder: string;
+    submit: string;
+    error: string;
+  }
+> = {
+  fr: {
+    already: "Vous êtes déjà sur la liste — merci !",
+    done: "C'est noté, merci !",
+    followUp: "On vous recontacte dès qu'une place se libère pour tester Ittsui en avant-première.",
+    title: "Accès anticipé",
+    lede: "Envie de tester Ittsui avant tout le monde ? Laissez votre e-mail.",
+    placeholder: "vous@exemple.com",
+    submit: "Je m'inscris",
+    error: "Une erreur est survenue, réessayez.",
+  },
+  en: {
+    already: "You're already on the list. Thank you!",
+    done: "Got it, thank you!",
+    followUp: "We'll get back to you as soon as a spot opens up to try Ittsui early.",
+    title: "Early access",
+    lede: "Want to try Ittsui before everyone else? Leave your email.",
+    placeholder: "you@example.com",
+    submit: "Sign me up",
+    error: "Something went wrong. Please try again.",
+  },
+  ja: {
+    already: "すでに登録済みです。ありがとうございます！",
+    done: "登録しました。ありがとうございます！",
+    followUp: "先行テストの枠が空き次第、ご連絡します。",
+    title: "先行アクセス",
+    lede: "いち早くIttsuiを試してみませんか？メールアドレスをご登録ください。",
+    placeholder: "you@example.com",
+    submit: "登録する",
+    error: "エラーが発生しました。もう一度お試しください。",
+  },
+};
+
+export function EarlyAccessForm({ lang = "fr" }: { lang?: Locale } = {}) {
+  const t = COPY[lang];
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "already" | "error">("idle");
 
@@ -20,7 +67,8 @@ export function EarlyAccessForm() {
       const res = await fetch("/api/early-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        // The page's language, so a reply can be written in it.
+        body: JSON.stringify({ email, lang }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error);
@@ -33,11 +81,9 @@ export function EarlyAccessForm() {
   if (status === "done" || status === "already") {
     return (
       <div className="rounded-2xl border p-6 text-center" style={{ borderColor: BORDER, backgroundColor: "white" }}>
-        <p className="text-sm font-medium">
-          {status === "already" ? "Vous êtes déjà sur la liste — merci !" : "C'est noté, merci !"}
-        </p>
+        <p className="text-sm font-medium">{status === "already" ? t.already : t.done}</p>
         <p className="mt-1 text-sm" style={{ color: MUTED }}>
-          On vous recontacte dès qu&apos;une place se libère pour tester Ittsui en avant-première.
+          {t.followUp}
         </p>
       </div>
     );
@@ -49,9 +95,9 @@ export function EarlyAccessForm() {
       className="rounded-2xl border p-6 text-center"
       style={{ borderColor: BORDER, backgroundColor: "white" }}
     >
-      <p className="text-sm font-medium">Accès anticipé</p>
+      <p className="text-sm font-medium">{t.title}</p>
       <p className="mt-1 text-sm" style={{ color: MUTED }}>
-        Envie de tester Ittsui avant tout le monde ? Laissez votre e-mail.
+        {t.lede}
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <input
@@ -59,7 +105,7 @@ export function EarlyAccessForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="vous@exemple.com"
+          placeholder={t.placeholder}
           className="w-full rounded-full border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-current"
           style={{ borderColor: BORDER }}
         />
@@ -69,12 +115,12 @@ export function EarlyAccessForm() {
           className="shrink-0 rounded-full px-6 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
           style={{ backgroundColor: ACCENT }}
         >
-          {status === "submitting" ? "..." : "Je m'inscris"}
+          {status === "submitting" ? "..." : t.submit}
         </button>
       </div>
       {status === "error" && (
         <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-          Une erreur est survenue, réessayez.
+          {t.error}
         </p>
       )}
     </form>

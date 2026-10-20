@@ -20,12 +20,35 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 import { IconArrowRight } from "@/app/components/HomeIcons";
+import type { Locale } from "@/lib/i18n";
+
+const COPY: Record<Locale, { label: string; placeholder: string; start: string; helper: string }> = {
+  fr: {
+    label: "Avec qui voulez-vous bloquer un moment ?",
+    placeholder: "Thomas, Maman, Camille…",
+    start: "Commencer",
+    helper: "Gratuit · Configuration en 1 minute · Aucun agenda à synchroniser",
+  },
+  en: {
+    label: "Who do you want to set time aside with?",
+    placeholder: "Thomas, Mum, Camille…",
+    start: "Get started",
+    helper: "Free · 1-minute setup · No calendar to sync",
+  },
+  ja: {
+    label: "誰との時間をつくりますか？",
+    placeholder: "トマ、お母さん、カミーユ…",
+    start: "はじめる",
+    helper: "無料 · 設定は1分 · カレンダーの同期は不要",
+  },
+};
 
 // onDark: the hero sits over cinematic footage now, so the label and the
 // helper line have to read as light-on-dark there. Everywhere else the
 // component is unchanged ink-on-cream — this is a prop rather than a
 // rewrite because /setup may well reuse it on the pale background later.
-export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) {
+export function StartRitualField({ onDark = false, lang = "fr" }: { onDark?: boolean; lang?: Locale } = {}) {
+  const t = COPY[lang];
   const router = useRouter();
   const [name, setName] = useState("");
 
@@ -42,7 +65,7 @@ export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) 
         className="block text-sm font-medium"
         style={onDark ? { color: CREAM, textShadow: "0 1px 14px rgba(12,10,9,0.5)" } : { color: INK }}
       >
-        Avec qui voulez-vous bloquer un moment ?
+        {t.label}
       </label>
       <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
         <input
@@ -50,7 +73,7 @@ export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) 
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Thomas, Maman, Camille…"
+          placeholder={t.placeholder}
           autoComplete="off"
           className="w-full rounded-full border bg-white px-5 py-3.5 text-base outline-none transition-colors focus:border-current"
           style={{ borderColor: onDark ? "rgba(255,253,249,0.55)" : BORDER }}
@@ -60,7 +83,7 @@ export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) 
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-7 py-3.5 text-base text-white transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: ACCENT }}
         >
-          Commencer
+          {t.start}
           <IconArrowRight className="h-4 w-4" />
         </button>
       </div>
@@ -68,7 +91,7 @@ export function StartRitualField({ onDark = false }: { onDark?: boolean } = {}) 
         className="mt-2.5 text-sm"
         style={onDark ? { color: "rgba(255,253,249,0.72)" } : { color: MUTED }}
       >
-        Gratuit · Configuration en 1 minute · Aucun agenda à synchroniser
+        {t.helper}
       </p>
     </form>
   );

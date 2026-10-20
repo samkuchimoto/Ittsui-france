@@ -23,8 +23,43 @@ import Link from "next/link";
 import { MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { IconArrowRight } from "@/app/components/HomeIcons";
 import { CURATED_ITEMS, CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
+import type { CuratedGestureItem } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
-const TILES = [
+type Tile = { id: string; emoji: string; title: string; body: string; detail: string; items: string[] };
+
+// The category names in English and Japanese. lib/gestureLinks.ts keeps
+// the French ones the gesture flow itself uses.
+const ITEM_LABEL: Record<Exclude<Locale, "fr">, Record<CuratedGestureItem, string>> = {
+  en: {
+    fleurs: "Flowers",
+    livre: "A book",
+    chocolat: "Chocolates",
+    plante: "A plant",
+    bougie: "A candle",
+    papeterie: "Nice stationery",
+    repas: "A meal delivered",
+    autre: "Other",
+  },
+  ja: {
+    fleurs: "花",
+    livre: "本",
+    chocolat: "チョコレート",
+    plante: "植物",
+    bougie: "キャンドル",
+    papeterie: "すてきな文房具",
+    repas: "食事のデリバリー",
+    autre: "その他",
+  },
+};
+
+const UI: Record<Locale, { close: string; examples: string; send: string }> = {
+  fr: { close: "Replier", examples: "Voir des exemples →", send: "Envoyer ce geste" },
+  en: { close: "Close", examples: "See examples →", send: "Send this gesture" },
+  ja: { close: "閉じる", examples: "例を見る →", send: "この贈りものを送る" },
+};
+
+const TILES: Tile[] = [
   {
     id: "own",
     emoji: "🎁",
@@ -57,12 +92,76 @@ const TILES = [
   },
 ];
 
-export function GestureTiles() {
+// The gesture flow hands the sender off to French shops to finish the
+// order (see lib/gestureLinks.ts), which a French visitor takes for
+// granted and nobody else would; the translations say it.
+const TILES_BY_LOCALE: Record<Locale, Tile[]> = {
+  fr: TILES,
+  en: [
+    {
+      id: "own",
+      emoji: "🎁",
+      title: "Something of yours",
+      body: "Send something you already have that makes you think of them.",
+      detail:
+        "A book you've finished, a printed photo, the jumper she always borrowed. You describe it, and they tell you where to send it, or that they'd rather get it from you in person next time you meet.",
+      items: [],
+    },
+    {
+      id: "curated",
+      emoji: "🛍️",
+      title: "A small gift",
+      body: "Pick a kind of gesture and have it delivered.",
+      detail: "The categories on offer today (you finish the order on a French shop's website):",
+      items: CURATED_ITEMS.map((i) => ITEM_LABEL.en[i]),
+    },
+    {
+      id: "suggested",
+      emoji: "✨",
+      title: "Let Ittsui find the idea",
+      body: "A ready-made suggestion, so you don't have to think about it.",
+      detail:
+        "Ittsui picks from the same categories and suggests one. No algorithm pretending to know the person you love: just one less decision to make, as many times as you like.",
+      items: [],
+    },
+  ],
+  ja: [
+    {
+      id: "own",
+      emoji: "🎁",
+      title: "手元にあるものを贈る",
+      body: "相手を思い出させる、あなたの持ちものを贈りましょう。",
+      detail:
+        "読み終えた本、プリントした写真、いつも貸していたセーター。どんなものかを伝えると、相手が送り先を教えてくれます。「次に会ったときに手渡しで」という返事でもかまいません。",
+      items: [],
+    },
+    {
+      id: "curated",
+      emoji: "🛍️",
+      title: "ちょっとした贈りもの",
+      body: "贈りものの種類を選んで、届けてもらいましょう。",
+      detail: "現在選べるカテゴリー（注文はフランスのショップのサイトで完了します）：",
+      items: CURATED_ITEMS.map((i) => ITEM_LABEL.ja[i]),
+    },
+    {
+      id: "suggested",
+      emoji: "✨",
+      title: "アイデアはIttsuiにおまかせ",
+      body: "考えなくていい、すぐに使える提案です。",
+      detail:
+        "Ittsuiが同じカテゴリーからひとつ提案します。大切な人のことを知っているふりをするアルゴリズムではありません。決めることがひとつ減るだけ。何度でも引き直せます。",
+      items: [],
+    },
+  ],
+};
+
+export function GestureTiles({ lang = "fr" }: { lang?: Locale } = {}) {
   const [open, setOpen] = useState<string | null>(null);
+  const ui = UI[lang];
 
   return (
     <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-3 sm:items-start">
-      {TILES.map((tile) => {
+      {TILES_BY_LOCALE[lang].map((tile) => {
         const expanded = open === tile.id;
         return (
           <div
@@ -87,7 +186,7 @@ export function GestureTiles() {
                 {tile.body}
               </span>
               <span className="mt-3 block text-xs font-medium" style={{ color: ACCENT }}>
-                {expanded ? "Replier" : "Voir des exemples →"}
+                {expanded ? ui.close : ui.examples}
               </span>
             </button>
 
@@ -114,7 +213,7 @@ export function GestureTiles() {
                   className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-4"
                   style={{ color: ACCENT }}
                 >
-                  Envoyer ce geste
+                  {ui.send}
                   <IconArrowRight className="h-3 w-3" />
                 </Link>
               </div>

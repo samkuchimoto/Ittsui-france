@@ -23,20 +23,36 @@ import { useState } from "react";
 import Image from "next/image";
 import { MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FridayCard } from "@/app/components/FridayCard";
-import { SANDBOX_SCENARIOS, scenarioFor, type DuoContext } from "@/lib/sandboxScenarios";
+import { sandboxScenarios, scenarioFor, type DuoContext } from "@/lib/sandboxScenarios";
+import type { Locale } from "@/lib/i18n";
 
-export function DuoSandbox() {
+const COPY: Record<Locale, { tabs: string; hint: string }> = {
+  fr: {
+    tabs: "Avec qui",
+    hint: "Voici la proposition qu'Ittsui enverrait. Glissez la carte, échangez le lieu, ou validez — c'est exactement l'application.",
+  },
+  en: {
+    tabs: "Who with",
+    hint: "This is the proposal Ittsui would send. Swipe the card, swap the place, or confirm: it works exactly like the app.",
+  },
+  ja: {
+    tabs: "誰と",
+    hint: "これがIttsuiから届く提案です。カードをスワイプしたり、場所を入れ替えたり、確定したり。実際のアプリと同じように動きます。",
+  },
+};
+
+export function DuoSandbox({ lang = "fr" }: { lang?: Locale } = {}) {
   const [active, setActive] = useState<DuoContext>("amis");
-  const scenario = scenarioFor(active);
+  const scenario = scenarioFor(active, lang);
 
   return (
     <div>
       <div
         className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4"
         role="tablist"
-        aria-label="Avec qui"
+        aria-label={COPY[lang].tabs}
       >
-        {SANDBOX_SCENARIOS.map((s) => {
+        {sandboxScenarios(lang).map((s) => {
           const selected = s.id === active;
           return (
             <button
@@ -82,12 +98,11 @@ export function DuoSandbox() {
       {/* Over the hero footage, so light rather than MUTED — at #565049
           this line was effectively invisible on the dark scrim. */}
       <p className="mt-5 text-center text-sm" style={{ color: "rgba(255,253,249,0.82)" }}>
-        Voici la proposition qu&apos;Ittsui enverrait. Glissez la carte, échangez le lieu, ou validez —
-        c&apos;est exactement l&apos;application.
+        {COPY[lang].hint}
       </p>
 
       <div className="mt-6">
-        <FridayCard scenario={scenario} />
+        <FridayCard scenario={scenario} lang={lang} />
       </div>
     </div>
   );

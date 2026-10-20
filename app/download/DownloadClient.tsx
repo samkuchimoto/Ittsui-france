@@ -13,8 +13,65 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { ANDROID_STORE_URL, IOS_STORE_URL, ANDROID_APK_DIRECT_URL } from "@/lib/config/store";
+import { withLang, type Locale } from "@/lib/i18n";
 
 type Platform = "android" | "ios" | "desktop";
+
+const COPY: Record<
+  Locale,
+  {
+    desktop: string;
+    googlePlay: string;
+    androidSoon: string;
+    apk: string;
+    appStore: string;
+    iosSoon: string;
+    apkNote: string;
+    playProtect: string;
+    web: string;
+  }
+> = {
+  fr: {
+    desktop:
+      "Pour une expérience optimale, utilisez Ittsui sur votre téléphone. Scannez le code ci-dessous, ou choisissez votre plateforme :",
+    googlePlay: "Télécharger sur Google Play",
+    androidSoon: "Android — bientôt disponible",
+    apk: "Télécharger l'APK directement (version de test)",
+    appStore: "Disponible sur l'App Store",
+    iosSoon: "iPhone — bientôt disponible",
+    apkNote:
+      "L'APK direct est une installation manuelle, en dehors du Google Play Store — Android demandera d'autoriser « sources inconnues » pour ce fichier. Une fois publiée sur le Play Store, cette option disparaîtra au profit du bouton ci-dessus.",
+    playProtect:
+      "Google Play Protect peut afficher « Application bloquée » sans option pour continuer — normal pour toute app installée hors Play Store avant que Google ne la reconnaisse. Dans l'app Play Store : icône de profil (en haut à droite) → Play Protect → Paramètres → désactivez « Analyser les applications avec Play Protect », installez, puis réactivez si vous le souhaitez.",
+    web: "Continuer sur le web →",
+  },
+  en: {
+    desktop: "Ittsui works best on your phone. Scan the code below, or pick your platform:",
+    googlePlay: "Get it on Google Play",
+    androidSoon: "Android: coming soon",
+    apk: "Download the APK directly (test version)",
+    appStore: "Download on the App Store",
+    iosSoon: "iPhone: coming soon",
+    apkNote:
+      "The direct APK is a manual install, outside the Google Play Store: Android will ask you to allow “unknown sources” for this file. Once the app is published on the Play Store, this option will give way to the button above.",
+    playProtect:
+      "Google Play Protect may show “App blocked” with no way to continue. That's normal for any app installed outside the Play Store before Google recognises it. In the Play Store app: profile icon (top right) → Play Protect → Settings → turn off “Scan apps with Play Protect”, install, then turn it back on if you like.",
+    web: "Continue on the web →",
+  },
+  ja: {
+    desktop: "Ittsuiはスマートフォンでのご利用がおすすめです。下のコードを読み取るか、お使いの端末を選んでください。",
+    googlePlay: "Google Playでダウンロード",
+    androidSoon: "Android版：近日公開",
+    apk: "APKを直接ダウンロード（テスト版）",
+    appStore: "App Storeでダウンロード",
+    iosSoon: "iPhone版：近日公開",
+    apkNote:
+      "APKの直接インストールは、Google Playストアを通さない手動インストールです。Androidから、このファイルについて「提供元不明のアプリ」の許可を求められます。Playストアで公開されたあとは、この方法は上のボタンに置き換わります。",
+    playProtect:
+      "Google Playプロテクトが「アプリがブロックされました」と表示し、先に進めないことがあります。Googleに認識される前のPlayストア外のアプリでは普通のことです。Playストアアプリで、プロフィールアイコン（右上）→ Playプロテクト → 設定 →「Playプロテクトでアプリをスキャン」をオフにしてインストールし、必要ならあとでオンに戻してください。",
+    web: "Webで続ける →",
+  },
+};
 
 function detectPlatform(): Platform {
   const ua = navigator.userAgent || "";
@@ -46,7 +103,8 @@ function ComingSoon({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function DownloadClient({ qrSvg }: { qrSvg: string }) {
+export default function DownloadClient({ qrSvg, lang = "fr" }: { qrSvg: string; lang?: Locale }) {
+  const t = COPY[lang];
   const [platform, setPlatform] = useState<Platform | null>(null);
 
   useEffect(() => {
@@ -66,8 +124,7 @@ export default function DownloadClient({ qrSvg }: { qrSvg: string }) {
       {showDesktopHint && (
         <>
           <p className="text-center text-[15px]" style={{ color: MUTED }}>
-            Pour une expérience optimale, utilisez Ittsui sur votre téléphone. Scannez le code
-            ci-dessous, ou choisissez votre plateforme :
+            {t.desktop}
           </p>
           <div className="w-40" aria-hidden="true" dangerouslySetInnerHTML={{ __html: qrSvg }} />
         </>
@@ -76,42 +133,35 @@ export default function DownloadClient({ qrSvg }: { qrSvg: string }) {
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
         {showAndroid &&
           (ANDROID_STORE_URL ? (
-            <PrimaryButton href={ANDROID_STORE_URL}>Télécharger sur Google Play</PrimaryButton>
+            <PrimaryButton href={ANDROID_STORE_URL}>{t.googlePlay}</PrimaryButton>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <ComingSoon>Android — bientôt disponible</ComingSoon>
+              <ComingSoon>{t.androidSoon}</ComingSoon>
               <a href={ANDROID_APK_DIRECT_URL} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
-                Télécharger l&apos;APK directement (version de test)
+                {t.apk}
               </a>
             </div>
           ))}
 
         {showIos &&
           (IOS_STORE_URL ? (
-            <PrimaryButton href={IOS_STORE_URL}>Disponible sur l&apos;App Store</PrimaryButton>
+            <PrimaryButton href={IOS_STORE_URL}>{t.appStore}</PrimaryButton>
           ) : (
-            <ComingSoon>iPhone — bientôt disponible</ComingSoon>
+            <ComingSoon>{t.iosSoon}</ComingSoon>
           ))}
       </div>
 
       {!ANDROID_STORE_URL && showAndroid && (
         <p className="max-w-md text-center text-xs leading-relaxed" style={{ color: MUTED }}>
-          L&apos;APK direct est une installation manuelle, en dehors du Google Play Store — Android
-          demandera d&apos;autoriser &laquo;&nbsp;sources inconnues&nbsp;&raquo; pour ce fichier. Une
-          fois publiée sur le Play Store, cette option disparaîtra au profit du bouton
-          ci-dessus.
+          {t.apkNote}
           <br />
           <br />
-          Google Play Protect peut afficher &laquo;&nbsp;Application bloquée&nbsp;&raquo; sans option
-          pour continuer — normal pour toute app installée hors Play Store avant que Google ne la
-          reconnaisse. Dans l&apos;app Play Store : icône de profil (en haut à droite) → Play Protect →
-          Paramètres → désactivez &laquo;&nbsp;Analyser les applications avec Play Protect&nbsp;&raquo;,
-          installez, puis réactivez si vous le souhaitez.
+          {t.playProtect}
         </p>
       )}
 
-      <Link href="/setup" className="text-sm underline underline-offset-4" style={{ color: INK }}>
-        Continuer sur le web →
+      <Link href={withLang("/setup", lang)} className="text-sm underline underline-offset-4" style={{ color: INK }}>
+        {t.web}
       </Link>
     </div>
   );

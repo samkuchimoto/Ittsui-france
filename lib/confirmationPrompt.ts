@@ -4,6 +4,8 @@
 // editing the prompt once here, rather than keeping two copies that could
 // quietly drift apart between vendors.
 
+import type { Locale } from "@/lib/i18n";
+
 export const MAX_OUTPUT_LENGTH = 140; // hard ceiling; the prompt itself asks for <=100
 
 export interface WarmConfirmationParams {
@@ -27,6 +29,8 @@ export interface WarmConfirmationParams {
   // reason that isn't the real one, which is exactly what the "narrate,
   // don't fabricate" rule in the AI-opportunities memo warns against.
   weatherSwapNote: string | null;
+  // The pair's language (Pair.lang); French when absent.
+  lang?: Locale;
 }
 
 // "hebdomadaire" removed from the system prompt — it used to be safe to
@@ -44,6 +48,36 @@ export const CONFIRMATION_SYSTEM_PROMPT =
   "naturellement en une courte proposition (ex: \"vu la pluie annoncée, " +
   "plutôt...\") plutôt que de l'ignorer. Réponds uniquement avec la ligne, " +
   "rien d'autre, sans explication.";
+
+// Same rules, asked for in English or Japanese. The labels in the user
+// content stay French; the model reads them fine either way.
+const OTHER_LANGUAGE_PROMPT: Record<Exclude<Locale, "fr">, string> = {
+  en:
+    "Tu écris UNE seule ligne de confirmation chaleureuse en anglais pour une " +
+    "appli de rendez-vous protégé entre deux proches. Règles strictes : " +
+    "mentionne le lieu, le jour et l'heure fournis ; anglais uniquement ; pas " +
+    "d'emoji ; pas de guillemets ; maximum 100 caractères ; ton chaleureux mais " +
+    "sobre, jamais mièvre, sans formule de politesse finale (pas de \"Have a " +
+    "nice evening\", \"See you soon\", etc). Si une raison météo est fournie, " +
+    "glisse-la naturellement en une courte proposition (ex: \"with rain on the " +
+    "way, ...\") plutôt que de l'ignorer. Réponds uniquement avec la ligne, " +
+    "rien d'autre, sans explication.",
+  ja:
+    "Tu écris UNE seule ligne de confirmation chaleureuse en japonais (style " +
+    "poli mais simple, です・ます) pour une appli de rendez-vous protégé entre " +
+    "deux proches. Règles strictes : mentionne le lieu, le jour et l'heure " +
+    "fournis ; japonais uniquement (les noms de lieux restent tels quels) ; " +
+    "pas d'emoji ; pas de guillemets ; maximum 60 caractères ; ton chaleureux " +
+    "mais sobre, jamais mièvre, sans formule de politesse finale. Si une raison " +
+    "météo est fournie, glisse-la naturellement en une courte proposition " +
+    "plutôt que de l'ignorer. Réponds uniquement avec la ligne, rien d'autre, " +
+    "sans explication.",
+};
+
+/** The system prompt for a pair's language: CONFIRMATION_SYSTEM_PROMPT itself in French. */
+export function confirmationSystemPrompt(lang: Locale = "fr"): string {
+  return lang === "fr" ? CONFIRMATION_SYSTEM_PROMPT : OTHER_LANGUAGE_PROMPT[lang];
+}
 
 // Gender-agreed as a whole phrase rather than composing noun + adjective
 // separately — "mois" is masculine ("partagés"), "semaines"/"années" are

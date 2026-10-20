@@ -15,6 +15,8 @@
 
 import { INK, MUTED, BORDER } from "@/lib/theme";
 import { googleMapsLink, citymapperLink } from "@/lib/mapsLink";
+import { useT } from "@/app/components/site/LangProvider";
+import { COMPONENTS } from "./components.i18n";
 
 export function VenueDirections({
   venueName,
@@ -25,6 +27,7 @@ export function VenueDirections({
   venueAddress?: string;
   className?: string;
 }) {
+  const t = useT(COMPONENTS);
   if (!venueName || !venueAddress) return null;
 
   return (
@@ -40,7 +43,7 @@ export function VenueDirections({
           className="inline-flex min-h-[36px] items-center rounded-full border px-3.5 text-xs font-medium"
           style={{ borderColor: BORDER, color: INK }}
         >
-          Ouvrir dans Maps
+          {t("Ouvrir dans Maps")}
         </a>
         <a
           href={citymapperLink(venueName, venueAddress)}
@@ -49,7 +52,7 @@ export function VenueDirections({
           className="inline-flex min-h-[36px] items-center rounded-full border px-3.5 text-xs font-medium"
           style={{ borderColor: BORDER, color: INK }}
         >
-          Itinéraire
+          {t("Itinéraire")}
         </a>
       </div>
     </div>

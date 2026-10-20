@@ -11,6 +11,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Japanese pages (/ja, and the app in Japanese): break lines between
+   phrases rather than in the middle of a word, where the browser can. */
+:lang(ja) {
+  word-break: auto-phrase;
+  line-break: strict;
+}
+
 /* Branded keyboard-focus ring (terracotta, matches lib/theme.ts's ACCENT
    #B84E2A — plain CSS can't import that token, so this hex must be kept
    in sync by hand) instead of the generic browser-default blue outline,

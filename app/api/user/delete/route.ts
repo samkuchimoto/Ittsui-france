@@ -27,6 +27,9 @@ import { NextResponse } from "next/server";
 import { adminDb, adminAuth, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { notifyBothUsers } from "@/lib/notify";
 import type { Pair } from "@/lib/types";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -62,7 +65,7 @@ export async function POST(request: Request) {
 
   for (const pair of cancelledPairs) {
     try {
-      await notifyBothUsers(pair, "Le rituel Ittsui avec cette personne a été annulé.");
+      await notifyBothUsers(pair, makeT(langOf(pair.lang), EMAILS)("Le rituel Ittsui avec cette personne a été annulé."));
     } catch {
       // Best-effort notice, not load-bearing for the deletion itself.
     }

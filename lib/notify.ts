@@ -5,6 +5,9 @@
 
 import { adminDb, adminMessaging } from "@/lib/firebaseAdmin";
 import type { Pair, User } from "@/lib/types";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 // No signup path in this repo has ever written notificationPrefs onto a
 // user's Firestore doc — lib/firebase.ts's post-sign-in write only sets
@@ -72,7 +75,7 @@ export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyR
           body: JSON.stringify({
             from: "Ittsui <hello@ittsui.fr>",
             to: user.email,
-            subject: CADENCE_SUBJECT[pair.cadence ?? "weekly"],
+            subject: makeT(langOf(pair.lang), EMAILS)(CADENCE_SUBJECT[pair.cadence ?? "weekly"]),
             text,
           }),
         });

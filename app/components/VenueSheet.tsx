@@ -23,8 +23,34 @@ import Image from "next/image";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { googleMapsLink, citymapperLink } from "@/lib/mapsLink";
 import type { SandboxVenue } from "@/lib/sandboxScenarios";
+import type { Locale } from "@/lib/i18n";
 
-export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onClose: () => void }) {
+const COPY: Record<Locale, { close: string; getThere: string; maps: string; citymapper: string; note: string }> = {
+  fr: {
+    close: "Fermer",
+    getThere: "Y aller",
+    maps: "Ouvrir dans Google Maps",
+    citymapper: "Itinéraire Citymapper",
+    note: "Exemple de lieu. Ittsui propose une adresse réelle près de chez vous — vous n'avez rien à chercher.",
+  },
+  en: {
+    close: "Close",
+    getThere: "Getting there",
+    maps: "Open in Google Maps",
+    citymapper: "Directions in Citymapper",
+    note: "An example venue. Ittsui suggests a real address near you, so there's nothing to look up.",
+  },
+  ja: {
+    close: "閉じる",
+    getThere: "アクセス",
+    maps: "Google マップで開く",
+    citymapper: "Citymapperで経路を見る",
+    note: "場所の一例です。Ittsuiはあなたの近くにある実在の場所を提案するので、自分で探す必要はありません。",
+  },
+};
+
+export function VenueSheet({ venue, onClose, lang = "fr" }: { venue: SandboxVenue | null; onClose: () => void; lang?: Locale }) {
+  const t = COPY[lang];
   // Portalled to <body>, and it has to be. The card that opens this sheet
   // lives inside app/components/Reveal.tsx, whose fade-up leaves a
   // `transform` on the wrapper — and a transformed ancestor becomes the
@@ -70,7 +96,7 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t.close}
             className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-lg leading-none"
             style={{ color: INK }}
           >
@@ -98,7 +124,7 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
 
           <div className="mt-4 rounded-2xl border p-4" style={{ borderColor: BORDER }}>
             <p className="text-xs uppercase tracking-[0.12em]" style={{ color: MUTED }}>
-              Y aller
+              {t.getThere}
             </p>
             <p className="mt-1.5 text-sm" style={{ color: INK }}>
               {venue.metro}
@@ -113,7 +139,7 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
               className="inline-flex min-h-[44px] items-center justify-center rounded-full text-sm font-medium text-white"
               style={{ backgroundColor: ACCENT }}
             >
-              Ouvrir dans Google Maps
+              {t.maps}
             </a>
             <a
               href={citymapperLink(venue.name, venue.address)}
@@ -122,12 +148,12 @@ export function VenueSheet({ venue, onClose }: { venue: SandboxVenue | null; onC
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border text-sm font-medium"
               style={{ borderColor: BORDER, color: INK }}
             >
-              Itinéraire Citymapper
+              {t.citymapper}
             </a>
           </div>
 
           <p className="mt-4 text-xs" style={{ color: MUTED }}>
-            Exemple de lieu. Ittsui propose une adresse réelle près de chez vous — vous n&apos;avez rien à chercher.
+            {t.note}
           </p>
         </div>
       </div>

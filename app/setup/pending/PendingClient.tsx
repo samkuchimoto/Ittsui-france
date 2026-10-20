@@ -34,6 +34,14 @@ import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { shareLink } from "@/lib/shareLink";
 import { whatsappLinkForNumber, smsLinkForNumber } from "@/lib/phoneShareLinks";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { DATE_LOCALE, pagePath } from "@/lib/i18n";
+import { mergeCatalogs } from "@/lib/translate";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { localeTypography } from "@/app/components/site/typography";
+import { SETUP } from "../setup.i18n";
+import { PENDING } from "./pending.i18n";
+
+const CATALOG = mergeCatalogs(SETUP, PENDING);
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -51,13 +59,15 @@ const workSans = Work_Sans({
 });
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const { lang } = useLang();
   return (
     <main
+      lang={lang === "fr" ? undefined : lang}
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
-      style={{ color: INK }}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
     >
       <div className="mx-auto max-w-md px-6 py-14 text-center">
-        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+        <Link href={pagePath("home", lang)} className="text-sm" style={{ color: MUTED }}>
           ← Ittsui
         </Link>
         <PageMascotHeader />
@@ -68,13 +78,15 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function DeliveryStatus({ pair }: { pair: Pair }) {
+  const t = useT(CATALOG);
+  const { lang } = useLang();
   if (typeof pair.partnerEmailSent !== "boolean") return null;
   const time = pair.inviteSentAt
-    ? new Date(pair.inviteSentAt).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    ? new Date(pair.inviteSentAt).toLocaleString(DATE_LOCALE[lang], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : null;
   return (
     <p className="mt-3 text-xs" style={{ color: pair.partnerEmailSent ? MUTED : ACCENT }}>
-      {pair.partnerEmailSent ? "✓ E-mail envoyé" : "⚠ Échec d'envoi de l'e-mail"}
+      {pair.partnerEmailSent ? t("✓ E-mail envoyé") : t("⚠ Échec d'envoi de l'e-mail")}
       {time && ` · ${time}`}
     </p>
   );
@@ -99,10 +111,15 @@ const CADENCE_MOMENT_PHRASE: Record<NonNullable<Pair["cadence"]>, string> = {
 };
 
 function SharePhoneInvite({ pair }: { pair: Pair }) {
+  const t = useT(CATALOG);
   if (!pair.invitedPhone) return null;
   // Short form (/m/p/... redirects to /invite/... — see next.config.js).
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/m/p/${pair.id}`;
-  const text = `${pair.partnerName}, je t'ai préparé ${CADENCE_MOMENT_PHRASE[pair.cadence ?? "weekly"]} sur Ittsui : ${inviteUrl}`;
+  const text = t("{name}, je t'ai préparé {moment} sur Ittsui : {url}", {
+    name: pair.partnerName,
+    moment: t(CADENCE_MOMENT_PHRASE[pair.cadence ?? "weekly"]),
+    url: inviteUrl,
+  });
   const whatsappHref = whatsappLinkForNumber(pair.invitedPhone, text);
   const smsHref = smsLinkForNumber(pair.invitedPhone, text);
 
@@ -114,8 +131,8 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
     <div className="mt-4 space-y-2 text-left">
       <p className="text-xs" style={{ color: MUTED }}>
         {pair.invitedEmail
-          ? "Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :"
-          : "Cette invitation n'a pas d'e-mail — envoyez-lui le lien vous-même si ce n'est pas déjà fait."}
+          ? t("Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :")
+          : t("Cette invitation n'a pas d'e-mail — envoyez-lui le lien vous-même si ce n'est pas déjà fait.")}
       </p>
       {whatsappHref && (
         <a
@@ -125,7 +142,7 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
           className="flex w-full items-center justify-center rounded-full py-3 text-sm font-medium text-white"
           style={{ backgroundColor: "#25D366" }}
         >
-          Envoyer par WhatsApp
+          {t("Envoyer par WhatsApp")}
         </a>
       )}
       {smsHref && (
@@ -134,7 +151,7 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
           className="flex w-full items-center justify-center rounded-full border py-3 text-sm font-medium"
           style={{ borderColor: BORDER, color: INK }}
         >
-          Envoyer par SMS
+          {t("Envoyer par SMS")}
         </a>
       )}
       {/* Snapchat named explicitly — see /request/new's identical comment:
@@ -147,7 +164,7 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
         className="w-full rounded-full border py-2.5 text-sm font-medium"
         style={{ borderColor: BORDER, color: MUTED }}
       >
-        Snapchat, Messenger, ou une autre appli...
+        {t("Snapchat, Messenger, ou une autre appli...")}
       </button>
     </div>
   );
@@ -155,6 +172,7 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
 
 export default function PendingClient() {
   const router = useRouter();
+  const t = useT(CATALOG);
   const [user, setUser] = useState<User | false | null>(null);
   const [pair, setPair] = useState<Pair | null>(null);
   const [checked, setChecked] = useState(false);
@@ -252,10 +270,10 @@ export default function PendingClient() {
         body: JSON.stringify({ pairId: pair.id, userId: user.uid }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(data?.error ?? t("Une erreur est survenue."));
       router.push("/setup");
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setCancelError(err instanceof Error ? err.message : t("Une erreur est survenue."));
       setCancelling(false);
     }
   }
@@ -280,20 +298,20 @@ export default function PendingClient() {
     return (
       <Shell>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Invitation déclinée
+          {t("Invitation déclinée")}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          {pair.partnerName} n&apos;a pas souhaité être lié(e). Vous pouvez inviter quelqu&apos;un d&apos;autre.
+          {t("{name} n'a pas souhaité être lié(e). Vous pouvez inviter quelqu'un d'autre.", { name: pair.partnerName })}
         </p>
         <button
           onClick={() => router.push("/setup")}
           className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
           style={{ backgroundColor: ACCENT }}
         >
-          Nouvelle invitation
+          {t("Nouvelle invitation")}
         </button>
         <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Se déconnecter
+          {t("Se déconnecter")}
         </button>
         <InvitationHistory items={pastInvites} />
       </Shell>
@@ -304,20 +322,20 @@ export default function PendingClient() {
     return (
       <Shell>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Invitation annulée
+          {t("Invitation annulée")}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.
+          {t("Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.")}
         </p>
         <button
           onClick={() => router.push("/setup")}
           className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
           style={{ backgroundColor: ACCENT }}
         >
-          Nouvelle invitation
+          {t("Nouvelle invitation")}
         </button>
         <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Se déconnecter
+          {t("Se déconnecter")}
         </button>
         <InvitationHistory items={pastInvites} />
       </Shell>
@@ -328,20 +346,20 @@ export default function PendingClient() {
     return (
       <Shell>
         <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>
-          Invitation expirée
+          {t("Invitation expirée")}
         </h1>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          {pair.partnerName} n&apos;a pas répondu à temps. Vous pouvez réessayer.
+          {t("{name} n'a pas répondu à temps. Vous pouvez réessayer.", { name: pair.partnerName })}
         </p>
         <button
           onClick={() => router.push("/setup")}
           className="mt-6 w-full rounded-full py-3 text-sm font-medium text-white"
           style={{ backgroundColor: ACCENT }}
         >
-          Nouvelle invitation
+          {t("Nouvelle invitation")}
         </button>
         <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Se déconnecter
+          {t("Se déconnecter")}
         </button>
         <InvitationHistory items={pastInvites} />
       </Shell>
@@ -351,10 +369,11 @@ export default function PendingClient() {
   // status === "pending"
   return (
     <Shell>
-      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>En attente</h1>
+      <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{t("En attente")}</h1>
       <p className="mt-3 text-sm" style={{ color: MUTED }}>
-        {pair.partnerName} n&apos;a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que
-        c&apos;est fait.
+        {t("{name} n'a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que c'est fait.", {
+          name: pair.partnerName,
+        })}
       </p>
       <div className="mt-4 flex justify-center">
         <CockpitStatus pair={pair} />
@@ -372,10 +391,10 @@ export default function PendingClient() {
         className="mt-8 w-full rounded-full border py-3 text-sm font-medium disabled:opacity-50"
         style={{ borderColor: BORDER, color: INK }}
       >
-        {cancelling ? "Annulation..." : "Annuler l'invitation"}
+        {cancelling ? t("Annulation...") : t("Annuler l'invitation")}
       </button>
       <button onClick={handleSignOut} className="mt-4 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-        Se déconnecter
+        {t("Se déconnecter")}
       </button>
       <InvitationHistory items={pastInvites} />
     </Shell>
@@ -389,18 +408,19 @@ const HISTORY_LABELS: Record<string, string> = {
 };
 
 function InvitationHistory({ items }: { items: Pair[] }) {
+  const t = useT(CATALOG);
   if (items.length === 0) return null;
   return (
     <div className="mt-10 border-t pt-6 text-left" style={{ borderColor: BORDER }}>
       <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-        Invitations précédentes
+        {t("Invitations précédentes")}
       </p>
       <ul className="mt-3 space-y-2">
         {items.map((p) => (
           <li key={p.id} className="flex items-center justify-between text-sm" style={{ color: MUTED }}>
             <span>{p.partnerName}</span>
             <span className="text-xs" style={{ color: `${MUTED}99` }}>
-              {HISTORY_LABELS[p.status] ?? p.status}
+              {HISTORY_LABELS[p.status] ? t(HISTORY_LABELS[p.status]) : p.status}
             </span>
           </li>
         ))}

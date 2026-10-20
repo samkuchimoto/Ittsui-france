@@ -18,6 +18,9 @@ import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import { generateWarmConfirmation } from "@/lib/confirmationText";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
 import { parisDateTimeParts } from "@/lib/timezone";
+import { langOf } from "@/lib/i18n";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 import type { Pair, VenueOption, Week } from "@/lib/types";
 
 const VALID_RESPONSES = ["yes", "no", "A", "B"] as const;
@@ -174,11 +177,12 @@ export async function POST(request: Request) {
   if (chosenOption) {
     const warmConfirmedText = await generateWarmConfirmation({
       venueName: chosenOption.venueName,
-      day: dayLabel(pair.agreedDay),
+      day: dayLabel(pair.agreedDay, langOf(pair.lang)),
       time: pair.agreedWindowStart,
       partnerName: pair.partnerName,
       streakCount: null,
       weatherSwapNote: null,
+      lang: langOf(pair.lang),
     });
     if (warmConfirmedText) {
       await weekRef.update({ confirmationText: warmConfirmedText });
@@ -198,16 +202,18 @@ export async function POST(request: Request) {
   // between meets" principle (no separate reminder ping), it's just one
   // more useful thing inside the one confirmation message that already goes out.
   const { date, time } = parisDateTimeParts(week.proposedTime);
+  // The pair's language (Pair.lang) for the confirmation both people get.
+  const t = makeT(langOf(pair.lang), EMAILS);
   const calendarUrl = googleCalendarLink({
     title: `${venueName} — Ittsui`,
-    details: "Rendez-vous confirmé via Ittsui.",
+    details: t("Rendez-vous confirmé via Ittsui."),
     venueAddress,
     date,
     time,
   });
   const notifyResults = await notifyBothUsers(
     pair,
-    `Rendez-vous verrouillé : ${venueName}.\nAjouter à Google Agenda : ${calendarUrl}`
+    `${t("Rendez-vous verrouillé : {venue}.", { venue: venueName })}\n${t("Ajouter à Google Agenda : {url}", { url: calendarUrl })}`
   );
   await weekRef.update({
     notificationLog: FieldValue.arrayUnion({

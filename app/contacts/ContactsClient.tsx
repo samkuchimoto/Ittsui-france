@@ -19,6 +19,10 @@ import { PhoneContactPicker } from "@/app/components/PhoneContactPicker";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
+import { pagePath } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { localeTypography } from "@/app/components/site/typography";
+import { CONTACTS } from "./contacts.i18n";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -37,6 +41,8 @@ const workSans = Work_Sans({
 
 export default function ContactsClient() {
   const router = useRouter();
+  const { lang } = useLang();
+  const t = useT(CONTACTS);
   const [user, setUser] = useState<User | false | null>(null);
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [name, setName] = useState("");
@@ -87,17 +93,17 @@ export default function ContactsClient() {
   async function handleAdd() {
     setError(null);
     if (!name.trim()) {
-      setError("Le nom est requis.");
+      setError(t("Le nom est requis."));
       return;
     }
     const hasEmail = email.trim().length > 0;
     const hasPhone = phone.trim().length > 0;
     if (!hasEmail && !hasPhone) {
-      setError("Indiquez un e-mail ou un numéro de téléphone.");
+      setError(t("Indiquez un e-mail ou un numéro de téléphone."));
       return;
     }
     if (hasEmail && !isValidEmail(email)) {
-      setError("Cette adresse e-mail ne semble pas valide.");
+      setError(t("Cette adresse e-mail ne semble pas valide."));
       return;
     }
     if (!auth.currentUser) return;
@@ -110,13 +116,13 @@ export default function ContactsClient() {
         body: JSON.stringify({ name, ...(hasEmail ? { email } : {}), ...(hasPhone ? { phone } : {}) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Une erreur est survenue.");
+      if (!res.ok) throw new Error(t(data?.error ?? "Une erreur est survenue."));
       setName("");
       setPhone("");
       setEmail("");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setError(err instanceof Error ? err.message : t("Une erreur est survenue."));
     } finally {
       setSaving(false);
     }
@@ -139,7 +145,7 @@ export default function ContactsClient() {
     setEmail(hasValidEmail ? picked.email! : "");
     setPhone(hasPhone ? picked.phone! : "");
     if (!hasValidEmail && !hasPhone) {
-      setError("Ce contact n'a ni e-mail ni numéro de téléphone enregistré.");
+      setError(t("Ce contact n'a ni e-mail ni numéro de téléphone enregistré."));
     }
   }
 
@@ -167,7 +173,11 @@ export default function ContactsClient() {
 
   if (user === null || (user && contacts === null)) {
     return (
-      <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
+      <main
+        lang={lang === "fr" ? undefined : lang}
+        className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
+        style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
+      >
         <div className="mx-auto max-w-md px-6 py-14 text-center text-sm" style={{ color: MUTED }}>
           <FriendlyLoading />
         </div>
@@ -176,23 +186,28 @@ export default function ContactsClient() {
   }
 
   return (
-    <main className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`} style={{ color: INK }}>
+    <main
+      lang={lang === "fr" ? undefined : lang}
+      className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
+    >
       <div className="mx-auto max-w-md px-6 py-12">
         <div className="flex items-center justify-between">
-          <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
+          <Link href={pagePath("home", lang)} style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.1rem" }}>
             Ittsui
           </Link>
           <Link href="/dashboard" className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
-            Tableau de bord
+            {t("Tableau de bord")}
           </Link>
         </div>
         <PageMascotHeader />
         <h1 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
-          Mes contacts
+          {t("Mes contacts")}
         </h1>
         <p className="mt-2 text-sm" style={{ color: MUTED }}>
-          Famille, ami(e)s, partenaire — pas de messagerie, juste de quoi leur envoyer une demande de rendez-vous en
-          un geste.
+          {t(
+            "Famille, ami(e)s, partenaire — pas de messagerie, juste de quoi leur envoyer une demande de rendez-vous en un geste."
+          )}
         </p>
 
         <div className="mt-6 space-y-2">
@@ -203,7 +218,7 @@ export default function ContactsClient() {
               className="w-full rounded-lg border py-2.5 text-sm font-medium disabled:opacity-60"
               style={{ borderColor: BORDER, color: INK }}
             >
-              {importing ? "Import..." : "Importer depuis mes contacts"}
+              {importing ? t("Import...") : t("Importer depuis mes contacts")}
             </button>
           )}
           {isNative && (
@@ -215,7 +230,7 @@ export default function ContactsClient() {
           )}
           <input
             type="text"
-            placeholder="Nom"
+            placeholder={t("Nom")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -223,7 +238,7 @@ export default function ContactsClient() {
           />
           <input
             type="tel"
-            placeholder="Numéro de téléphone"
+            placeholder={t("Numéro de téléphone")}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -232,11 +247,11 @@ export default function ContactsClient() {
           {showEmail || email.trim().length > 0 ? (
             <>
               <p className="text-xs" style={{ color: MUTED }}>
-                Ou, si vous l&apos;avez, son e-mail :
+                {t("Ou, si vous l'avez, son e-mail :")}
               </p>
               <input
                 type="email"
-                placeholder="E-mail (optionnel)"
+                placeholder={t("E-mail (optionnel)")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm"
@@ -250,7 +265,7 @@ export default function ContactsClient() {
               className="text-xs font-medium underline underline-offset-4"
               style={{ color: MUTED }}
             >
-              + Ajouter aussi un e-mail
+              {t("+ Ajouter aussi un e-mail")}
             </button>
           )}
           {error && (
@@ -264,7 +279,7 @@ export default function ContactsClient() {
             className="w-full rounded-full py-3 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
             style={{ backgroundColor: ACCENT }}
           >
-            {saving ? "Ajout..." : "Ajouter à mes contacts"}
+            {saving ? t("Ajout...") : t("Ajouter à mes contacts")}
           </button>
         </div>
 
@@ -285,14 +300,14 @@ export default function ContactsClient() {
                       className="text-xs font-medium underline underline-offset-4"
                       style={{ color: ACCENT }}
                     >
-                      Proposer un RDV
+                      {t("Proposer un RDV")}
                     </Link>
                     <button
                       onClick={() => handleRemove(c.id)}
                       className="text-xs underline underline-offset-4"
                       style={{ color: MUTED }}
                     >
-                      Supprimer
+                      {t("Supprimer")}
                     </button>
                   </div>
                 </li>
@@ -300,7 +315,7 @@ export default function ContactsClient() {
             </ul>
           ) : (
             <p className="text-sm" style={{ color: MUTED }}>
-              Aucun contact pour l&apos;instant.
+              {t("Aucun contact pour l'instant.")}
             </p>
           )}
         </div>

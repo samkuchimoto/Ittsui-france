@@ -43,6 +43,95 @@ import { MascotPair } from "@/app/components/MascotPair";
 import { IconCheck } from "@/app/components/HomeIcons";
 import { VenueSheet } from "@/app/components/VenueSheet";
 import { SANDBOX_SCENARIOS, type SandboxScenario, type SandboxVenue } from "@/lib/sandboxScenarios";
+import { pagePath, type Locale } from "@/lib/i18n";
+
+// The invitee gets the message in the sender's language (the app writes
+// invitations in the language it is used in), so each version of the demo
+// shows the message its own reader would actually send — and the same
+// two buttons the invitation page shows in that language.
+const COPY: Record<
+  Locale,
+  {
+    booked: string;
+    bookedLine: (venue: string, when: string) => string;
+    receives: (name: string) => string;
+    message: (name: string, when: string, venue: string) => string;
+    yes: string;
+    no: string;
+    explain: string;
+    retry: string;
+    rendezVous: (when: string) => string;
+    alternative: (when: string) => string;
+    seePlace: string;
+    original: string;
+    swap: string;
+    confirm: string;
+    skipped: string;
+    skip: string;
+    why: string;
+  }
+> = {
+  fr: {
+    booked: "C'est bloqué.",
+    bookedLine: (venue, when) => `${venue}, ${when}. Plus rien à gérer jusqu'à la semaine prochaine.`,
+    receives: (name) => `Ce que ${name} reçoit`,
+    message: (name, when, venue) =>
+      `« Salut ${name}, Ittsui nous propose de nous retrouver ${when} à ${venue}. Tu es partant(e) ? »`,
+    yes: "Je viens",
+    no: "Pas dispo",
+    explain:
+      "Un lien, un geste, et le moment est bloqué dans son agenda. Aucun compte, aucune application à installer pour elle ou lui.",
+    retry: "Réessayer la démonstration",
+    rendezVous: (when) => `Rendez-vous du ${when}`,
+    alternative: (when) => `Alternative 1/1 · ${when}`,
+    seePlace: "Voir le lieu",
+    original: "Option initiale",
+    swap: "Échanger",
+    confirm: "Valider →",
+    skipped: "Pas de pression cette semaine. On s'occupe du reste — à la semaine prochaine.",
+    skip: "Passer cette semaine",
+    why: "Pourquoi on a créé Ittsui →",
+  },
+  en: {
+    booked: "It's booked.",
+    bookedLine: (venue, when) => `${venue}, ${when}. Nothing else to manage until next week.`,
+    receives: (name) => `What ${name} receives`,
+    message: (name, when, venue) => `“Hi ${name}, Ittsui suggests we meet ${when} at ${venue}. Are you in?”`,
+    yes: "I'm in",
+    no: "Can't make it",
+    explain: "One link, one tap, and the moment is in their calendar. No account and no app to install on their side.",
+    retry: "Try the demo again",
+    rendezVous: (when) => `Rendez-vous · ${when}`,
+    alternative: (when) => `Alternative 1/1 · ${when}`,
+    seePlace: "See the place",
+    original: "Original option",
+    swap: "Swap",
+    confirm: "Confirm →",
+    skipped: "No pressure this week. We'll take care of the rest. See you next week.",
+    skip: "Skip this week",
+    why: "Why we built Ittsui →",
+  },
+  ja: {
+    booked: "決まりました。",
+    bookedLine: (venue, when) => `${when}、${venue}。来週まで、もう何もしなくて大丈夫です。`,
+    receives: (name) => `${name}に届くメッセージ`,
+    message: (name, when, venue) => `「${name}、Ittsuiから提案が届いたよ。${when}に${venue}で会わない？」`,
+    yes: "行きます",
+    no: "都合が合わない",
+    explain:
+      "リンクを開いてタップするだけで、予定が相手のカレンダーに入ります。相手はアカウント登録もアプリのインストールも不要です。",
+    retry: "もう一度試す",
+    rendezVous: (when) => `${when}の約束`,
+    alternative: (when) => `代案 1/1 · ${when}`,
+    seePlace: "場所を見る",
+    original: "元の案",
+    swap: "入れ替える",
+    confirm: "確定 →",
+    skipped: "今週は無理しなくて大丈夫。続きはまた来週。",
+    skip: "今週はスキップ",
+    why: "Ittsuiが生まれた理由 →",
+  },
+};
 
 // "swapped" (which of the two venues is showing) and "confirmed"
 // (whether the demo has been validated) are independent facts, and they
@@ -56,7 +145,8 @@ import { SANDBOX_SCENARIOS, type SandboxScenario, type SandboxVenue } from "@/li
 
 const SWIPE_THRESHOLD = 76; // px before a drag commits to an action
 
-export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: SandboxScenario }) {
+export function FridayCard({ scenario = SANDBOX_SCENARIOS[0], lang = "fr" }: { scenario?: SandboxScenario; lang?: Locale }) {
+  const t = COPY[lang];
   const [swapped, setSwapped] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [skipped, setSkipped] = useState(false);
@@ -148,10 +238,10 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
           <div className="px-6 py-8 text-center">
             <MascotPair size={40} nod />
             <h3 className="mt-4" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.35rem" }}>
-              C&apos;est bloqué.
+              {t.booked}
             </h3>
             <p className="mx-auto mt-1.5 max-w-[26ch] text-sm" style={{ color: MUTED }}>
-              {venue.name}, {whenSentence}. Plus rien à gérer jusqu&apos;à la semaine prochaine.
+              {t.bookedLine(venue.name, whenSentence)}
             </p>
 
             {/* The message the invitee actually receives. Showing it
@@ -159,26 +249,24 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                 someone else's phone, and no account on the other end. */}
             <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "#FFFDF9" }}>
               <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: MUTED }}>
-                Ce que {sampleRecipient} reçoit
+                {t.receives(sampleRecipient)}
               </p>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: INK }}>
-                « Salut {sampleRecipient}, Ittsui nous propose de nous retrouver {whenSentence} à {venue.name}. Tu es
-                partant(e) ? »
+                {t.message(sampleRecipient, whenSentence, venue.name)}
               </p>
               <div className="mt-3 flex gap-2">
                 <span
                   className="flex-1 rounded-full py-2 text-center text-xs font-medium text-white"
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Je viens
+                  {t.yes}
                 </span>
                 <span className="flex-1 rounded-full border py-2 text-center text-xs font-medium" style={{ borderColor: BORDER }}>
-                  Pas dispo
+                  {t.no}
                 </span>
               </div>
               <p className="mt-3 text-xs leading-relaxed" style={{ color: MUTED }}>
-                Un lien, un geste, et le moment est bloqué dans son agenda. Aucun compte, aucune application à installer
-                pour elle ou lui.
+                {t.explain}
               </p>
             </div>
 
@@ -188,14 +276,14 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
               className="mt-5 text-xs underline underline-offset-4"
               style={{ color: MUTED }}
             >
-              Réessayer la démonstration
+              {t.retry}
             </button>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-center border-b px-4 py-3" style={{ borderColor: BORDER }}>
               <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "#FFFDF9", color: MUTED }}>
-                Rendez-vous du {when}
+                {t.rendezVous(when)}
               </span>
             </div>
             <div className="relative h-48 w-full">
@@ -212,7 +300,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                   className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Alternative 1/1 · {when}
+                  {t.alternative(when)}
                 </span>
               )}
             </div>
@@ -237,7 +325,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                   className="mt-0.5 shrink-0 rounded-full px-2 py-1 text-[10px] font-medium"
                   style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
                 >
-                  Voir le lieu
+                  {t.seePlace}
                 </span>
               </button>
               <div className="mt-4 flex items-center justify-between text-xs">
@@ -249,7 +337,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                   className="transition-colors"
                   style={{ color: MUTED }}
                 >
-                  ← {swapped ? "Option initiale" : "Échanger"}
+                  ← {swapped ? t.original : t.swap}
                 </motion.button>
                 <motion.button
                   type="button"
@@ -260,7 +348,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
                   style={{ color: ACCENT }}
                 >
                   <IconCheck className="h-3.5 w-3.5" />
-                  Valider →
+                  {t.confirm}
                 </motion.button>
               </div>
             </div>
@@ -274,7 +362,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
             <div className="flex flex-col items-center gap-2">
               <MascotPair size={30} />
               <p className="text-xs" style={{ color: "rgba(255,253,249,0.82)" }}>
-                Pas de pression cette semaine. On s&apos;occupe du reste — à la semaine prochaine.
+                {t.skipped}
               </p>
             </div>
           ) : (
@@ -284,19 +372,19 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0] }: { scenario?: San
               className="text-xs underline underline-offset-4 transition-colors"
               style={{ color: "rgba(255,253,249,0.78)" }}
             >
-              Passer cette semaine
+              {t.skip}
             </button>
           )}
         </div>
       )}
 
       <p className="mt-3 text-center text-xs">
-        <Link href="/a-propos" className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
-          Pourquoi on a créé Ittsui →
+        <Link href={pagePath("about", lang)} className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
+          {t.why}
         </Link>
       </p>
 
-      <VenueSheet venue={sheetVenue} onClose={() => setSheetVenue(null)} />
+      <VenueSheet venue={sheetVenue} onClose={() => setSheetVenue(null)} lang={lang} />
     </div>
   );
 }

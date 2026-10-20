@@ -11,11 +11,13 @@
 import { useState } from "react";
 import { listNativeContacts, type PickedContact, type ListContactsResult } from "@/lib/nativeContacts";
 import { MUTED, BORDER, ACCENT, INK } from "@/lib/theme";
+import { useT } from "@/app/components/site/LangProvider";
+import { COMPONENTS } from "./components.i18n";
 
 export function PhoneContactPicker({
   onPick,
   onOpenChange,
-  triggerLabel = "Voir tous mes contacts",
+  triggerLabel,
   triggerClassName,
   triggerStyle,
 }: {
@@ -28,6 +30,7 @@ export function PhoneContactPicker({
   triggerClassName: string;
   triggerStyle: React.CSSProperties;
 }) {
+  const t = useT(COMPONENTS);
   const [result, setResult] = useState<ListContactsResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -56,7 +59,7 @@ export function PhoneContactPicker({
   if (!result) {
     return (
       <button type="button" onClick={open} disabled={loading} className={triggerClassName} style={triggerStyle}>
-        {loading ? "Chargement..." : triggerLabel}
+        {loading ? t("Chargement...") : (triggerLabel ?? t("Voir tous mes contacts"))}
       </button>
     );
   }
@@ -67,7 +70,7 @@ export function PhoneContactPicker({
         {result.status === "ok" && (
           <input
             type="text"
-            placeholder="Rechercher un nom..."
+            placeholder={t("Rechercher un nom...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoFocus
@@ -76,7 +79,7 @@ export function PhoneContactPicker({
           />
         )}
         <button type="button" onClick={close} className="shrink-0 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Fermer
+          {t("Fermer")}
         </button>
       </div>
       {/* Distinct messages, not one generic "no contacts" for all three —
@@ -87,18 +90,17 @@ export function PhoneContactPicker({
           from the UI entirely. */}
       {result.status === "denied" && (
         <p className="mt-3 text-sm" style={{ color: ACCENT }}>
-          Accès aux contacts refusé — autorisez-le dans les réglages de votre téléphone pour Ittsui,
-          puis réessayez.
+          {t("Accès aux contacts refusé — autorisez-le dans les réglages de votre téléphone pour Ittsui, puis réessayez.")}
         </p>
       )}
       {result.status === "unavailable" && (
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Impossible de charger vos contacts pour le moment.
+          {t("Impossible de charger vos contacts pour le moment.")}
         </p>
       )}
       {result.status === "ok" && result.contacts.length === 0 && (
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
-          Aucun contact trouvé sur ce téléphone.
+          {t("Aucun contact trouvé sur ce téléphone.")}
         </p>
       )}
       {result.status === "ok" && result.contacts.length > 0 && (

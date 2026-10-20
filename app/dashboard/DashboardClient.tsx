@@ -46,6 +46,11 @@ import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { VenueDirections } from "@/app/components/VenueDirections";
+import { DATE_LOCALE, pagePath } from "@/lib/i18n";
+import { useLang, useT } from "@/app/components/site/LangProvider";
+import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
+import { localeTypography } from "@/app/components/site/typography";
+import { DASHBOARD } from "./dashboard.i18n";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -69,16 +74,18 @@ const workSans = Work_Sans({
 // added noise rather than warmth. Other pages that have no bigger
 // mascot moment of their own keep PageMascotHeader.
 function Shell({ children }: { children: React.ReactNode }) {
+  const { lang } = useLang();
   return (
     <main
+      lang={lang === "fr" ? undefined : lang}
       className={`${fraunces.variable} ${workSans.variable} min-h-screen bg-[#FFFDF9] antialiased`}
-      style={{ color: INK }}
+      style={{ color: INK, ...localeTypography(lang, fraunces.style.fontFamily) }}
     >
       <div className="mx-auto max-w-md px-6 py-12">
         {/* One-tap way back to the homepage from any state on this page —
             real feedback: some screens had no way out short of the
             browser's own back button. */}
-        <Link href="/" className="text-sm" style={{ color: MUTED }}>
+        <Link href={pagePath("home", lang)} className="text-sm" style={{ color: MUTED }}>
           ← Ittsui
         </Link>
         {children}
@@ -126,6 +133,8 @@ function cadenceThisPeriod(cadence: Pair["cadence"]): string {
 export default function DashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useT(DASHBOARD);
+  const { lang } = useLang();
 
   // null = not checked yet, false = checked and not signed in
   const [user, setUser] = useState<User | null | false>(null);
@@ -313,14 +322,14 @@ export default function DashboardClient() {
       if (!res.ok) {
         setUpgradeError(
           res.status === 501
-            ? "Le paiement n'est pas encore activé — revenez bientôt."
-            : (data?.error ?? "Une erreur est survenue.")
+            ? t("Le paiement n'est pas encore activé — revenez bientôt.")
+            : (data?.error ?? t("Une erreur est survenue."))
         );
         return;
       }
       window.location.href = data.url;
     } catch {
-      setUpgradeError("Une erreur est survenue.");
+      setUpgradeError(t("Une erreur est survenue."));
     } finally {
       setUpgrading(false);
     }
@@ -333,7 +342,7 @@ export default function DashboardClient() {
   async function handleDeleteAccount() {
     if (!user) return;
     const confirmed = window.confirm(
-      "Supprimer définitivement votre compte Ittsui ? Cette action est irréversible."
+      t("Supprimer définitivement votre compte Ittsui ? Cette action est irréversible.")
     );
     if (!confirmed) return;
     try {
@@ -344,7 +353,7 @@ export default function DashboardClient() {
       });
     } finally {
       await signOutUser();
-      router.push("/");
+      router.push(pagePath("home", lang));
     }
   }
 
@@ -444,7 +453,7 @@ export default function DashboardClient() {
       <Shell>
         <div className="text-center">
           <p className="text-sm" style={{ color: MUTED }}>
-            Aucune personne liée pour le moment.
+            {t("Aucune personne liée pour le moment.")}
           </p>
           {/* Real gap fixed 2026-08-28: this screen previously had zero
               mention of Plus, a dead end for anyone who lands here without
@@ -453,16 +462,19 @@ export default function DashboardClient() {
               until one exists; this is a link to the explanation, not a
               purchase button. */}
           <p className="mt-3 text-xs" style={{ color: MUTED }}>
-            <Link href="/#plus" className="underline underline-offset-4">
-              Découvrir Ittsui Plus
+            <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
+              {t("Découvrir Ittsui Plus")}
             </Link>
           </p>
           <button onClick={handleSignOut} className="mt-6 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-            Se déconnecter
+            {t("Se déconnecter")}
           </button>
+          <div className="mt-6 flex justify-center">
+            <AppLangSwitch />
+          </div>
           <div className="mt-8 border-t pt-4" style={{ borderColor: BORDER }}>
             <button onClick={handleDeleteAccount} className="text-xs text-red-500 underline underline-offset-4">
-              Supprimer mon compte
+              {t("Supprimer mon compte")}
             </button>
           </div>
         </div>
@@ -476,9 +488,9 @@ export default function DashboardClient() {
   return (
     <Shell>
       <div className="flex items-center justify-between">
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{cadenceHeading(pair.cadence)}</h1>
+        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.5rem" }}>{t(cadenceHeading(pair.cadence))}</h1>
         <button onClick={handleSignOut} className="text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Se déconnecter
+          {t("Se déconnecter")}
         </button>
       </div>
 
@@ -493,7 +505,9 @@ export default function DashboardClient() {
           className="mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-transform hover:scale-[1.02]"
           style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
         >
-          {confirmedCount === 1 ? "1er rendez-vous protégé ensemble" : `${confirmedCount}e rendez-vous protégé ensemble`}
+          {confirmedCount === 1
+            ? t("1er rendez-vous protégé ensemble")
+            : t("{n}e rendez-vous protégé ensemble", { n: confirmedCount })}
           <span aria-hidden="true">→</span>
         </Link>
       )}
@@ -520,12 +534,12 @@ export default function DashboardClient() {
           below is already in. */}
       {plusRedirect === "success" && (
         <p className="mt-2 text-xs" style={{ color: ACCENT }}>
-          Merci — un vrai geste pour rester proche de {pair.partnerName ?? "cette personne"}. 💛
+          {t("Merci — un vrai geste pour rester proche de {name}. 💛", { name: pair.partnerName ?? t("cette personne") })}
         </p>
       )}
       {plusRedirect === "cancelled" && (
         <p className="mt-2 text-xs" style={{ color: MUTED }}>
-          Pas de souci, rien n&apos;a été débité — vous pouvez devenir membre fondateur quand vous voulez.
+          {t("Pas de souci, rien n'a été débité — vous pouvez devenir membre fondateur quand vous voulez.")}
         </p>
       )}
 
@@ -534,7 +548,7 @@ export default function DashboardClient() {
           className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
           style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
         >
-          ✓ Membre Fondateur
+          {t("✓ Membre Fondateur")}
         </span>
       ) : (
         <div className="mt-3">
@@ -544,7 +558,7 @@ export default function DashboardClient() {
             className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
             style={{ backgroundColor: ACCENT }}
           >
-            {upgrading ? "..." : "Devenir membre fondateur — 1 €/mois"}
+            {upgrading ? "..." : t("Devenir membre fondateur — 1 €/mois")}
           </button>
           {upgradeError && (
             <p className="mt-1.5 text-xs" style={{ color: ACCENT }}>
@@ -552,8 +566,8 @@ export default function DashboardClient() {
             </p>
           )}
           <p className="mt-1.5 text-xs" style={{ color: MUTED }}>
-            <Link href="/#plus" className="underline underline-offset-4">
-              En savoir plus
+            <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
+              {t("En savoir plus")}
             </Link>
           </p>
         </div>
@@ -563,11 +577,11 @@ export default function DashboardClient() {
         <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: MUTED }}>
           {pair.paused && (
             <span className="rounded-full px-2 py-0.5 font-medium" style={{ backgroundColor: `${MUTED}1A`, color: MUTED }}>
-              En pause
+              {t("En pause")}
             </span>
           )}
           <button onClick={handleTogglePause} disabled={pauseUpdating} className="underline underline-offset-4 disabled:opacity-60">
-            {pauseUpdating ? "..." : pair.paused ? "Reprendre les propositions" : "Mettre en pause"}
+            {pauseUpdating ? "..." : pair.paused ? t("Reprendre les propositions") : t("Mettre en pause")}
           </button>
         </div>
       )}
@@ -596,8 +610,8 @@ export default function DashboardClient() {
             <Mascot name="mochi" size="xl" float className={pair?.paused ? "opacity-40" : undefined} />
             <p className="text-sm" style={{ color: MUTED }}>
               {pair?.paused
-                ? "En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris."
-                : "Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu."}
+                ? t("En pause — aucune proposition ne sera envoyée tant que ce n'est pas repris.")
+                : t("Rien de proposé pour l'instant. Ça arrive automatiquement le jour convenu.")}
             </p>
           </motion.div>
         ) : !week.optionB ? (
@@ -642,7 +656,7 @@ export default function DashboardClient() {
                   className="min-h-[56px] flex-1 rounded-full text-lg font-medium text-white disabled:opacity-50"
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Oui
+                  {t("Oui")}
                 </motion.button>
                 <motion.button
                   onClick={() => queueResponse("no")}
@@ -652,14 +666,14 @@ export default function DashboardClient() {
                   className="min-h-[56px] flex-1 rounded-full border text-lg font-medium disabled:opacity-50"
                   style={{ borderColor: BORDER, color: INK }}
                 >
-                  Non
+                  {t("Non")}
                 </motion.button>
               </div>
             )}
 
             {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
               <p className="mt-4 text-sm" style={{ color: MUTED }}>
-                En attente de l&apos;autre personne…
+                {t("En attente de l'autre personne…")}
               </p>
             )}
           </motion.div>
@@ -674,7 +688,9 @@ export default function DashboardClient() {
             style={{ borderColor: BORDER, backgroundColor: "white" }}
           >
             <p className="text-base font-medium">
-              {week.status === "proposed" ? `Deux propositions pour vous ${cadenceThisPeriod(pair.cadence)} :` : week.confirmationText}
+              {week.status === "proposed"
+                ? t("Deux propositions pour vous {period} :", { period: t(cadenceThisPeriod(pair.cadence)) })
+                : week.confirmationText}
             </p>
 
             <StatusBadge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
@@ -694,7 +710,7 @@ export default function DashboardClient() {
 
             {week.status === "proposed" && !isLapsed(week) && myResponse !== null && (
               <p className="mt-4 text-sm" style={{ color: MUTED }}>
-                En attente de l&apos;autre personne…
+                {t("En attente de l'autre personne…")}
               </p>
             )}
           </motion.div>
@@ -717,6 +733,15 @@ export default function DashboardClient() {
         <PasskeyManager />
       </div>
 
+      {/* The language of the app (and of what it sends on your behalf),
+          changeable at any time after the first-open picker. */}
+      <div className="mt-8 border-t pt-6" style={{ borderColor: BORDER }}>
+        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
+          {t("Langue")}
+        </p>
+        <AppLangSwitch className="mt-3" />
+      </div>
+
       {/* Deliberately separated from "Se déconnecter" above (they used to
           sit side by side as two same-size underlined text links, an easy
           mis-tap between a routine action and an irreversible one) — its
@@ -724,10 +749,10 @@ export default function DashboardClient() {
           usual "danger zone" placement convention. */}
       <div className="mt-8 border-t pt-6" style={{ borderColor: BORDER }}>
         <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-          Zone de danger
+          {t("Zone de danger")}
         </p>
         <button onClick={handleDeleteAccount} className="mt-3 text-xs text-red-500 underline underline-offset-4">
-          Supprimer mon compte
+          {t("Supprimer mon compte")}
         </button>
       </div>
     </Shell>
@@ -741,6 +766,7 @@ export default function DashboardClient() {
 // there's no other recovery path for a passkey that's gone, by design —
 // the private key never left that device in the first place.
 function PasskeyManager() {
+  const t = useT(DASHBOARD);
   const [passkeys, setPasskeys] = useState<PasskeySummary[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -759,10 +785,10 @@ function PasskeyManager() {
     const result = await registerPasskey();
     setBusy(false);
     if (result.ok) {
-      setMessage("Clé d'accès ajoutée.");
+      setMessage(t("Clé d'accès ajoutée."));
       refresh();
     } else {
-      setMessage(result.error);
+      setMessage(t(result.error));
     }
   }
 
@@ -776,7 +802,7 @@ function PasskeyManager() {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
-        Clés d&apos;accès
+        {t("Clés d'accès")}
       </p>
       {passkeys && passkeys.length > 0 && (
         <ul className="mt-3 space-y-2">
@@ -788,7 +814,7 @@ function PasskeyManager() {
                 disabled={busy}
                 className="text-xs text-red-500 underline underline-offset-4 disabled:opacity-50"
               >
-                Supprimer
+                {t("Supprimer")}
               </button>
             </li>
           ))}
@@ -796,7 +822,7 @@ function PasskeyManager() {
       )}
       {passkeys && passkeys.length === 0 && (
         <p className="mt-2 text-sm" style={{ color: MUTED }}>
-          Aucune clé d&apos;accès configurée — connectez-vous plus vite la prochaine fois, sans mot de passe.
+          {t("Aucune clé d'accès configurée — connectez-vous plus vite la prochaine fois, sans mot de passe.")}
         </p>
       )}
       <button
@@ -805,7 +831,7 @@ function PasskeyManager() {
         className="mt-3 text-xs underline underline-offset-4 disabled:opacity-50"
         style={{ color: ACCENT }}
       >
-        + Ajouter une clé d&apos;accès sur cet appareil
+        {t("+ Ajouter une clé d'accès sur cet appareil")}
       </button>
       {message && (
         <p className="mt-2 text-xs" style={{ color: MUTED }}>
@@ -836,6 +862,7 @@ function HitbonenutPause({
   onCancel: () => void;
   confirming: boolean;
 }) {
+  const t = useT(DASHBOARD);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -871,7 +898,7 @@ function HitbonenutPause({
           style={ready ? {} : { borderColor: BORDER }}
         />
         <p className="mt-4 text-sm" style={{ color: MUTED }}>
-          Un instant, avant de confirmer.
+          {t("Un instant, avant de confirmer.")}
         </p>
         <p className="mt-1 text-base font-medium">{venueName}</p>
         <motion.button
@@ -883,10 +910,10 @@ function HitbonenutPause({
           className="mt-6 min-h-[56px] w-full rounded-full text-lg font-medium text-white disabled:opacity-40"
           style={{ backgroundColor: ACCENT }}
         >
-          {ready ? "Confirmer" : "…"}
+          {ready ? t("Confirmer") : "…"}
         </motion.button>
         <button type="button" onClick={onCancel} className="mt-3 text-xs underline underline-offset-4" style={{ color: MUTED }}>
-          Annuler
+          {t("Annuler")}
         </button>
       </div>
     </div>
@@ -924,6 +951,7 @@ function ConfirmedMascotMoment({
   relationshipKind?: Pair["relationshipKind"];
   venueType?: VenueType;
 }) {
+  const t = useT(DASHBOARD);
   if (status !== "confirmed" || lapsed) return null;
   const emoji = venueType ? VENUE_EMOJI[venueType] : undefined;
   return (
@@ -936,7 +964,7 @@ function ConfirmedMascotMoment({
           </span>
         )}
       </span>
-      <p className="text-xs" style={{ color: MUTED }}>Rendez-vous calé. On se tait jusqu&apos;à la prochaine fois.</p>
+      <p className="text-xs" style={{ color: MUTED }}>{t("Rendez-vous calé. On se tait jusqu'à la prochaine fois.")}</p>
     </div>
   );
 }
@@ -949,18 +977,21 @@ function ConfirmedMascotMoment({
 // 2026-08-28 pricing feedback (Dror Sharon) drove both the €1/mois
 // figure and the "show the value, then ask" placement.
 function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean }) {
+  const t = useT(DASHBOARD);
+  const { lang } = useLang();
   if (status !== "confirmed" || lapsed) return null;
   return (
     <p className="mt-2 text-xs" style={{ color: MUTED }}>
-      <Link href="/#plus" className="underline underline-offset-4">
-        Ittsui Plus, 1&nbsp;€/mois
+      <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
+        {t("Ittsui Plus, 1 €/mois")}
       </Link>{" "}
-      — le prix d&apos;un café pour garder ce lien vivant.
+      {t("— le prix d'un café pour garder ce lien vivant.")}
     </p>
   );
 }
 
 function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapsed?: boolean }) {
+  const t = useT(DASHBOARD);
   const styles: Record<Week["status"], string> = {
     proposed: "bg-amber-50 text-amber-700",
     confirmed: "bg-emerald-50 text-emerald-700",
@@ -973,7 +1004,7 @@ function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapse
   };
   return (
     <span className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
-      {lapsed ? "Expiré" : labels[status]}
+      {lapsed ? t("Expiré") : t(labels[status])}
     </span>
   );
 }
@@ -994,16 +1025,17 @@ function ReservationNote({
   isLapsed: boolean;
   confirmedVenueType: (w: Week) => VenueType | undefined;
 }) {
+  const t = useT(DASHBOARD);
   if (week.status !== "confirmed" || isLapsed) return null;
   const type = confirmedVenueType(week);
   if (type !== "restaurant" && type !== "museum") return null;
   return (
     <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
       <p className="text-sm font-medium" style={{ color: "#B08900" }}>
-        ⚠ Réservation requise
+        {t("⚠ Réservation requise")}
       </p>
       <p className="mt-1 text-xs" style={{ color: MUTED }}>
-        {week.venueName} n&apos;a pas été réservé pour vous — pensez à appeler ou réserver directement.
+        {t("{venue} n'a pas été réservé pour vous — pensez à appeler ou réserver directement.", { venue: week.venueName ?? "" })}
       </p>
     </div>
   );
@@ -1016,13 +1048,15 @@ function ReservationNote({
 // failure (no token, no email, or the Resend call itself failing) is
 // visibly different from success rather than silently the same green tick.
 function NotificationTrail({ log }: { log: Week["notificationLog"] }) {
+  const t = useT(DASHBOARD);
+  const { lang } = useLang();
   if (!log || log.length === 0) return null;
   const latest = log[log.length - 1];
   const delivered = latest.results.filter((r) => r.status === "push" || r.status === "email").length;
   const total = latest.results.length;
   const allDelivered = total > 0 && delivered === total;
-  const eventLabel = latest.event === "proposed" ? "Proposition" : "Confirmation";
-  const time = new Date(latest.sentAt).toLocaleString("fr-FR", {
+  const eventLabel = latest.event === "proposed" ? t("Proposition") : t("Confirmation");
+  const time = new Date(latest.sentAt).toLocaleString(DATE_LOCALE[lang], {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -1031,7 +1065,13 @@ function NotificationTrail({ log }: { log: Week["notificationLog"] }) {
 
   return (
     <p className="mt-2 text-xs" style={{ color: allDelivered ? MUTED : ACCENT }}>
-      {allDelivered ? "✓" : "⚠"} {eventLabel} notifiée {delivered}/{total} · {time}
+      {t("{icon} {event} notifiée {delivered}/{total} · {time}", {
+        icon: allDelivered ? "✓" : "⚠",
+        event: eventLabel,
+        delivered,
+        total,
+        time,
+      })}
     </p>
   );
 }
@@ -1053,6 +1093,7 @@ function TwoOptionPicker({
   onVote: (choice: "A" | "B") => void;
   voting: boolean;
 }) {
+  const t = useT(DASHBOARD);
   const [viewing, setViewing] = useState<"A" | "B">("A");
   const [dragX, setDragX] = useState(0);
   const draggingRef = useRef(false);
@@ -1098,7 +1139,7 @@ function TwoOptionPicker({
       >
         <VenuePhoto venueType={option.venueType} />
         <p className="text-xs" style={{ color: MUTED }}>
-          {viewing === "A" ? "Option 1 sur 2" : "Option 2 sur 2"}
+          {viewing === "A" ? t("Option 1 sur 2") : t("Option 2 sur 2")}
         </p>
         <p className="mt-1 text-base font-medium">{option.venueName}</p>
       </div>
@@ -1114,7 +1155,7 @@ function TwoOptionPicker({
         className="mt-3 w-full text-sm underline underline-offset-4 disabled:opacity-50"
         style={{ color: MUTED }}
       >
-        ← Voir l&apos;autre option
+        {t("← Voir l'autre option")}
       </button>
 
       <button
@@ -1124,7 +1165,7 @@ function TwoOptionPicker({
         className="mt-3 min-h-[56px] w-full rounded-full text-lg font-medium text-white disabled:opacity-50"
         style={{ backgroundColor: ACCENT }}
       >
-        Choisir cette option →
+        {t("Choisir cette option →")}
       </button>
     </div>
   );
