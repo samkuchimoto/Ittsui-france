@@ -11,6 +11,8 @@
 // the fallback): see lib/confirmationText.ts and lib/parseMeetingRequest.ts.
 // fal.ai (app/api/ai-venue-mood) isn't named: it is dormant (no
 // FAL_API_KEY in production) and only ever receives a venue category.
+// Also 2026-10-20: who is responsible (the publisher in /mentions-legales),
+// which the page never said.
 
 import { ACCENT } from "@/lib/theme";
 import type { Locale } from "@/lib/i18n";
@@ -30,6 +32,15 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
     intro:
       "Ce qu'Ittsui enregistre, en clair, et pourquoi. Ceci décrit ce que fait réellement l'application aujourd'hui — ce n'est pas un document juridique.",
     sections: [
+      {
+        title: "Responsable du traitement",
+        body: (
+          <>
+            Samuel Louissaint, personne physique, 13 rue André Chénier, porte 506, 92260 Fontenay-aux-Roses, France.
+            Pour toute question sur vos données : <Mail />.
+          </>
+        ),
+      },
       {
         title: "Connexion",
         body: "Vous vous connectez avec votre compte Google (via Firebase Authentication). Ittsui reçoit votre nom, votre e-mail et votre photo de profil Google — rien d'autre n'est demandé pour se connecter.",
@@ -101,6 +112,15 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
       "What Ittsui records, in plain words, and why. This describes what the app actually does today; it isn't a legal document.",
     sections: [
       {
+        title: "Data controller",
+        body: (
+          <>
+            Samuel Louissaint, an individual, 13 rue André Chénier, porte 506, 92260 Fontenay-aux-Roses, France. For
+            any question about your data: <Mail />.
+          </>
+        ),
+      },
+      {
         title: "Signing in",
         body: "You sign in with your Google account (through Firebase Authentication). Ittsui receives your name, your email address and your Google profile photo; nothing else is asked for to sign in.",
       },
@@ -166,6 +186,15 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
     intro:
       "Ittsuiが何を記録し、なぜそうするのかを、わかりやすく説明します。これは今のアプリが実際にしていることの説明で、法的な文書ではありません。",
     sections: [
+      {
+        title: "個人情報の管理者",
+        body: (
+          <>
+            Samuel Louissaint（個人）、13 rue André Chénier, porte 506, 92260 Fontenay-aux-Roses, France。データに関するお問い合わせ：
+            <Mail />
+          </>
+        ),
+      },
       {
         title: "ログイン",
         body: "Googleアカウントでログインします（Firebase Authentication経由）。Ittsuiが受け取るのは、お名前、メールアドレス、Googleのプロフィール写真だけです。ログインのためにそれ以外の情報を求めることはありません。",

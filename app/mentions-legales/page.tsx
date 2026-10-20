@@ -4,13 +4,10 @@
 // legally distinct from /confidentialite (data practices) — this page
 // is about who is legally responsible for the site's content.
 //
-// AUDIT NOTE: several fields below are marked [À COMPLÉTER] rather than
-// filled in. Fabricating a business name, SIRET, or address here would
-// be worse than leaving it blank — this notice exists precisely so the
-// legally responsible party is real and traceable. Fill these in with
-// your actual registered details (or your own name + address if
-// operating as an individual) before this page satisfies the legal
-// requirement, not just its appearance.
+// 2026-10-20: the publisher is Samuel Louissaint, as an individual, with
+// the details he gave. No SIRET: the business will be KUCHIMOTO LLC
+// (Wyoming), not a French company; its details go here once they exist.
+// The same identity is stated on kuchimoto.com and in /confidentialite.
 
 import { Fraunces, Work_Sans } from "next/font/google";
 import Link from "next/link";
@@ -44,14 +41,6 @@ function Item({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function ToComplete({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded px-1.5 py-0.5 text-sm" style={{ backgroundColor: `${ACCENT}1A`, color: ACCENT }}>
-      {children}
-    </span>
-  );
-}
-
 export default function MentionsLegalesPage() {
   return (
     <main
@@ -74,19 +63,23 @@ export default function MentionsLegalesPage() {
         <div className="mt-8">
           <Item title="Éditeur du site">
             <p>
-              <ToComplete>[À COMPLÉTER : nom ou raison sociale]</ToComplete>
+              Samuel Louissaint, personne physique
               <br />
-              <ToComplete>[À COMPLÉTER : statut juridique — entreprise individuelle, société, etc.]</ToComplete>
+              13 rue André Chénier, porte 506, 92260 Fontenay-aux-Roses, France
               <br />
-              <ToComplete>[À COMPLÉTER : numéro SIRET, si applicable]</ToComplete>
+              E-mail :{" "}
+              <a href="mailto:samuel@kuchimoto.com" style={{ color: ACCENT }}>
+                samuel@kuchimoto.com
+              </a>
               <br />
-              <ToComplete>[À COMPLÉTER : adresse du siège ou domicile professionnel]</ToComplete>
+              Téléphone :{" "}
+              <a href="tel:+33743798860" style={{ color: ACCENT }}>
+                07 43 79 88 60
+              </a>
             </p>
           </Item>
           <Item title="Directeur de la publication">
-            <p>
-              <ToComplete>[À COMPLÉTER : nom du responsable de la publication]</ToComplete>
-            </p>
+            <p>Samuel Louissaint</p>
           </Item>
           <Item title="Contact">
             <p>
@@ -97,7 +90,7 @@ export default function MentionsLegalesPage() {
           </Item>
           <Item title="Hébergement">
             <p>
-              Vercel Inc.
+              Vercel Inc., 440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis
               <br />
               <a href="https://vercel.com" style={{ color: ACCENT }}>
                 vercel.com
