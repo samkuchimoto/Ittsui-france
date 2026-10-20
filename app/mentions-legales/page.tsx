@@ -6,8 +6,9 @@
 //
 // 2026-10-20: the publisher is Samuel Louissaint, as an individual, with
 // the details he gave. No SIRET: the business will be KUCHIMOTO LLC
-// (Wyoming), not a French company; its details go here once they exist.
-// The same identity is stated on kuchimoto.com and in /confidentialite.
+// (Wyoming), not a French company, "en cours de création" (his call that
+// the process is under way); its details go here once registered. The
+// same identity is stated on kuchimoto.com and in /confidentialite.
 
 import { Fraunces, Work_Sans } from "next/font/google";
 import Link from "next/link";
@@ -64,6 +65,8 @@ export default function MentionsLegalesPage() {
           <Item title="Éditeur du site">
             <p>
               Samuel Louissaint, personne physique
+              <br />
+              Société : KUCHIMOTO LLC (Wyoming, États-Unis), en cours de création
               <br />
               13 rue André Chénier, porte 506, 92260 Fontenay-aux-Roses, France
               <br />
