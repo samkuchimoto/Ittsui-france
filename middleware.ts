@@ -94,12 +94,13 @@ function route(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/en",
     "/ja",
     "/es",
     "/he",
     "/paris",
-    "/en/:city",
+    // :path*, not :city: Next appends (.json)? to each source, which turns a
+    // bare trailing :city into a param that only matches ".json".
+    "/en/:path*",
     "/ja/tokyo",
     "/es/ciudad-de-mexico",
     "/he/tel-aviv",

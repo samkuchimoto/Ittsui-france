@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "funnel": "node scripts/funnel.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
