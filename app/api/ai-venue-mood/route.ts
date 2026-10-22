@@ -38,7 +38,10 @@ export async function POST(request: Request) {
   }
   const prompt = CATEGORY_PROMPTS[parsed.data.category];
 
-  const falKey = process.env.FAL_API_KEY;
+  // Off unless AI_VENUE_MOOD=on (2026-10-22): the discovery grid asked for
+  // a new paid image on every tile at every view, with no cache, while
+  // Ittsui earns nothing yet. The key stays in Vercel for when it's worth it.
+  const falKey = process.env.AI_VENUE_MOOD === "on" ? process.env.FAL_API_KEY : undefined;
   if (!falKey) {
     // The honest current state — no key configured yet. Not a server
     // error in the 500 sense; the caller's fallback path is the correct,
