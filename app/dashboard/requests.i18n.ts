@@ -5,6 +5,8 @@ import type { Catalog } from "@/lib/translate";
 
 export const REQUESTS: Catalog = {
   en: {
+    // The partner pilot
+    "Code au comptoir : {code}": "Counter code: {code}",
     Café: "Café",
     Restaurant: "Restaurant",
     Parc: "Park",
@@ -34,6 +36,8 @@ export const REQUESTS: Catalog = {
       "Your confirmed moments will appear here as they're confirmed.",
   },
   ja: {
+    // The partner pilot
+    "Code au comptoir : {code}": "お店で提示するコード：{code}",
     Café: "カフェ",
     Restaurant: "レストラン",
     Parc: "公園",

@@ -9,7 +9,7 @@ import { z } from "zod";
 import { verifyRequestUser } from "@/lib/firebaseAdmin";
 import { parseMeetingRequestText } from "@/lib/parseMeetingRequest";
 
-const bodySchema = z.object({ text: z.string().trim().min(3).max(400) });
+const bodySchema = z.object({ text: z.string().trim().min(3).max(400), lang: z.enum(["fr", "en", "ja"]).optional() });
 
 const EMPTY_RESULT = {
   recipientName: null,
@@ -29,7 +29,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "texte requis" }, { status: 400 });
   }
 
-  const result = await parseMeetingRequestText(parsed.data.text);
+  // Rules only (lib/parseMeetingRequest.ts): the app parses in the browser;
+  // this route stays for builds of the app that still call it.
+  const result = await parseMeetingRequestText(parsed.data.text, parsed.data.lang);
 
   // Always 200, even on a failed/low-confidence parse — the manual form is
   // the fallback, not an error state the client needs to branch on.

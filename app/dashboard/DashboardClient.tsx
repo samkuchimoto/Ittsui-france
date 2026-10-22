@@ -558,6 +558,7 @@ export default function DashboardClient() {
             />
             <PlusNudge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
             <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
+            <PartnerNote week={week} />
             <NotificationTrail log={week.notificationLog} />
 
             {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
@@ -616,6 +617,7 @@ export default function DashboardClient() {
             />
             <PlusNudge status={isLapsed(week) ? "cancelled" : week.status} lapsed={isLapsed(week)} />
             <ReservationNote week={week} isLapsed={isLapsed(week)} confirmedVenueType={confirmedVenueType} />
+            <PartnerNote week={week} />
             <NotificationTrail log={week.notificationLog} />
 
             {week.status === "proposed" && !isLapsed(week) && myResponse === null && (
@@ -902,6 +904,33 @@ function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean
       {t("— le prix d'un café pour garder ce lien vivant.")}
     </p>
   );
+}
+
+// The partner pilot (lib/partnerPilot.ts): a partner venue in a proposal
+// carries its perk, and a confirmed one the code to show at the counter.
+function PartnerNote({ week }: { week: Week }) {
+  const t = useT(DASHBOARD);
+  const label = (perk: string) => (perk ? t("Partenaire · {perk}", { perk }) : t("Partenaire Ittsui"));
+  if (week.status === "confirmed" && week.visit) {
+    return (
+      <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
+        <p className="text-sm font-medium" style={{ color: ACCENT }}>
+          {label(week.visit.perk)}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: MUTED }}>
+          {t("Code à montrer au comptoir : {code}", { code: week.visit.code })}
+        </p>
+      </div>
+    );
+  }
+  if (week.status === "proposed" && week.optionA?.partner) {
+    return (
+      <p className="mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}>
+        {week.optionA.venueName} · {label(week.optionA.partner.perk)}
+      </p>
+    );
+  }
+  return null;
 }
 
 function StatusBadge({ status, lapsed = false }: { status: Week["status"]; lapsed?: boolean }) {

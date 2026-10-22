@@ -129,6 +129,11 @@ function RequestRow({
             <p className="text-xs" style={{ color: MUTED }}>
               {t("{date} à {time}", { date: formatShortDate(request.date, lang), time: request.time })}
             </p>
+            {request.status === "accepted" && request.visitCode && (
+              <p className="text-xs font-medium" style={{ color: ACCENT }}>
+                {t("Code au comptoir : {code}", { code: request.visitCode })}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">

@@ -87,6 +87,9 @@ import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from
 import { langOf } from "@/lib/i18n";
 import { getPlan, recordRendezVous } from "@/lib/plan";
 import { notifyPlanLimit } from "@/lib/planEmails";
+import { partnerForRitual } from "@/lib/partnerPilot";
+import { makeT } from "@/lib/translate";
+import { EMAILS } from "@/lib/emails.i18n";
 
 const RAG_TIMEOUT_MS = 1500;
 
@@ -103,7 +106,7 @@ interface VenueProposal {
   optionA: VenueOption;
   optionB?: VenueOption; // present only when a second distinct real candidate existed
   confirmationText: string;
-  source: "rag-service" | "firestore-rule-engine" | "static-rule-engine";
+  source: "rag-service" | "firestore-rule-engine" | "static-rule-engine" | "partner";
 }
 
 export async function GET(request: Request) {
@@ -184,6 +187,18 @@ export async function GET(request: Request) {
       continue;
     }
 
+    // The partner pilot (lib/partnerPilot.ts): a partner venue whose slow
+    // hours cover this pair's slot, in their postal code, comes first as
+    // option A with its perk; the usual suggestion stays as option B, so
+    // the pair still chooses.
+    const partner = await partnerForRitual(pair, weekOf).catch(() => null);
+    if (partner) {
+      if (proposal.optionA.venueName !== partner.venueName) proposal.optionB = proposal.optionA;
+      proposal.optionA = partner;
+      proposal.source = "partner";
+      proposal.confirmationText = `${partner.venueName}, ${dayLabel(pair.agreedDay, langOf(pair.lang))} ${pair.agreedWindowStart}`;
+    }
+
     // Plus-only supplement (2026-08-28): a real, buildable benefit that
     // doesn't touch the "one proposal, one decision" surface at all — it
     // just makes the existing swap-to-an-alternative mechanic (already
@@ -198,10 +213,14 @@ export async function GET(request: Request) {
       if (extra) proposal.optionB = extra;
     }
 
-    const confirmationText =
+    const warmText =
       proposal.source === "rag-service" && langOf(pair.lang) === "fr"
         ? proposal.confirmationText
         : await withWarmConfirmation(pair, proposal, swapNote);
+    // The perk, after whatever the warm text says (lib/partnerPilot.ts).
+    const confirmationText = proposal.optionA.partner?.perk
+      ? `${warmText} · ${makeT(langOf(pair.lang), EMAILS)("Partenaire Ittsui : {perk}", { perk: proposal.optionA.partner.perk })}`
+      : warmText;
 
     const proposedTime = buildProposedTime(pair.agreedWindowStart);
 

@@ -5,6 +5,10 @@ import type { Catalog } from "@/lib/translate";
 
 export const DASHBOARD: Catalog = {
   en: {
+    // PartnerNote (the partner pilot)
+    "Partenaire · {perk}": "Partner · {perk}",
+    "Partenaire Ittsui": "Ittsui partner",
+    "Code à montrer au comptoir : {code}": "Code to show at the counter: {code}",
     "Ce mois-ci": "This month",
     "Cette année": "This year",
     "Cette semaine": "This week",
@@ -72,6 +76,10 @@ export const DASHBOARD: Catalog = {
     "Vérification échouée.": "Verification failed.",
   },
   ja: {
+    // PartnerNote (the partner pilot)
+    "Partenaire · {perk}": "パートナー・{perk}",
+    "Partenaire Ittsui": "Ittsuiパートナー",
+    "Code à montrer au comptoir : {code}": "お店で提示するコード：{code}",
     "Ce mois-ci": "今月",
     "Cette année": "今年",
     "Cette semaine": "今週",

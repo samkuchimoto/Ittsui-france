@@ -9,6 +9,10 @@ import type { Catalog } from "@/lib/translate";
 
 export const EMAILS: Catalog = {
   en: {
+    // The partner pilot (lib/partnerPilot.ts)
+    "Partenaire Ittsui : {perk}": "Ittsui partner: {perk}",
+    "Partenaire Ittsui : {perk}, pour vous deux.": "Ittsui partner: {perk}, for both of you.",
+    "Code à montrer au comptoir : {code}": "Code to show at the counter: {code}",
     // invite-partner
     hebdomadaire: "weekly",
     mensuel: "monthly",
@@ -74,6 +78,10 @@ export const EMAILS: Catalog = {
     "Le rituel Ittsui avec cette personne a été annulé.": "The Ittsui ritual with this person has been cancelled.",
   },
   ja: {
+    // The partner pilot (lib/partnerPilot.ts)
+    "Partenaire Ittsui : {perk}": "Ittsuiパートナー：{perk}",
+    "Partenaire Ittsui : {perk}, pour vous deux.": "Ittsuiパートナー：{perk}（おふたりに）",
+    "Code à montrer au comptoir : {code}": "お店で提示するコード：{code}",
     hebdomadaire: "毎週",
     mensuel: "毎月",
     annuel: "毎年",

@@ -7,6 +7,10 @@ import type { Catalog } from "@/lib/translate";
 
 export const REQUEST_NEW: Catalog = {
   en: {
+    // The partner pilot
+    "Partenaire · {perk}": "Partner · {perk}",
+    "Partenaire Ittsui": "Ittsui partner",
+    "heure creuse": "quiet hours",
     "Détection de votre position...": "Finding your position…",
     "Sélection des lieux...": "Choosing places…",
     cafés: "cafés",
@@ -120,6 +124,10 @@ export const REQUEST_NEW: Catalog = {
     "champs invalides": "Some fields aren't valid",
   },
   ja: {
+    // The partner pilot
+    "Partenaire · {perk}": "パートナー・{perk}",
+    "Partenaire Ittsui": "Ittsuiパートナー",
+    "heure creuse": "空いている時間帯",
     "Détection de votre position...": "現在地を確認中…",
     "Sélection des lieux...": "場所を選んでいます…",
     cafés: "カフェ",

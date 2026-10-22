@@ -28,6 +28,7 @@ import { frenchDateLabel } from "@/lib/proposalMessage";
 import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
+import { recordVisit } from "@/lib/partnerPilot";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -159,12 +160,33 @@ export async function POST(request: Request) {
     date: data.date,
     time: data.time,
   });
+  // The partner pilot (lib/partnerPilot.ts): accepted at a partner venue,
+  // the rendez-vous gets the code both people show at the counter.
+  const visitCode = data.partnerId
+    ? await recordVisit(data.partnerId, `request_${requestId}`, {
+        source: "request",
+        date: data.date,
+        time: data.time,
+        perk: data.partnerPerk ?? "",
+      }).catch((err) => {
+        console.error(`meeting-requests/respond: partner visit not recorded for ${requestId}`, err);
+        return null;
+      })
+    : null;
+  if (visitCode) await ref.update({ visitCode });
+  const visitLine = visitCode
+    ? [data.partnerPerk ? t("Partenaire Ittsui : {perk}, pour vous deux.", { perk: data.partnerPerk }) : "", t("Code à montrer au comptoir : {code}", { code: visitCode })]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+
   const sp = lang === "ja" ? "" : " ";
   const confirmationText =
     `${t("Rendez-vous confirmé :")}${sp}` +
     t("{venue} ({address}), le {date} à {time}.", { venue: data.venueName, address: data.venueAddress, date: dateLabel, time: data.time }) +
     "\n" +
-    t("Ajouter à Google Agenda : {url}", { url: calendarUrl });
+    t("Ajouter à Google Agenda : {url}", { url: calendarUrl }) +
+    (visitLine ? `\n${visitLine}` : "");
   const confirmationHtml =
     `<p><strong>${t("Rendez-vous confirmé :")}</strong>${sp}` +
     t("{venue} ({address}), le {date} à {time}.", {
@@ -174,7 +196,8 @@ export async function POST(request: Request) {
       time: escapeHtml(data.time),
     }) +
     `</p>` +
-    `<p><a href="${calendarUrl}">${t("Ajouter à Google Agenda")}</a></p>`;
+    `<p><a href="${calendarUrl}">${t("Ajouter à Google Agenda")}</a></p>` +
+    (visitLine ? `<p><strong>${escapeHtml(visitLine)}</strong></p>` : "");
   const [senderSent, recipientSent] = await Promise.all([
     data.senderEmail
       ? sendEmail({
@@ -214,6 +237,7 @@ export async function POST(request: Request) {
     venueType: data.venueType ?? null,
     date: data.date,
     time: data.time,
+    visit: visitCode ? { code: visitCode, perk: data.partnerPerk ?? "" } : null,
   });
 }
 

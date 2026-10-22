@@ -50,5 +50,9 @@ export async function GET(request: Request, { params }: { params: { requestId: s
     // The sender's invite code, on the guest's "your turn" link: if the
     // guest starts using Ittsui, both get a month of Plus (lib/referral.ts).
     senderRef: data.senderId ? await referralCodeOf(data.senderId).catch(() => null) : null,
+    // The partner pilot (lib/partnerPilot.ts): the perk, then once
+    // accepted, the code to show at the counter.
+    perk: data.partnerPerk ?? null,
+    visit: data.status === "accepted" && data.visitCode ? { code: data.visitCode, perk: data.partnerPerk ?? "" } : null,
   });
 }

@@ -1,5 +1,7 @@
 // Shared types — the state machine's shape, used across frontend + API routes
 
+import type { SlowHour } from "@/lib/partnerHours";
+
 export type VenueType = "cafe" | "restaurant" | "home" | "park" | "museum";
 
 export type DietaryFilter =
@@ -115,12 +117,18 @@ export interface VenueOption {
   // the RAG tier's response shape, and by any week proposed before this
   // field existed — both read-side as "no confident photo," not an error.
   venueType?: VenueType;
+  // Set when this option is a partner venue of the pilot
+  // (lib/partnerPilot.ts): shown as "Partenaire · {perk}".
+  partner?: { id: string; perk: string };
 }
 
 export interface Week {
   id: string;
   pairId: string;
   weekOf: string; // ISO date, Monday of that week
+  // A confirmed rendez-vous at a partner venue: the code both people show
+  // at the counter, which the venue validates on its page.
+  visit?: { partnerId: string; code: string; perk: string };
   venueName: string;
   venueAddress?: string;
   confirmationText: string; // Groq-generated one-liner, e.g. "Café X, dimanche 15h30"
@@ -186,6 +194,11 @@ export type MeetingRequestStatus = "pending" | "accepted" | "declined" | "expire
 export interface MeetingRequest {
   id: string;
   senderId: string;
+  // Chosen from the pilot's partner venues (lib/partnerPilot.ts): the perk
+  // shown with the venue, and once accepted, the code to show at the counter.
+  partnerId?: string;
+  partnerPerk?: string;
+  visitCode?: string;
   senderName: string;
   senderEmail: string | null;
   recipientName: string; // name the sender gave for the recipient
@@ -260,6 +273,10 @@ export interface VenuePartner {
   // for venue owners).
   manageToken?: string;
   slots?: VenuePartnerSlot[];
+  // The pilot (lib/partnerHours.ts): weekly slow hours and the perk for
+  // Ittsui guests, set on the venue's own page.
+  perk?: string;
+  slowHours?: SlowHour[];
   createdAt: string;
 }
 

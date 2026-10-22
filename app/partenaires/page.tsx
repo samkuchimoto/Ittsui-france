@@ -82,6 +82,17 @@ export default function PartenairesPage() {
           Chaque semaine, Ittsui propose un lieu à deux personnes qui se retrouvent. L&apos;idée : que votre
           café, votre restaurant ou votre lieu puisse être ce lieu-là directement, réservable sans appel.
         </p>
+        {/* The partner pilot (lib/partnerPilot.ts), Paris 11e first. */}
+        <div className="mt-5 rounded-2xl border p-4" style={{ borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }}>
+          <p className="text-sm font-medium" style={{ color: ACCENT }}>
+            Pilote Paris 11e : gratuit
+          </p>
+          <p className="mt-1 text-sm" style={{ color: INK }}>
+            Indiquez vos heures creuses et un petit avantage (un café offert, par exemple). Pendant ces heures, Ittsui
+            propose votre lieu en premier aux personnes du quartier, avec « Partenaire · votre avantage ». Vous voyez
+            chaque rendez-vous apporté et validez la venue avec un code. Rien n&apos;est facturé pendant le pilote.
+          </p>
+        </div>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Une fois votre candidature validée, vous recevez votre propre lien pour ouvrir les créneaux où
           vous pouvez accueillir une rencontre — le reste (trouver le bon créneau, confirmer, prévenir tout

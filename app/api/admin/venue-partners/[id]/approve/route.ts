@@ -40,14 +40,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const sent = await sendEmail({
     to: data.contactEmail,
     subject: "Votre lieu est en ligne sur Ittsui",
-    text: `${data.venueName} est maintenant un lieu partenaire Ittsui. Gérez vos créneaux disponibles ici : ${url}`,
+    text: `${data.venueName} est maintenant un lieu partenaire Ittsui. Indiquez vos heures creuses et votre avantage pour les clients Ittsui, puis suivez les rendez-vous apportés, ici : ${url}`,
     html: emailShell({
       mascotName: "bao",
       title: `${data.venueName} est en ligne sur Ittsui`,
       bodyHtml: `
         <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
-          Ajoutez les créneaux où vous pouvez accueillir une rencontre Ittsui — c'est la seule
-          chose à faire pour commencer à recevoir des réservations.
+          Indiquez vos heures creuses et votre avantage pour les clients Ittsui (un café offert,
+          par exemple) : pendant ces heures, Ittsui propose votre lieu en premier aux personnes
+          du quartier. Votre page compte chaque rendez-vous apporté.
         </p>
         ${emailButton(url, "Gérer mes créneaux")}
         <p style="font-size: 12px; color: #8A8378; text-align: center;">

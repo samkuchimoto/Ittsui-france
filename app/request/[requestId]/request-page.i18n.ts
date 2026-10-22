@@ -6,6 +6,10 @@ import type { Catalog } from "@/lib/translate";
 
 export const REQUEST_PAGE: Catalog = {
   en: {
+    // The partner pilot
+    "Partenaire · {perk}": "Partner · {perk}",
+    "Partenaire Ittsui": "Ittsui partner",
+    "Code à montrer au comptoir : {code}": "Code to show at the counter: {code}",
     Café: "Café",
     Restaurant: "Restaurant",
     Parc: "Park",
@@ -54,6 +58,10 @@ export const REQUEST_PAGE: Catalog = {
     "cette demande ne correspond pas à votre compte": "This request doesn't match your account",
   },
   ja: {
+    // The partner pilot
+    "Partenaire · {perk}": "パートナー・{perk}",
+    "Partenaire Ittsui": "Ittsuiパートナー",
+    "Code à montrer au comptoir : {code}": "お店で提示するコード：{code}",
     Café: "カフェ",
     Restaurant: "レストラン",
     Parc: "公園",

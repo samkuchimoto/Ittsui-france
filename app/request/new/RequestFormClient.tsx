@@ -17,6 +17,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { Capacitor } from "@capacitor/core";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { SignInGate } from "@/app/components/SignInGate";
+import { dayOfDate, inSlowHours, type SlowHour } from "@/lib/partnerHours";
+import { parseMeetingRequest } from "@/lib/parseMeetingRequest";
 import { PlusOffer } from "@/app/components/PlanCard";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
@@ -149,6 +151,8 @@ interface Draft {
   postalCode: string;
   date: string;
   time: string;
+  // A partner venue of the pilot (lib/partnerPilot.ts), when one was picked.
+  partnerId: string | null;
 }
 
 function emptyDraft(): Draft {
@@ -161,6 +165,7 @@ function emptyDraft(): Draft {
     venueAddress: "",
     venueType: null,
     postalCode: "",
+    partnerId: null,
     date: today.toISOString().slice(0, 10),
     time: "15:00",
   };
@@ -171,6 +176,16 @@ function emptyDraft(): Draft {
 // SetupClient.tsx's one-tap preview reads. No per-item venueType here
 // (STATIC_CATALOG is keyed BY type but this flattens across all of
 // them), unlike the real geo suggestions, which do carry one.
+/** A partner venue of the pilot near the typed postal code (/api/venue-partners/nearby). */
+interface NearbyPartner {
+  id: string;
+  name: string;
+  address: string;
+  venueType?: VenueType;
+  perk: string;
+  slowHours: SlowHour[];
+}
+
 function staticSuggestionsForPostalCode(postalCode: string): { name: string; address: string }[] {
   const metro = departmentFromPostalCode(postalCode);
   if (!metro) return [];
@@ -208,6 +223,7 @@ export default function RequestFormClient() {
   } | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [partners, setPartners] = useState<NearbyPartner[]>([]);
   // The postal code's centre, once resolved — the reference point for the
   // name search and the per-type lists (the detected position is used
   // when there's no postal code).
@@ -369,11 +385,16 @@ export default function RequestFormClient() {
       setSuggestions([]);
       setSuggestionsLoading(false);
       setAreaCoords(null);
+      setPartners([]);
       return;
     }
     let cancelled = false;
     const timer = setTimeout(async () => {
       setSuggestionsLoading(true);
+      fetch(`/api/venue-partners/nearby?postalCode=${draft.postalCode}`)
+        .then((r) => r.json())
+        .then((d) => !cancelled && setPartners(d.results ?? []))
+        .catch(() => !cancelled && setPartners([]));
       const coords = await postalCodeToCoords(draft.postalCode);
       if (cancelled) return;
       setAreaCoords(coords);
@@ -602,7 +623,17 @@ export default function RequestFormClient() {
       venueName: v.name,
       venueAddress: v.address,
       venueType: v.venueType ?? d.venueType,
+      partnerId: null,
     }));
+    setNameQuery("");
+    setNameMatches([]);
+    setNameNotFound(false);
+  }
+
+  // A partner venue of the pilot (lib/partnerPilot.ts): the request then
+  // carries its id, so the guest sees the perk and both get the code.
+  function pickPartner(p: NearbyPartner) {
+    setDraft((d) => ({ ...d, venueName: p.name, venueAddress: p.address, venueType: p.venueType ?? d.venueType, partnerId: p.id }));
     setNameQuery("");
     setNameMatches([]);
     setNameNotFound(false);
@@ -632,32 +663,14 @@ export default function RequestFormClient() {
   // and can edit every field before tapping "Envoyer".
   async function handleParseFreeText() {
     if (!freeText.trim()) return;
-    if (!user) {
-      setParseMessage(t("Connectez-vous pour utiliser le remplissage automatique."));
-      return;
-    }
     setParsing(true);
     setParseMessage(null);
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch("/api/parse-meeting-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ text: freeText, lang }),
-      });
-      const data = await res.json().catch(() => null);
-      const result = data?.result as
-        | {
-            recipientName: string | null;
-            venueName: string | null;
-            venueAddress: string | null;
-            venueType: VenueType | null;
-            date: string | null;
-            time: string | null;
-          }
-        | undefined;
+      // Rules in the browser (lib/parseMeetingRequest.ts): instant, free,
+      // offline, no account needed; nothing leaves the phone.
+      const result = parseMeetingRequest(freeText, lang);
 
-      if (!res.ok || !result) {
+      if (!result) {
         setParseMessage(t("Rien n'a pu être deviné — complétez ci-dessous."));
         return;
       }
@@ -827,6 +840,7 @@ export default function RequestFormClient() {
           venueName: draft.venueName,
           venueAddress: draft.venueAddress,
           ...(draft.venueType ? { venueType: draft.venueType } : {}),
+          ...(draft.partnerId ? { partnerId: draft.partnerId } : {}),
           date: draft.date,
           time: draft.time,
           lang,
@@ -1371,6 +1385,32 @@ export default function RequestFormClient() {
                   {t("Recherche de lieux près de {code}...", { code: draft.postalCode })}
                 </p>
               )}
+              {/* The pilot's partner venues first (lib/partnerPilot.ts), the
+                  ones whose slow hours fit the chosen day and time on top. */}
+              {partners.length > 0 && (
+                <div className="mt-2 flex flex-col gap-2">
+                  {[...partners]
+                    .map((p) => ({ p, slow: inSlowHours(p.slowHours, dayOfDate(draft.date), draft.time) }))
+                    .sort((a, b) => Number(b.slow) - Number(a.slow))
+                    .map(({ p, slow }) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => pickPartner(p)}
+                        className="rounded-2xl border px-4 py-2.5 text-left"
+                        style={{ borderColor: draft.partnerId === p.id ? ACCENT : BORDER, backgroundColor: draft.partnerId === p.id ? `${ACCENT}0D` : "white" }}
+                      >
+                        <span className="block text-sm font-medium" style={{ color: INK }}>
+                          {p.name}
+                        </span>
+                        <span className="block text-xs font-medium" style={{ color: ACCENT }}>
+                          {p.perk ? t("Partenaire · {perk}", { perk: p.perk }) : t("Partenaire Ittsui")}
+                          {slow ? ` · ${t("heure creuse")}` : ""}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              )}
               {suggestions.length > 0 && (
                 <div className={`mt-2 flex flex-wrap gap-2 ${simpleMode ? "gap-3" : ""}`}>
                   {suggestions.map((v) => (
@@ -1399,6 +1439,7 @@ export default function RequestFormClient() {
                     value={draft.venueName}
                     onChange={(e) => {
                       update("venueName", e.target.value);
+                      update("partnerId", null);
                       setNameQuery(e.target.value);
                     }}
                     autoComplete="off"

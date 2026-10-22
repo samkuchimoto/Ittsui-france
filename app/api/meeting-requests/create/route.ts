@@ -16,6 +16,7 @@ import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
 import { getPlan, recordRendezVous } from "@/lib/plan";
+import { partnerNamed } from "@/lib/partnerPilot";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -54,6 +55,8 @@ const createSchema = z
     // The sender's app language: the email below goes out in it, and
     // /request/{id} opens in it (see lib/types.ts MeetingRequest.lang).
     lang: z.enum(["fr", "en", "ja"]).optional(),
+    // A partner venue picked in the form (lib/partnerPilot.ts); checked below.
+    partnerId: z.string().max(64).optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, {
     message: "indiquez un e-mail ou un numéro de téléphone",
@@ -89,6 +92,9 @@ export async function POST(request: Request) {
   const plan = await getPlan(uid);
   if (!plan.canCreate) return NextResponse.json({ error: "plan_limit", plan }, { status: 402 });
 
+  // Only an active partner under the very name picked counts.
+  const partner = parsed.data.partnerId ? await partnerNamed(parsed.data.partnerId, venueName).catch(() => null) : null;
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + REQUEST_EXPIRY_DAYS);
 
@@ -103,6 +109,7 @@ export async function POST(request: Request) {
     venueName,
     venueAddress,
     ...(venueType ? { venueType } : {}),
+    ...(partner ? { partnerId: partner.id, partnerPerk: partner.perk ?? "" } : {}),
     date,
     time,
     lang,
@@ -138,6 +145,7 @@ export async function POST(request: Request) {
         "\n\n" +
         t("Lieu : {venue} ({address})", { venue: venueName, address: venueAddress }) +
         "\n" +
+        (partner?.perk ? t("Partenaire Ittsui : {perk}, pour vous deux.", { perk: partner.perk }) + "\n" : "") +
         t("Date : {date} à {time}", { date: dateLabel, time }) +
         "\n\n" +
         t("Pour accepter ou décliner, connectez-vous ici : {url}", { url: requestUrl }) +
@@ -153,6 +161,7 @@ export async function POST(request: Request) {
             <strong style="color: #1C1917;">${escapeHtml(venueName)}</strong> (${escapeHtml(venueAddress)})<br>
             ${t("{date} à {time}", { date: escapeHtml(dateLabel), time: escapeHtml(time) })}
           </p>
+          ${partner?.perk ? `<p style="font-size: 14px; font-weight: 600; color: #B84E2A; text-align: center;">${escapeHtml(t("Partenaire Ittsui : {perk}, pour vous deux.", { perk: partner.perk }))}</p>` : ""}
           ${emailButton(requestUrl, t("Accepter ou décliner"))}
           <p style="text-align: center; font-size: 13px;">
             <a href="${calendarUrl}" style="color: #565049;">${t("Ajouter à Google Agenda")}</a>${lang === "ja" ? "" : " "}${t("(dès maintenant, avant même de répondre)")}

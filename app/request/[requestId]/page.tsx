@@ -52,6 +52,7 @@ interface RequestPreview {
   date: string;
   time: string;
   requiresLogin: boolean;
+  perk?: string | null;
 }
 
 interface AcceptedDetails {
@@ -60,6 +61,7 @@ interface AcceptedDetails {
   venueType: VenueType | null;
   date: string;
   time: string;
+  visit?: { code: string; perk: string } | null;
 }
 
 type Status = "checking" | "ready" | "not_found" | "declining" | "declined" | "accepting" | "accepted" | "error";
@@ -115,6 +117,11 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
         </div>
       )}
       <p className="text-base font-medium">{preview.venueName}</p>
+      {preview.perk && (
+        <p className="mt-0.5 text-xs font-medium" style={{ color: ACCENT }}>
+          {t("Partenaire · {perk}", { perk: preview.perk })}
+        </p>
+      )}
       {/* The invitee is the one person on this screen who has never seen
           the venue and still has to physically get there. Leaving the
           address as dead text was the "Adress not / Je rentre" finding at
@@ -172,6 +179,7 @@ export default function RequestResponsePage() {
             venueType: data.venueType ?? null,
             date: data.date,
             time: data.time,
+            visit: data.visit ?? null,
           });
           setStatus("accepted");
           return;
@@ -248,6 +256,7 @@ export default function RequestResponsePage() {
         venueType: data.venueType ?? null,
         date: data.date,
         time: data.time,
+        visit: data.visit ?? null,
       });
       setStatus("accepted");
     } catch (err) {
@@ -397,6 +406,16 @@ export default function RequestResponsePage() {
           >
             {t("✓ Calé sur l'agenda")}
           </span>
+        )}
+        {accepted?.visit && (
+          <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
+            <p className="text-sm font-medium" style={{ color: ACCENT }}>
+              {accepted.visit.perk ? t("Partenaire · {perk}", { perk: accepted.visit.perk }) : t("Partenaire Ittsui")}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: MUTED }}>
+              {t("Code à montrer au comptoir : {code}", { code: accepted.visit.code })}
+            </p>
+          </div>
         )}
         {accepted && (accepted.venueType === "restaurant" || accepted.venueType === "museum") && (
           <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>

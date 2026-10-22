@@ -1,7 +1,8 @@
 "use client";
 // /app/partenaires/[id]/gerer/page.tsx
-// A venue partner's own view: add/remove the specific open slots
-// they're willing to host an Ittsui rendez-vous at. Token-protected bearer
+// A venue partner's own view: the partner pilot (PilotPanel: slow hours,
+// perk, visits and code validation), then the specific open slots they're
+// willing to host an Ittsui rendez-vous at. Token-protected bearer
 // link (see the approval email) — no login, same trust model as every
 // other bearer link in this app.
 
@@ -12,6 +13,7 @@ import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import type { VenuePartnerSlot } from "@/lib/types";
+import { PilotPanel } from "./PilotPanel";
 
 export default function ManagePartnerSlotsPage() {
   const params = useParams<{ id: string }>();
@@ -99,6 +101,9 @@ export default function ManagePartnerSlotsPage() {
             <h1 className="mt-6" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.75rem" }}>
               {venueName}
             </h1>
+            {token && <PilotPanel id={params.id} token={token} />}
+
+            <h2 className="mt-10 text-sm font-medium">Créneaux réservables (facultatif)</h2>
             <p className="mt-2 text-sm" style={{ color: MUTED }}>
               Ajoutez les créneaux où vous pouvez accueillir une rencontre Ittsui. Un créneau déjà réservé
               (en vert) ne peut plus être retiré — la personne compte dessus.

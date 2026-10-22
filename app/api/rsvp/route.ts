@@ -22,6 +22,7 @@ import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
 import type { Pair, VenueOption, Week } from "@/lib/types";
+import { recordVisit } from "@/lib/partnerPilot";
 
 const VALID_RESPONSES = ["yes", "no", "A", "B"] as const;
 type ResponseValue = (typeof VALID_RESPONSES)[number];
@@ -145,6 +146,19 @@ export async function POST(request: Request) {
   }
 
   if (justResolved) logEvent("week_confirmed", { pairId, weekId });
+
+  // The partner pilot (lib/partnerPilot.ts): confirmed at a partner venue,
+  // the rendez-vous gets the code both people show at the counter.
+  const confirmedOption = chosenOption ?? week.optionA ?? null;
+  if (justResolved && confirmedOption?.partner) {
+    const { date, time } = parisDateTimeParts(week.proposedTime);
+    const { id, perk } = confirmedOption.partner;
+    const code = await recordVisit(id, `ritual_${pairId}_${weekId}`, { source: "ritual", date, time, perk }).catch((err) => {
+      console.error(`rsvp: partner visit not recorded for ${pairId}/${weekId}`, err);
+      return null;
+    });
+    if (code) await weekRef.update({ visit: { partnerId: id, code, perk } });
+  }
 
   // From here on, only the one request that actually witnessed the
   // transition to "confirmed" reaches this point — the transaction above
