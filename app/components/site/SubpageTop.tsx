@@ -7,7 +7,7 @@ import { MUTED } from "@/lib/theme";
 import { pagePath, type Locale, type PublicPage } from "@/lib/i18n";
 import { LangSwitch } from "@/app/components/site/LangSwitch";
 
-const BACK: Record<Locale, string> = { fr: "← Retour", en: "← Back", ja: "← 戻る", es: "← Volver", he: "חזרה →" };
+const BACK: Record<Locale, string> = { fr: "← Retour", en: "← Back", ja: "← 戻る", es: "← Volver", he: "→ חזרה" };
 
 export function SubpageTop({ page, lang, className = "" }: { page: PublicPage; lang: Locale; className?: string }) {
   return (

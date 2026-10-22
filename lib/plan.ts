@@ -15,6 +15,9 @@
 
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { logEvent } from "@/lib/analytics";
+import { isCityId } from "@/lib/cities";
+import { isLocale } from "@/lib/i18n";
 import { FREE_PER_MONTH, REFERRAL_DAYS, TRIAL_DAYS, type Plan } from "@/lib/planConfig";
 import { ensureReferralCode, referrerFor, rewardReferrer } from "@/lib/referral";
 
@@ -49,11 +52,30 @@ function billingRef(uid: string) {
 }
 
 /**
+ * Where a new account came from (`source`, the ittsui_src cookie set by
+ * middleware.ts): the city page, language and campaign. Only counted, in an
+ * account_created event with no identifier, never stored with the account.
+ */
+async function countNewAccount(source: string | undefined, referred: boolean): Promise<void> {
+  const params = new URLSearchParams(source ?? "");
+  const city = params.get("city");
+  const lang = params.get("lang");
+  const tag = (value: string | null) => (value ? value.replace(/[^\w.-]/g, "").slice(0, 40) || null : null);
+  await logEvent("account_created", {
+    city: isCityId(city) ? city : null,
+    lang: isLocale(lang) ? lang : null,
+    utmSource: tag(params.get("utm_source")),
+    utmCampaign: tag(params.get("utm_campaign")),
+    referred,
+  });
+}
+
+/**
  * The person's billing doc, created with a fresh trial the first time. A
  * valid invite code at that moment (`invite`, from the ittsui_ref cookie)
  * adds REFERRAL_DAYS and rewards the person who shared it.
  */
-export async function getBilling(uid: string, invite?: string): Promise<Billing> {
+export async function getBilling(uid: string, invite?: string, source?: string): Promise<Billing> {
   const ref = billingRef(uid);
   const snap = await ref.get();
   if (snap.exists) return snap.data() as Billing;
@@ -66,6 +88,7 @@ export async function getBilling(uid: string, invite?: string): Promise<Billing>
     .then(() => true)
     .catch(() => false);
   if (created && referrer) await rewardReferrer(referrer).catch((err) => console.error("referral: reward failed", err));
+  if (created) await countNewAccount(source, Boolean(referrer));
   return ((await ref.get()).data() as Billing) ?? { trialEndsAt };
 }
 
@@ -97,9 +120,9 @@ export function planOf(billing: Billing, legacyPlus = false, now = new Date()): 
   return { tier: "free", ...common, limit: FREE_PER_MONTH, canCreate: used < FREE_PER_MONTH };
 }
 
-/** `invite` only matters the first time (see getBilling). */
-export async function getPlan(uid: string, invite?: string): Promise<Plan> {
-  const [billing, legacy] = await Promise.all([getBilling(uid, invite), hasLegacyPlus(uid)]);
+/** `invite` and `source` only matter the first time (see getBilling). */
+export async function getPlan(uid: string, invite?: string, source?: string): Promise<Plan> {
+  const [billing, legacy] = await Promise.all([getBilling(uid, invite, source), hasLegacyPlus(uid)]);
   const referralCode = await ensureReferralCode(uid, billing.referralCode);
   return planOf({ ...billing, referralCode }, legacy);
 }

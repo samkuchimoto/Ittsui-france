@@ -96,7 +96,7 @@ export function StartRitualField({ onDark = false, lang = "fr" }: { onDark?: boo
           style={{ backgroundColor: ACCENT }}
         >
           {t.start}
-          <IconArrowRight className="h-4 w-4" />
+          <IconArrowRight className="h-4 w-4 rtl:-scale-x-100" />
         </button>
       </div>
       <p

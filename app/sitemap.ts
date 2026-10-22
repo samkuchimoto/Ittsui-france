@@ -8,10 +8,12 @@
 //
 // 2026-10-20: the public pages exist in French, English and Japanese
 // (lib/i18n.ts); each is listed with its hreflang alternates. The partner
-// directory and the legal notice are French only.
+// directory and the legal notice are French only. 2026-10-23: the city
+// landing pages too.
 
 import type { MetadataRoute } from "next";
 import { LOCALES, PUBLIC_PAGES, pagePath } from "@/lib/i18n";
+import { CITIES, CITY_IDS } from "@/lib/cities";
 
 const BASE_URL = "https://www.ittsui.fr";
 const url = (path: string) => `${BASE_URL}${path === "/" ? "" : path}`;
@@ -34,5 +36,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly" as const,
     priority: 0.5,
   }));
-  return [...translated, ...frenchOnly];
+  // The eight city landing pages (lib/cities.ts City.landing), each with its other languages.
+  const cities: MetadataRoute.Sitemap = CITY_IDS.flatMap((id) => {
+    const versions = Object.entries(CITIES[id].landing);
+    const languages = Object.fromEntries(versions.map(([lang, path]) => [lang === "es" ? "es-MX" : lang, url(path)]));
+    return versions.map(([, path]) => ({
+      url: url(path),
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+      alternates: { languages },
+    }));
+  });
+  return [...translated, ...frenchOnly, ...cities];
 }

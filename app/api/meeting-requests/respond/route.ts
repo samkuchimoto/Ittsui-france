@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
   if (decline) {
     await ref.update({ status: "declined", respondedAt: new Date().toISOString() });
-    logEvent("custom_rendezvous_responded", { requestId, response: "declined" });
+    logEvent("custom_rendezvous_responded", { requestId, response: "declined", cityId: cityOf(data.cityId).id, lang: langOf(data.lang) });
     if (data.senderEmail) {
       const sent = await sendEmail({
         to: data.senderEmail,
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     ...(userId ? { recipientId: userId } : {}),
     respondedAt: new Date().toISOString(),
   });
-  logEvent("custom_rendezvous_responded", { requestId, response: "accepted" });
+  logEvent("custom_rendezvous_responded", { requestId, response: "accepted", cityId: city.id, lang });
 
   // Both parties notified by email, as required — the sender gets
   // confirmation, and the recipient gets a copy back as their own record

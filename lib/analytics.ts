@@ -24,11 +24,17 @@ export type AnalyticsEvent =
   | "custom_rendezvous_created"
   | "custom_rendezvous_responded"
   | "invite_activated"
-  | "gesture_sent";
+  | "gesture_sent"
+  // A city landing page seen (app/api/landing-view), and a new account with
+  // the city page or campaign it first came through: no identifier in either.
+  | "landing_view"
+  | "account_created";
 
-export function logEvent(name: AnalyticsEvent, properties: Record<string, string | number | boolean | null> = {}): void {
-  adminDb
+/** Returns the write, for the rare caller whose whole job it is (it never rejects). */
+export function logEvent(name: AnalyticsEvent, properties: Record<string, string | number | boolean | null> = {}): Promise<void> {
+  return adminDb
     .collection("events")
     .add({ name, ts: new Date().toISOString(), ...properties })
+    .then(() => undefined)
     .catch((err) => console.error(`analytics: failed to log "${name}"`, err));
 }

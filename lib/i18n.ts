@@ -58,7 +58,7 @@ export function dirOf(lang: Locale): "rtl" | "ltr" {
 /** The switch's labels: FR | EN | 日本語. */
 export const LOCALE_LABEL: Record<Locale, string> = { fr: "FR", en: "EN", ja: "日本語", es: "ES", he: "עברית" };
 
-const OG_LOCALE: Record<Locale, string> = { fr: "fr_FR", en: "en_GB", ja: "ja_JP", es: "es_MX", he: "he_IL" };
+export const OG_LOCALE: Record<Locale, string> = { fr: "fr_FR", en: "en_GB", ja: "ja_JP", es: "es_MX", he: "he_IL" };
 
 const PATHS = {
   home: { fr: "/", en: "/en", ja: "/ja", es: "/es", he: "/he" },

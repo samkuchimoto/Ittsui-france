@@ -140,7 +140,7 @@ const COPY: Record<
     no: "No puedo",
     explain: "Un enlace, un toque, y el momento queda en su calendario. Sin cuenta ni app que instalar de su lado.",
     retry: "Probar la demo otra vez",
-    rendezVous: (when) => `Cita · ${when}`,
+    rendezVous: (when) => `Encuentro · ${when}`,
     alternative: (when) => `Alternativa 1/1 · ${when}`,
     seePlace: "Ver el lugar",
     original: "Opción original",

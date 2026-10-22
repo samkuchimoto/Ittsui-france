@@ -33,11 +33,11 @@ const COPY = {
     after: "来月になると、無料のランデヴーはまた自動で使えるようになります。",
   },
   es: {
-    subject: "Ittsui: ya usaste la cita gratis de este mes",
-    title: "La cita gratis del mes ya se usó",
-    body: "Esta semana Ittsui no propuso un momento con {name}: el plan gratis incluye una cita al mes, y la de este mes ya se usó. Con Ittsui Plus ({price} al mes, sin plazo forzoso), las propuestas vuelven cada semana, con todas las personas que te importan.",
+    subject: "Ittsui: ya usaste el encuentro gratis de este mes",
+    title: "El encuentro gratis del mes ya se usó",
+    body: "Esta semana Ittsui no propuso un momento con {name}: el plan gratis incluye un encuentro al mes, y el de este mes ya se usó. Con Ittsui Plus ({price} al mes, sin plazo forzoso), las propuestas vuelven cada semana, con todas las personas que te importan.",
     button: "Pasarme a Plus",
-    after: "El próximo mes, tu cita gratis vuelve sola.",
+    after: "El próximo mes, tu encuentro gratis vuelve solo.",
   },
   he: {
     subject: "Ittsui: הפגישה החינמית של החודש כבר נוצלה",

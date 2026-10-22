@@ -6,8 +6,8 @@ import { HomeView } from "@/app/components/site/HomeView";
 export const metadata = translatedMetadata(
   "home",
   "he",
-  "Ittsui · פגישה אחת בשבוע עם האנשים שחשובים לך",
-  "Ittsui בוחרת מקום ושעה למפגש עם מישהו קרוב. האורח שלך לא צריך אפליקציה או חשבון.",
+  "Ittsui · הצעה אחת. החלטה אחת. יותר זמן עם האנשים שחשובים לכם",
+  "Ittsui בוחרת מקום ושעה למפגש עם מישהו קרוב. מאשרים בנגיעה אחת, ומי שמוזמן עונה מקישור, בלי להתקין כלום.",
 );
 
 export default function HomeHe() {

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
+import { cityOf } from "@/lib/cities";
 import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
     userIds: [inviterUid, userId],
     status: "active",
   });
-  logEvent("invite_activated", { pairId });
+  logEvent("invite_activated", { pairId, cityId: cityOf(pair.cityId).id, lang: langOf(pair.lang) });
 
   const sent = await notifyInviter(
     inviterUid,

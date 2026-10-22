@@ -32,6 +32,8 @@ export interface City {
   frenchData: boolean;
   /** How OpenStreetMap names parks and museums here, for the venue suggestions. */
   osmWords: { park: string; museum: string };
+  /** The city's landing page in each language it has one in (app/components/site/CityLanding.tsx). */
+  landing: Partial<Record<Lang, string>>;
 }
 
 export const CITIES: Record<CityId, City> = {
@@ -47,6 +49,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: true,
     osmWords: { park: "parc", museum: "musée" },
+    landing: { fr: "/paris", en: "/en/paris" },
   },
   "new-york": {
     id: "new-york",
@@ -60,6 +63,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: false,
     frenchData: false,
     osmWords: { park: "park", museum: "museum" },
+    landing: { en: "/en/new-york" },
   },
   london: {
     id: "london",
@@ -73,6 +77,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: false,
     osmWords: { park: "park", museum: "museum" },
+    landing: { en: "/en/london" },
   },
   tokyo: {
     id: "tokyo",
@@ -86,6 +91,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: false,
     frenchData: false,
     osmWords: { park: "公園", museum: "美術館" },
+    landing: { ja: "/ja/tokyo", en: "/en/tokyo" },
   },
   berlin: {
     id: "berlin",
@@ -99,6 +105,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: false,
     osmWords: { park: "park", museum: "museum" },
+    landing: { en: "/en/berlin" },
   },
   amsterdam: {
     id: "amsterdam",
@@ -112,6 +119,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: false,
     osmWords: { park: "park", museum: "museum" },
+    landing: { en: "/en/amsterdam" },
   },
   "tel-aviv": {
     id: "tel-aviv",
@@ -125,6 +133,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: false,
     osmWords: { park: "פארק", museum: "מוזיאון" },
+    landing: { he: "/he/tel-aviv", en: "/en/tel-aviv" },
   },
   "mexico-city": {
     id: "mexico-city",
@@ -138,6 +147,7 @@ export const CITIES: Record<CityId, City> = {
     dayFirst: true,
     frenchData: false,
     osmWords: { park: "parque", museum: "museo" },
+    landing: { es: "/es/ciudad-de-mexico", en: "/en/mexico-city" },
   },
 };
 
@@ -148,6 +158,14 @@ export function isCityId(value: unknown): value is CityId {
 /** A stored meeting's city; Paris for everything made before cities existed. */
 export function cityOf(value: unknown): City {
   return CITIES[isCityId(value) ? value : "paris"];
+}
+
+/** The city and language a landing page path is for (middleware.ts), or null. */
+export function landingOf(pathname: string): { city: CityId; lang: Lang } | null {
+  for (const id of CITY_IDS) {
+    for (const [lang, path] of Object.entries(CITIES[id].landing)) if (path === pathname) return { city: id, lang: lang as Lang };
+  }
+  return null;
 }
 
 /** The city a language most likely means, as a default only (the person can change it); none for English. */

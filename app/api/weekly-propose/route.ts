@@ -253,7 +253,7 @@ export async function GET(request: Request) {
       notificationLog: [{ event: "proposed", sentAt: new Date().toISOString(), results: notifyResults }],
     });
     results.push({ pairId: pair.id, status: "proposed", source: proposal.source, weatherSwapped: Boolean(swapNote) });
-    logEvent("proposal_shown", { pairId: pair.id, source: proposal.source, hasOptionB: Boolean(proposal.optionB) });
+    logEvent("proposal_shown", { pairId: pair.id, source: proposal.source, hasOptionB: Boolean(proposal.optionB), cityId: city.id });
   }
 
   return NextResponse.json({ weekOf, results });

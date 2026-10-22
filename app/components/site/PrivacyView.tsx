@@ -47,7 +47,7 @@ const COPY: Record<"fr" | "en" | "ja", { title: string; intro: string; sections:
       },
       {
         title: "Abonnement et parrainage",
-        body: "Votre essai, votre plan et, si vous passez à Plus, votre abonnement sont gérés par Ittsui et Stripe (le paiement) ; Ittsui ne voit jamais votre carte. Si vous arrivez par le lien d'invitation d'un proche, son code est gardé 30 jours dans un cookie (ittsui_ref), uniquement pour vous offrir à tous les deux le mois de Plus promis.",
+        body: "Votre essai, votre plan et, si vous passez à Plus, votre abonnement sont gérés par Ittsui et Stripe (le paiement) ; Ittsui ne voit jamais votre carte. Si vous arrivez par le lien d'invitation d'un proche, son code est gardé 30 jours dans un cookie (ittsui_ref), uniquement pour vous offrir à tous les deux le mois de Plus promis. Si vous arrivez par la page d'une ville ou un lien de campagne, cette ville, la langue et la campagne sont gardées 30 jours dans un cookie (ittsui_src), uniquement pour compter, sans votre nom ni votre compte, combien de comptes chaque page et chaque campagne amènent.",
       },
       {
         title: "Votre rituel",
@@ -130,7 +130,7 @@ const COPY: Record<"fr" | "en" | "ja", { title: string; intro: string; sections:
       },
       {
         title: "Subscription and invites",
-        body: "Your trial, your plan and, if you go Plus, your subscription are handled by Ittsui and Stripe (payment); Ittsui never sees your card. If you arrive through someone's invite link, their code is kept for 30 days in a cookie (ittsui_ref), only so you both get the month of Plus it promises.",
+        body: "Your trial, your plan and, if you go Plus, your subscription are handled by Ittsui and Stripe (payment); Ittsui never sees your card. If you arrive through someone's invite link, their code is kept for 30 days in a cookie (ittsui_ref), only so you both get the month of Plus it promises. If you arrive through a city page or a campaign link, that city, the language and the campaign are kept for 30 days in a cookie (ittsui_src), only to count, without your name or your account, how many accounts each page and campaign brings.",
       },
       {
         title: "Your ritual",
@@ -209,7 +209,7 @@ const COPY: Record<"fr" | "en" | "ja", { title: string; intro: string; sections:
       },
       {
         title: "サブスクリプションと招待",
-        body: "お試し期間、プラン、Plusのサブスクリプションは、IttsuiとStripe（決済）が管理します。Ittsuiがカード情報を見ることはありません。大切な人の招待リンクからいらした場合は、約束の1か月分のPlusをおふたりにお届けするためだけに、その招待コードを30日間Cookie（ittsui_ref）に保存します。",
+        body: "お試し期間、プラン、Plusのサブスクリプションは、IttsuiとStripe（決済）が管理します。Ittsuiがカード情報を見ることはありません。大切な人の招待リンクからいらした場合は、約束の1か月分のPlusをおふたりにお届けするためだけに、その招待コードを30日間Cookie（ittsui_ref）に保存します。都市のページや広告のリンクからいらした場合は、その都市・言語・キャンペーン名を30日間Cookie（ittsui_src）に保存します。お名前やアカウントとは結びつけず、それぞれのページやキャンペーンから何件のアカウントが作られたかを数えるためだけに使います。",
       },
       {
         title: "あなたの習慣",

@@ -295,7 +295,7 @@ export function GestureTiles({ lang = "fr" }: { lang?: Locale } = {}) {
                   style={{ color: ACCENT }}
                 >
                   {ui.send}
-                  <IconArrowRight className="h-3 w-3" />
+                  <IconArrowRight className="h-3 w-3 rtl:-scale-x-100" />
                 </Link>
               </div>
             )}

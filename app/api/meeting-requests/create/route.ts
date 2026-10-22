@@ -188,7 +188,7 @@ export async function POST(request: Request) {
     await ref.update({ recipientEmailSent });
   }
 
-  logEvent("custom_rendezvous_created", { requestId: ref.id, hasEmail: Boolean(recipientEmail), hasPhone: Boolean(recipientPhone) });
+  logEvent("custom_rendezvous_created", { requestId: ref.id, hasEmail: Boolean(recipientEmail), hasPhone: Boolean(recipientPhone), cityId: city.id, lang });
 
   return NextResponse.json({ id: ref.id, status: "pending", recipientEmailSent: recipientEmailSent ?? null, requestUrl });
 }

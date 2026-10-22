@@ -7,11 +7,12 @@
 import Link from "next/link";
 import { MUTED } from "@/lib/theme";
 import { pagePath, type Locale, type PublicPage } from "@/lib/i18n";
+import { CITIES, CITY_IDS } from "@/lib/cities";
 import { LangSwitch } from "@/app/components/site/LangSwitch";
 
 const COPY: Record<
   Locale,
-  { line: string; about: string; partners: string; privacy: string; terms: string; legal: string }
+  { line: string; about: string; partners: string; privacy: string; terms: string; legal: string; cities: string }
 > = {
   fr: {
     line: "© 2026 Ittsui France. Conçu avec retenue.",
@@ -20,6 +21,7 @@ const COPY: Record<
     privacy: "Confidentialité",
     terms: "Conditions d'utilisation",
     legal: "Mentions légales",
+    cities: "Ittsui à",
   },
   en: {
     line: "© 2026 Ittsui France. Designed with restraint.",
@@ -28,6 +30,7 @@ const COPY: Record<
     privacy: "Privacy",
     terms: "Terms of use",
     legal: "Legal notice (in French)",
+    cities: "Ittsui in",
   },
   ja: {
     line: "© 2026 Ittsui France. 控えめに、丁寧につくっています。",
@@ -36,6 +39,7 @@ const COPY: Record<
     privacy: "プライバシー",
     terms: "利用規約",
     legal: "法的表示（フランス語）",
+    cities: "Ittsuiの都市",
   },
   es: {
     line: "© 2026 Ittsui France. Diseñado con sobriedad.",
@@ -44,6 +48,7 @@ const COPY: Record<
     privacy: "Privacidad",
     terms: "Condiciones de uso",
     legal: "Aviso legal (en francés)",
+    cities: "Ittsui en",
   },
   he: {
     line: "© 2026 Ittsui France. מעוצב באיפוק.",
@@ -52,6 +57,7 @@ const COPY: Record<
     privacy: "פרטיות",
     terms: "תנאי שימוש",
     legal: "מידע משפטי (בצרפתית)",
+    cities: "Ittsui ב:",
   },
 };
 
@@ -83,6 +89,20 @@ export function SiteFooter({ page, lang, links = "full" }: { page: PublicPage; l
           {t.legal}
         </Link>
       </span>
+      {/* Each city's page in this language, or in English where it has none. */}
+      {links === "full" && (
+        <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <span>{t.cities}</span>
+          {CITY_IDS.map((id) => {
+            const href = CITIES[id].landing[lang] ?? CITIES[id].landing.en!;
+            return (
+              <Link key={id} href={href} hrefLang={CITIES[id].landing[lang] ? lang : "en"} className="underline underline-offset-4">
+                {CITIES[id].name[lang]}
+              </Link>
+            );
+          })}
+        </span>
+      )}
       <LangSwitch page={page} lang={lang} color={MUTED} className="mt-2" />
     </footer>
   );

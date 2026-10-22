@@ -6,8 +6,8 @@ import { HomeView } from "@/app/components/site/HomeView";
 export const metadata = translatedMetadata(
   "home",
   "en",
-  "Ittsui · One rendez-vous a week with the people who matter",
-  "Ittsui picks the place and the time for a weekly rendez-vous with someone close, and sums up your emails. Your guest needs no app and no account.",
+  "Ittsui · One proposal. One decision. More time with the people who matter",
+  "Ittsui picks the place and the time for a rendez-vous with someone close. You confirm in one tap; your guest answers from a link, with nothing to install.",
 );
 
 export default function HomeEn() {
