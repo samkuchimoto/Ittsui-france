@@ -6,7 +6,7 @@
 // (Play Store / App Store / direct APK) live in DownloadClient.tsx, the one
 // part that genuinely needs the browser's navigator.userAgent.
 
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import QRCode from "qrcode";
 import { INK, MUTED, BORDER } from "@/lib/theme";
 import { pagePath, type Locale } from "@/lib/i18n";
@@ -16,21 +16,6 @@ import { DocumentLang } from "@/app/components/site/DocumentLang";
 import { SubpageTop } from "@/app/components/site/SubpageTop";
 import { SiteFooter } from "@/app/components/site/SiteFooter";
 import { localeTypography } from "@/app/components/site/typography";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq: [string, string][] }> = {
   fr: {

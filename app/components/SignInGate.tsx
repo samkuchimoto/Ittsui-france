@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { signInWithGoogle } from "@/lib/firebase";
 import { signInWithPasskey } from "@/lib/passkeyClient";
 import { ACCENT, BORDER, INK, MUTED } from "@/lib/theme";
@@ -18,21 +18,6 @@ import { pagePath } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { localeTypography } from "@/app/components/site/typography";
 import { PLAN } from "./plan.i18n";
-
-// Same configuration as the other app screens, so the font files are shared.
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 /** `before` runs right before Google's popup opens (e.g. to save a draft). */
 export function SignInGate({ before }: { before?: () => void }) {

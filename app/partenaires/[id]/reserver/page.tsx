@@ -9,25 +9,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { Mascot } from "@/app/components/Mascot";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 interface VenuePreview {
   venueName: string;

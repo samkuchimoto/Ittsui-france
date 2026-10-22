@@ -4,27 +4,12 @@
 // English and Japanese — the note that the French text is the one that
 // applies (these are translations for the reader's convenience).
 
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, BORDER } from "@/lib/theme";
 import type { Locale, PublicPage } from "@/lib/i18n";
 import { DocumentLang } from "@/app/components/site/DocumentLang";
 import { SubpageTop } from "@/app/components/site/SubpageTop";
 import { localeTypography } from "@/app/components/site/typography";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const TRANSLATION_NOTE: Record<Locale, string | null> = {
   fr: null,

@@ -15,23 +15,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const CATEGORIES: { value: "cafe" | "restaurant" | "museum" | "autre"; label: string }[] = [
   { value: "cafe", label: "Café" },

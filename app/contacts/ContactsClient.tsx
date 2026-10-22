@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import type { User } from "firebase/auth";
 import { Capacitor } from "@capacitor/core";
 import { auth, watchAuthState } from "@/lib/firebase";
@@ -23,21 +23,6 @@ import { pagePath } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { localeTypography } from "@/app/components/site/typography";
 import { CONTACTS } from "./contacts.i18n";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 export default function ContactsClient() {
   const router = useRouter();

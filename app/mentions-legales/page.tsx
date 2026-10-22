@@ -10,24 +10,9 @@
 // the process is under way); its details go here once registered. The
 // same identity is stated on kuchimoto.com and in /confidentialite.
 
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 function Item({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -11,7 +11,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
@@ -24,21 +24,6 @@ import { useLang, useT } from "@/app/components/site/LangProvider";
 import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { INVITE } from "./invite.i18n";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "activated" | "error";
 

@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, doc, updateDoc } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -53,21 +53,6 @@ import { useLang, useT } from "@/app/components/site/LangProvider";
 import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { DASHBOARD } from "./dashboard.i18n";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 // The small dual bear/rabbit header thumbnail was removed here per
 // direct product feedback — this page already has purposeful, larger

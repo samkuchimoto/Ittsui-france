@@ -5,7 +5,7 @@
 
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { LANG_COOKIE, isLocale, type Locale } from "@/lib/i18n";
 import TriageClient from "./TriageClient";
 
@@ -29,21 +29,6 @@ export function generateMetadata(): Metadata {
   const value = cookies().get(LANG_COOKIE)?.value;
   return META[isLocale(value) ? value : "fr"];
 }
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 export default function TriagePage() {
   return <TriageClient fontClass={`${fraunces.variable} ${workSans.variable}`} displayFamily={fraunces.style.fontFamily} />;

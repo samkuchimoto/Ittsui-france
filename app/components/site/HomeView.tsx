@@ -48,7 +48,7 @@
 // ---------------------------------------------------------------------
 
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 import { pagePath, withLang, type Locale } from "@/lib/i18n";
 import { HeaderNav } from "@/app/components/HeaderNav";
@@ -63,21 +63,6 @@ import { DocumentLang } from "@/app/components/site/DocumentLang";
 import { NativeLanguagePicker } from "@/app/components/site/NativeLanguagePicker";
 import { SiteFooter } from "@/app/components/site/SiteFooter";
 import { localeTypography } from "@/app/components/site/typography";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 type Copy = {
   badge: string;

@@ -40,7 +40,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { Capacitor } from "@capacitor/core";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -69,21 +69,6 @@ import { pagePath } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { localeTypography } from "@/app/components/site/typography";
 import { SETUP } from "./setup.i18n";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const DAYS: { value: Pair["agreedDay"]; label: string }[] = [
   { value: "mon", label: "Lundi" },

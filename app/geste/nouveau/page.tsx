@@ -30,21 +30,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import type { User } from "firebase/auth";
 import { watchAuthState } from "@/lib/firebase";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { CURATED_ITEM_LABEL, CURATED_ITEMS, curatedItemExternalLink, suggestCuratedItem } from "@/lib/gestureLinks";
 import type { GestureMode, CuratedGestureItem, Contact } from "@/lib/types";
 import { shareLink } from "@/lib/shareLink";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 // PickupAddressFields lived here — two inputs asking the SENDER for their
 // own home address and phone number, so a Stuart bike courier could be
@@ -166,13 +158,6 @@ function BookSearchPicker({ customItem, setCustomItem }: { customItem: string; s
     </div>
   );
 }
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const ALL_MODES: { id: GestureMode; emoji: string; title: string; subtitle: string }[] = [
   { id: "own", emoji: "🎁", title: "Quelque chose que vous avez", subtitle: "Un objet qui vous appartient déjà." },

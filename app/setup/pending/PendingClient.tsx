@@ -21,7 +21,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { auth, db, watchAuthState, signOutUser } from "@/lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -42,21 +42,6 @@ import { SETUP } from "../setup.i18n";
 import { PENDING } from "./pending.i18n";
 
 const CATALOG = mergeCatalogs(SETUP, PENDING);
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { lang } = useLang();

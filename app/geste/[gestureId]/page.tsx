@@ -19,27 +19,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { Mascot } from "@/app/components/Mascot";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
 import type { GestureMode, CuratedGestureItem, GestureRecipientChoice, PaintingStatus } from "@/lib/types";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 interface GesturePreview {
   senderName: string;

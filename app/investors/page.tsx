@@ -34,23 +34,8 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 const GOOD = "#1E7A4C";
 

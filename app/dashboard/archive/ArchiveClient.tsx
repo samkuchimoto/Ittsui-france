@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { auth, db, watchAuthState } from "@/lib/firebase";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -25,21 +25,6 @@ import { DATE_LOCALE, type Locale } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { localeTypography } from "@/app/components/site/typography";
 import { REQUESTS } from "../requests.i18n";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 // Same derivation DashboardClient.tsx's confirmedVenueType() uses — kept
 // as its own small copy rather than a shared import, matching this

@@ -8,7 +8,7 @@
 // but the founder appear here — see AGENTS.md / CLAUDE.md's standing
 // position against fabricated social proof.
 
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import Link from "next/link";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { withLang, type Locale } from "@/lib/i18n";
@@ -16,21 +16,6 @@ import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { DocumentLang } from "@/app/components/site/DocumentLang";
 import { SubpageTop } from "@/app/components/site/SubpageTop";
 import { localeTypography } from "@/app/components/site/typography";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 function Pullquote({ children }: { children: React.ReactNode }) {
   return (

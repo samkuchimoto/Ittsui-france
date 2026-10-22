@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Fraunces, Work_Sans } from "next/font/google";
+import { fraunces, workSans } from "@/app/fonts";
 import { signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import type { User } from "firebase/auth";
 import { FriendlyLoading } from "@/app/components/FriendlyLoading";
@@ -60,21 +60,6 @@ interface AcceptedDetails {
   date: string;
   time: string;
 }
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["300", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 type Status = "checking" | "ready" | "not_found" | "declining" | "declined" | "accepting" | "accepted" | "error";
 
