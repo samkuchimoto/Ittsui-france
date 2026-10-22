@@ -85,6 +85,8 @@ import type { Pair, VenueOption, VenueType } from "@/lib/types";
 import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
 import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from "@/lib/timezone";
 import { langOf } from "@/lib/i18n";
+import { getPlan, recordRendezVous } from "@/lib/plan";
+import { notifyPlanLimit } from "@/lib/planEmails";
 
 const RAG_TIMEOUT_MS = 1500;
 
@@ -162,6 +164,18 @@ export async function GET(request: Request) {
 
     if (!(await isCadenceDue(pair, weekOf))) continue;
 
+    // The free plan (lib/plan.ts): with no Plus or trial on either side, a
+    // relationship lives on the monthly free rendez-vous of the person who
+    // started it (userIds[0]). Once that's used, the week is skipped and
+    // they hear why, at most once a month.
+    const plans = await Promise.all(pair.userIds.map((id) => getPlan(id)));
+    const unlimited = plans.some((p) => p.tier !== "free");
+    if (!unlimited && !plans[0]?.canCreate) {
+      await notifyPlanLimit(pair, plans[0].month);
+      results.push({ pairId: pair.id, status: "plan_limit" });
+      continue;
+    }
+
     const { pair: weatherPair, swapNote } = await weatherAdjustPair(pair, weekOf);
 
     const proposal = await getFridayProposal(weatherPair, weekOf);
@@ -179,7 +193,7 @@ export async function GET(request: Request) {
     // second candidate (the static catalog often has just one entry per
     // metro/type) — never touches optionA, never runs for a non-Plus pair,
     // never blocks the proposal on failure.
-    if (pair.subscriptionStatus === "active" && !proposal.optionB && proposal.optionA.venueType) {
+    if (unlimited && !proposal.optionB && proposal.optionA.venueType) {
       const extra = await tryFreeVenueApiForOptionB(pair, proposal.optionA.venueType, proposal.optionA.venueName);
       if (extra) proposal.optionB = extra;
     }
@@ -205,6 +219,7 @@ export async function GET(request: Request) {
       optionA: proposal.optionA,
       ...(proposal.optionB ? { optionB: proposal.optionB } : {}),
     });
+    if (!unlimited) await recordRendezVous(pair.userIds[0]);
 
     const notifyResults = await notifyBothUsers(pair, confirmationText);
     await weekRef.update({

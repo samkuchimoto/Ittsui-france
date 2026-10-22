@@ -23,10 +23,8 @@ export const DASHBOARD: Catalog = {
     "{n}e rendez-vous protégé ensemble": "{n} rendez-vous protected together",
     "Merci — un vrai geste pour rester proche de {name}. 💛": "Thank you: a real gesture to stay close to {name}. 💛",
     "cette personne": "this person",
-    "Pas de souci, rien n'a été débité — vous pouvez devenir membre fondateur quand vous voulez.":
-      "No worries, nothing was charged. You can become a founding member whenever you like.",
-    "✓ Membre Fondateur": "✓ Founding member",
-    "Devenir membre fondateur — 1 €/mois": "Become a founding member, €1/month",
+    "Pas de souci, rien n'a été débité. Vous pouvez passer à Plus quand vous voulez.":
+      "No worries, nothing was charged. You can go Plus whenever you like.",
     "En savoir plus": "Learn more",
     "En pause": "Paused",
     "Reprendre les propositions": "Resume proposals",
@@ -51,7 +49,7 @@ export const DASHBOARD: Catalog = {
     Confirmer: "Confirm",
     Annuler: "Cancel",
     "Rendez-vous calé. On se tait jusqu'à la prochaine fois.": "Rendez-vous set. We'll stay quiet until next time.",
-    "Ittsui Plus, 1 €/mois": "Ittsui Plus, €1/month",
+    "Ittsui Plus, {price}/mois": "Ittsui Plus, {price}/month",
     "— le prix d'un café pour garder ce lien vivant.": "— the price of a coffee to keep this bond alive.",
     "En attente": "Pending",
     Confirmé: "Confirmed",
@@ -92,10 +90,8 @@ export const DASHBOARD: Catalog = {
     "{n}e rendez-vous protégé ensemble": "ふたりで守った約束 {n}回目",
     "Merci — un vrai geste pour rester proche de {name}. 💛": "ありがとう。{name}さんとつながり続けるための、大切な一歩です。💛",
     "cette personne": "相手",
-    "Pas de souci, rien n'a été débité — vous pouvez devenir membre fondateur quand vous voulez.":
-      "ご心配なく、料金は発生していません。いつでも創設メンバーになれます。",
-    "✓ Membre Fondateur": "✓ 創設メンバー",
-    "Devenir membre fondateur — 1 €/mois": "創設メンバーになる（月額1ユーロ）",
+    "Pas de souci, rien n'a été débité. Vous pouvez passer à Plus quand vous voulez.":
+      "ご心配なく、料金は発生していません。いつでもPlusにできます。",
     "En savoir plus": "詳しく見る",
     "En pause": "一時停止中",
     "Reprendre les propositions": "提案を再開する",
@@ -120,7 +116,7 @@ export const DASHBOARD: Catalog = {
     Confirmer: "確定する",
     Annuler: "キャンセル",
     "Rendez-vous calé. On se tait jusqu'à la prochaine fois.": "約束が決まりました。次回まで、静かにしています。",
-    "Ittsui Plus, 1 €/mois": "Ittsui Plus（月額1ユーロ）",
+    "Ittsui Plus, {price}/mois": "Ittsui Plus（月額{price}）",
     "— le prix d'un café pour garder ce lien vivant.": "— コーヒー1杯の値段で、このつながりを大切に。",
     "En attente": "返事待ち",
     Confirmé: "確定",

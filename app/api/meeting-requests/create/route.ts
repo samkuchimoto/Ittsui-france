@@ -15,6 +15,7 @@ import { frenchDateLabel } from "@/lib/proposalMessage";
 import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
+import { getPlan, recordRendezVous } from "@/lib/plan";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "vous ne pouvez pas vous envoyer une demande à vous-même" }, { status: 400 });
   }
 
+  // The free plan's one rendez-vous a month (lib/plan.ts). The 402 carries
+  // the plan, so the form can show the Plus offer instead of an error.
+  const plan = await getPlan(uid);
+  if (!plan.canCreate) return NextResponse.json({ error: "plan_limit", plan }, { status: 402 });
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + REQUEST_EXPIRY_DAYS);
 
@@ -104,6 +110,7 @@ export async function POST(request: Request) {
     createdAt: new Date().toISOString(),
     expiresAt: expiresAt.toISOString(),
   });
+  await recordRendezVous(uid);
 
   // Short form (/m/r/... redirects to /request/... — see next.config.js)
   // for a cleaner WhatsApp/SMS/email preview.

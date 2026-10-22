@@ -43,6 +43,8 @@ import { mostRecentByCreatedAt } from "@/lib/sort";
 import { tapHaptic } from "@/lib/haptics";
 import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } from "@/lib/passkeyClient";
 import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
+import { PlanCard } from "@/app/components/PlanCard";
+import { PLUS_PRICE_LABEL } from "@/lib/planConfig";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { VenueDirections } from "@/app/components/VenueDirections";
@@ -141,8 +143,6 @@ export default function DashboardClient() {
   const [pair, setPair] = useState<Pair | null>(null);
   const [pairChecked, setPairChecked] = useState(false);
   const [pauseUpdating, setPauseUpdating] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
-  const [upgradeError, setUpgradeError] = useState<string | null>(null);
   // Set from ?plus=success|cancelled, the redirect Stripe Checkout sends
   // people back to (see /api/stripe/checkout's success_url/cancel_url).
   // "success" here means Checkout completed, not that Plus is active yet
@@ -301,40 +301,6 @@ export default function DashboardClient() {
     }
   }
 
-  // Real Stripe Checkout redirect — /api/stripe/checkout verifies this
-  // user is actually part of `pair` server-side before creating a session,
-  // so the ID token below isn't optional the way a plain userId would be
-  // elsewhere in this app; this starts a real charge. 501 specifically
-  // means STRIPE_PLUS_PRICE_ID isn't configured yet (billing not live),
-  // surfaced as its own message rather than a generic error.
-  async function handleUpgradeToPlus() {
-    if (!user || !pair || upgrading) return;
-    setUpgrading(true);
-    setUpgradeError(null);
-    try {
-      const idToken = await user.getIdToken();
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ pairId: pair.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setUpgradeError(
-          res.status === 501
-            ? t("Le paiement n'est pas encore activé — revenez bientôt.")
-            : (data?.error ?? t("Une erreur est survenue."))
-        );
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      setUpgradeError(t("Une erreur est survenue."));
-    } finally {
-      setUpgrading(false);
-    }
-  }
-
   // GDPR Article 17 (droit à l'effacement) — see api/user/delete/route.ts
   // for exactly what is and isn't deleted and why. window.confirm is a
   // deliberately minimal irreversibility gate; nothing fancier is needed
@@ -455,17 +421,7 @@ export default function DashboardClient() {
           <p className="text-sm" style={{ color: MUTED }}>
             {t("Aucune personne liée pour le moment.")}
           </p>
-          {/* Real gap fixed 2026-08-28: this screen previously had zero
-              mention of Plus, a dead end for anyone who lands here without
-              an active pair yet — subscriptionStatus lives on the Pair
-              (see lib/types.ts), so real purchase genuinely can't happen
-              until one exists; this is a link to the explanation, not a
-              purchase button. */}
-          <p className="mt-3 text-xs" style={{ color: MUTED }}>
-            <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
-              {t("Découvrir Ittsui Plus")}
-            </Link>
-          </p>
+          <PlanCard user={user} />
           <button onClick={handleSignOut} className="mt-6 text-xs underline underline-offset-4" style={{ color: MUTED }}>
             {t("Se déconnecter")}
           </button>
@@ -539,39 +495,12 @@ export default function DashboardClient() {
       )}
       {plusRedirect === "cancelled" && (
         <p className="mt-2 text-xs" style={{ color: MUTED }}>
-          {t("Pas de souci, rien n'a été débité — vous pouvez devenir membre fondateur quand vous voulez.")}
+          {t("Pas de souci, rien n'a été débité. Vous pouvez passer à Plus quand vous voulez.")}
         </p>
       )}
 
-      {pair.subscriptionStatus === "active" ? (
-        <span
-          className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-          style={{ backgroundColor: `${ACCENT}14`, color: ACCENT }}
-        >
-          {t("✓ Membre Fondateur")}
-        </span>
-      ) : (
-        <div className="mt-3">
-          <button
-            onClick={handleUpgradeToPlus}
-            disabled={upgrading}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
-            style={{ backgroundColor: ACCENT }}
-          >
-            {upgrading ? "..." : t("Devenir membre fondateur — 1 €/mois")}
-          </button>
-          {upgradeError && (
-            <p className="mt-1.5 text-xs" style={{ color: ACCENT }}>
-              {upgradeError}
-            </p>
-          )}
-          <p className="mt-1.5 text-xs" style={{ color: MUTED }}>
-            <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
-              {t("En savoir plus")}
-            </Link>
-          </p>
-        </div>
-      )}
+      {/* The person's plan (trial, free or Plus) and the way to Plus. */}
+      <PlanCard user={user} />
 
       {pair && (
         <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: MUTED }}>
@@ -974,8 +903,8 @@ function ConfirmedMascotMoment({
 // disconnected line in a footer nobody scrolls to. Kept deliberately
 // quiet (a plain text link, not a banner or button) to match this app's
 // existing restraint elsewhere, not a paywall interruption; real
-// 2026-08-28 pricing feedback (Dror Sharon) drove both the €1/mois
-// figure and the "show the value, then ask" placement.
+// 2026-08-28 pricing feedback (Dror Sharon) drove the "show the value,
+// then ask" placement; the price is 4,99 €/mois since 2026-10-22.
 function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean }) {
   const t = useT(DASHBOARD);
   const { lang } = useLang();
@@ -983,7 +912,7 @@ function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean
   return (
     <p className="mt-2 text-xs" style={{ color: MUTED }}>
       <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
-        {t("Ittsui Plus, 1 €/mois")}
+        {t("Ittsui Plus, {price}/mois", { price: PLUS_PRICE_LABEL[lang] })}
       </Link>{" "}
       {t("— le prix d'un café pour garder ce lien vivant.")}
     </p>

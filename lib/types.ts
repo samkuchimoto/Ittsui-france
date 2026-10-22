@@ -57,6 +57,9 @@ export interface Pair {
   // without touching agreedDay/agreedWindowStart/agreedWindowEnd, which
   // already fully describe the meeting itself.
   notifyDaysBefore?: number;
+  // The month ("2026-10") the free plan's limit email went out for this
+  // pair (lib/planEmails.ts), so it goes out once a month at most.
+  planLimitNotice?: string;
   // 5-digit French postal code for where this pair actually meets.
   // Optional, read-side default is "no preference" (Paris-only static
   // catalog, existing behavior) — see weekly-propose/route.ts's

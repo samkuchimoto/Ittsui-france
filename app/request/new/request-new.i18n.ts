@@ -55,7 +55,7 @@ export const REQUEST_NEW: Catalog = {
     "Ce lien peut voyager par SMS, WhatsApp ou ailleurs — mais une fois ouvert, plus besoin de négocier un horaire par message : {name} n'a qu'à dire oui.":
       "This link can travel by text, WhatsApp or anywhere else, but once it's open there's no back-and-forth about a time: {name} just has to say yes.",
     "Retour au tableau de bord": "Back to the dashboard",
-    "Devenir membre fondateur — 1 €/mois →": "Become a founding member, €1/month →",
+    "Ittsui Plus : chaque semaine, sans limite →": "Ittsui Plus: every week, no limit →",
     "Décrire en une phrase": "Describe it in one sentence",
     "(optionnel)": "(optional)",
     "Ex. un café avec Marie mardi soir vers Bastille": "E.g. coffee with Marie on Tuesday evening near Bastille",
@@ -169,7 +169,7 @@ export const REQUEST_NEW: Catalog = {
     "Ce lien peut voyager par SMS, WhatsApp ou ailleurs — mais une fois ouvert, plus besoin de négocier un horaire par message : {name} n'a qu'à dire oui.":
       "このリンクはSMSでもWhatsAppでも送れます。開いてもらえば、メッセージで日時を調整する必要はありません。{name}さんは「はい」と答えるだけです。",
     "Retour au tableau de bord": "ダッシュボードに戻る",
-    "Devenir membre fondateur — 1 €/mois →": "創設メンバーになる（月額1ユーロ）→",
+    "Ittsui Plus : chaque semaine, sans limite →": "Ittsui Plus：毎週、回数の制限なし →",
     "Décrire en une phrase": "ひとことで説明",
     "(optionnel)": "（任意）",
     "Ex. un café avec Marie mardi soir vers Bastille": "例：火曜の夜、バスティーユのあたりでマリーとお茶",

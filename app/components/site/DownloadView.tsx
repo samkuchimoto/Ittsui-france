@@ -41,7 +41,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "Est-ce gratuit ?",
-        "Oui, le rituel de base reste gratuit pour toujours. Ittsui Plus (suggestions enrichies, options supplémentaires) arrive bientôt, à partir de 1 €/mois — le prix d'un café pour ne pas perdre le lien avec les gens qui comptent.",
+        "Oui, pour un rendez-vous par mois. Chaque nouveau compte commence avec 14 jours d'Ittsui Plus offerts, sans carte bancaire. Ensuite, Ittsui Plus coûte 4,99 €/mois pour des rendez-vous chaque semaine, sans limite, et se résilie à tout moment.",
       ],
       [
         "Mes données sont-elles synchronisées entre le web et l'application ?",
@@ -60,7 +60,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "Is it free?",
-        "Yes, the basic ritual stays free forever. Ittsui Plus (richer suggestions, extra options) is coming soon, from €1/month: the price of a coffee so you don't lose touch with the people who matter.",
+        "Yes, for one rendez-vous a month. Every new account starts with 14 days of Ittsui Plus, free, no card needed. After that, Ittsui Plus is €4.99/month for rendez-vous every week, with no limit, and you can cancel anytime.",
       ],
       [
         "Is my data synced between the web and the app?",
@@ -79,7 +79,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "無料ですか？",
-        "はい。基本の機能はずっと無料です。Ittsui Plus（より充実した提案や追加オプション）は月額1ユーロから、近日提供予定です。コーヒー1杯の値段で、大切な人とのつながりを守れます。",
+        "はい、月1回のランデヴーまでは無料です。新規アカウントは、Ittsui Plusを14日間無料でお試しいただけます（カード不要）。その後は月額4.99ユーロで、毎週、回数の制限なくご利用いただけます。いつでも解約できます。",
       ],
       [
         "Webとアプリでデータは同期されますか？",

@@ -85,6 +85,12 @@ async function finishSignIn(user: User): Promise<void> {
     },
     { merge: true }
   );
+  // Starts the 14-day Plus trial on the first sign-in (lib/plan.ts); later
+  // calls just read the plan. Never blocks or fails the sign-in itself.
+  user
+    .getIdToken()
+    .then((idToken) => fetch("/api/plan", { method: "POST", headers: { Authorization: `Bearer ${idToken}` } }))
+    .catch(() => undefined);
   await registerNativePush(user);
 }
 

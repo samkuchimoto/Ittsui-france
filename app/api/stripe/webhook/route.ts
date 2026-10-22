@@ -1,7 +1,9 @@
 // /app/api/stripe/webhook/route.ts
-// The only place Pair.subscriptionStatus is ever actually written to
-// "active" — the checkout route only starts a session, this is what
-// confirms Stripe really collected payment. Raw-body signature
+// The only place billing/{uid}.subscriptionStatus (Ittsui Plus per person,
+// lib/plan.ts) and the old per-pair Pair.subscriptionStatus are written:
+// the checkout route only starts a session, this is what confirms Stripe
+// really collected payment. Events that aren't Ittsui's (kuchimoto.com's
+// one-off payments, same Stripe account) are acknowledged and ignored. Raw-body signature
 // verification, not a parsed JSON body: Next.js App Router route handlers
 // never auto-parse the body (unlike the old Pages API, which needed
 // `bodyParser: false`), so request.text() already returns the exact bytes
@@ -12,6 +14,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { stripe } from "@/lib/stripe";
 import type Stripe from "stripe";
 import type { Pair } from "@/lib/types";
+import { setSubscription, uidForSubscription } from "@/lib/plan";
 
 function mapStripeStatus(status: Stripe.Subscription.Status): Pair["subscriptionStatus"] {
   switch (status) {
@@ -57,6 +60,20 @@ export async function POST(request: Request) {
       // was merely created (someone can open Checkout and abandon it).
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        // Not Ittsui's (this Stripe account also takes kuchimoto.com's payments).
+        if (session.mode !== "subscription") break;
+        // Ittsui Plus per person (lib/plan.ts), the current checkout.
+        if (session.metadata?.app === "ittsui" && session.metadata.uid) {
+          if (session.subscription && session.customer) {
+            await setSubscription(session.metadata.uid, {
+              subscriptionStatus: "active",
+              stripeCustomerId: String(session.customer),
+              stripeSubscriptionId: String(session.subscription),
+            });
+          }
+          break;
+        }
+        // The old per-relationship checkout ("membre fondateur").
         const pairId = session.client_reference_id;
         if (pairId && session.subscription && session.customer) {
           await adminDb
@@ -81,6 +98,11 @@ export async function POST(request: Request) {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+        const uid = subscription.metadata?.app === "ittsui" ? (subscription.metadata.uid ?? null) : await uidForSubscription(subscription.id);
+        if (uid) {
+          await setSubscription(uid, { subscriptionStatus: mapStripeStatus(subscription.status) });
+          break;
+        }
         const snap = await adminDb
           .collection("pairs")
           .where("stripeSubscriptionId", "==", subscription.id)

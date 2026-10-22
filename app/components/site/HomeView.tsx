@@ -207,14 +207,14 @@ const COPY: Record<Locale, Copy> = {
     ctaBadge: "Le lien, sans effort",
     ctaTitle: "Offrez du temps réel aux personnes qui comptent.",
     ctaButton: "Bloquer un premier moment",
-    ctaFree: "Le rituel reste gratuit, pour toujours.",
-    plusAmount: "1 €",
+    ctaFree: "Gratuit : un rendez-vous par mois. 14 jours de Plus offerts à l'inscription.",
+    plusAmount: "4,99 €",
     plusUnit: "/ mois",
     plusBody:
       "Le prix d'un café, pour ne pas perdre le lien avec votre famille, vos ami(e)s ou votre partenaire.",
     plusNote:
-      "Suggestions enrichies et options supplémentaires à venir — le rituel de base, lui, reste gratuit pour toujours, Plus ou pas.",
-    plusButton: "Devenir membre fondateur",
+      "Des rendez-vous chaque semaine, sans limite, avec toutes les personnes qui comptent. Sans Plus, un rendez-vous par mois reste gratuit. Sans engagement.",
+    plusButton: "Commencer, 14 jours offerts",
     mobile: "Ittsui sur mobile →",
   },
   en: {
@@ -298,12 +298,12 @@ const COPY: Record<Locale, Copy> = {
     ctaBadge: "The bond, without the effort",
     ctaTitle: "Give real time to the people who matter.",
     ctaButton: "Set aside a first moment",
-    ctaFree: "The ritual stays free, forever.",
-    plusAmount: "€1",
+    ctaFree: "Free: one rendez-vous a month. 14 days of Plus when you sign up.",
+    plusAmount: "€4.99",
     plusUnit: "/ month",
     plusBody: "The price of a coffee, so you don't lose touch with your family, your friends or your partner.",
-    plusNote: "Richer suggestions and extra options to come. The basic ritual stays free forever, Plus or not.",
-    plusButton: "Become a founding member",
+    plusNote: "Rendez-vous every week, with no limit, with everyone who matters. Without Plus, one rendez-vous a month stays free. Cancel anytime.",
+    plusButton: "Start with 14 days free",
     mobile: "Ittsui on mobile →",
   },
   ja: {
@@ -387,12 +387,12 @@ const COPY: Record<Locale, Copy> = {
     ctaBadge: "がんばらずに、つながる",
     ctaTitle: "大切な人に、本当の時間を。",
     ctaButton: "最初の時間をつくる",
-    ctaFree: "基本の機能は、ずっと無料です。",
-    plusAmount: "1ユーロ",
+    ctaFree: "無料プランは月1回のランデヴー。登録から14日間はPlusを無料でお試しいただけます。",
+    plusAmount: "4.99ユーロ",
     plusUnit: "/ 月",
     plusBody: "コーヒー1杯の値段で、家族や友人、パートナーとのつながりを守る。",
-    plusNote: "より充実した提案や追加オプションを準備中です。基本の機能は、Plusに入っても入らなくても、ずっと無料です。",
-    plusButton: "創設メンバーになる",
+    plusNote: "大切な人たちと、毎週、回数の制限なくランデヴーを。Plusに入らなくても、月1回のランデヴーは無料です。いつでも解約できます。",
+    plusButton: "14日間無料ではじめる",
     mobile: "スマートフォンでIttsuiを使う →",
   },
 };
@@ -743,7 +743,7 @@ export function HomeView({ lang }: { lang: Locale }) {
               footnote caption, per direct product/pricing feedback: lead
               with what a subscription actually protects (a specific
               relationship — family, ami, partenaire), not a vague feature
-              list. €1/mois is a deliberate price point, not a placeholder.
+              list. 4,99 €/mois (since 2026-10-22) is a deliberate price point, not a placeholder.
               No fabricated feature list: "à venir" stays honest about what
               Plus doesn't concretely include yet. Links to /dashboard
               rather than starting checkout directly from this public,

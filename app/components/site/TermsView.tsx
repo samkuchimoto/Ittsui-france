@@ -20,8 +20,8 @@ import { pagePath, type Locale } from "@/lib/i18n";
 import { LegalShell, Item } from "@/app/components/site/LegalShell";
 
 const Mail = () => (
-  <a href="mailto:hello@ittsui.fr" style={{ color: ACCENT }}>
-    hello@ittsui.fr
+  <a href="mailto:contact@kuchimoto.com" style={{ color: ACCENT }}>
+    contact@kuchimoto.com
   </a>
 );
 
@@ -66,7 +66,7 @@ function sections(lang: Locale): { title: string; intro: string; items: Section[
         },
         {
           title: "What we provide, and what we don't guarantee",
-          body: "The basic weekly ritual is free, forever. Ittsui Plus (richer suggestions, extra options) will come later, from €1/month; these terms will be updated with the exact conditions before that offer is switched on. Ittsui suggests places and time slots as a guide; we don't guarantee the availability, accuracy or relevance of each suggestion, and we aren't responsible for what happens during a rendez-vous you arrange through the app.",
+          body: "Ittsui is free for one rendez-vous a month. Every new account gets 14 days of Ittsui Plus, free, with no card. Ittsui Plus (unlimited rendez-vous) costs €4.99 a month with no commitment: the subscription renews every month and can be cancelled at any time from the dashboard, taking effect at the end of the month already paid. Ittsui suggests places and time slots as a guide; we don't guarantee the availability, accuracy or relevance of each suggestion, and we aren't responsible for what happens during a rendez-vous you arrange through the app.",
         },
         { title: "Your data", body: <>How your personal data is handled is described in detail on the {privacy("Privacy")} page.</> },
         {
@@ -117,7 +117,7 @@ function sections(lang: Locale): { title: string; intro: string; items: Section[
         },
         {
           title: "提供するもの、保証しないもの",
-          body: "毎週の基本の機能は、ずっと無料です。Ittsui Plus（より充実した提案や追加オプション）は、のちに月額1ユーロから提供予定です。その提供を始める前に、具体的な条件をこの規約に追記します。Ittsuiが提案する場所や時間はあくまで目安です。それぞれの提案の空き状況、正確さ、適切さは保証できず、アプリで決めた約束の場で起きたことについて責任を負うことはできません。",
+          body: "Ittsuiは月1回のランデヴーまで無料です。新規アカウントには、Ittsui Plusの14日間無料お試しがつきます（カード不要）。Ittsui Plus（回数の制限なし）は月額4.99ユーロで、契約期間の縛りはありません。サブスクリプションは毎月更新され、ダッシュボードからいつでも解約でき、お支払い済みの月の終わりに終了します。Ittsuiが提案する場所や時間はあくまで目安です。それぞれの提案の空き状況、正確さ、適切さは保証できず、アプリで決めた約束の場で起きたことについて責任を負うことはできません。",
         },
         { title: "あなたのデータ", body: <>個人データの取り扱いについては、{privacy("プライバシー")}のページで詳しく説明しています。</> },
         {
@@ -169,7 +169,7 @@ function sections(lang: Locale): { title: string; intro: string; items: Section[
       },
       {
         title: "Ce que nous fournissons, et ce que nous ne garantissons pas",
-        body: "Le rituel hebdomadaire de base est gratuit, pour toujours. Ittsui Plus (suggestions enrichies, options supplémentaires) arrivera plus tard à partir de 1 €/mois — ces conditions-ci seront mises à jour avec les modalités précises avant que cette offre ne soit activée. Ittsui propose des lieux et des créneaux à titre indicatif ; nous ne garantissons pas la disponibilité, l'exactitude ou la pertinence de chaque suggestion, et ne sommes pas responsables de ce qui se passe lors d'un rendez-vous que vous organisez via l'application.",
+        body: "Ittsui est gratuit pour un rendez-vous par mois. Chaque nouveau compte bénéficie de 14 jours d'Ittsui Plus offerts, sans carte bancaire. Ittsui Plus (rendez-vous sans limite) coûte 4,99 € par mois, sans engagement : l'abonnement se renouvelle chaque mois et se résilie à tout moment depuis le tableau de bord, avec effet à la fin du mois déjà payé. Ittsui propose des lieux et des créneaux à titre indicatif ; nous ne garantissons pas la disponibilité, l'exactitude ou la pertinence de chaque suggestion, et ne sommes pas responsables de ce qui se passe lors d'un rendez-vous que vous organisez via l'application.",
       },
       {
         title: "Vos données",

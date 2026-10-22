@@ -443,7 +443,7 @@ export default function NewGesturePage() {
             className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-3 text-sm font-medium transition-transform hover:scale-[1.01]"
             style={{ borderColor: ACCENT, color: ACCENT }}
           >
-            Devenir membre fondateur — 1&nbsp;€/mois →
+            Ittsui Plus : chaque semaine, sans limite, 4,99&nbsp;€/mois →
           </Link>
         </div>
       </main>

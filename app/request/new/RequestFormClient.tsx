@@ -16,6 +16,8 @@ import type { User } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Capacitor } from "@capacitor/core";
 import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
+import { SignInGate } from "@/app/components/SignInGate";
+import { PlusOffer } from "@/app/components/PlanCard";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
 import { departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
@@ -202,6 +204,8 @@ export default function RequestFormClient() {
   const searchParams = useSearchParams();
   const contactId = searchParams.get("contactId");
   const [user, setUser] = useState<User | false | null>(null);
+  // The free rendez-vous of the month is used (lib/plan.ts): show the Plus offer.
+  const [limitReached, setLimitReached] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [submitting, setSubmitting] = useState(false);
@@ -844,6 +848,10 @@ export default function RequestFormClient() {
         }),
       });
       const data = await res.json();
+      if (res.status === 402) {
+        setLimitReached(true);
+        return;
+      }
       if (!res.ok) throw new Error(t(data?.error ?? "Une erreur est survenue."));
 
       sessionStorage.removeItem(DRAFT_KEY);
@@ -890,6 +898,12 @@ export default function RequestFormClient() {
     if (!sentTo) return;
     await shareLink({ title: "Ittsui", text: shareTextForRequest(), url: sentTo.requestUrl });
   }
+
+
+  const saveDraft = () => sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+  // Sign in first (SignInGate.tsx); the draft from the homepage survives the popup.
+  if (user === false) return <SignInGate before={saveDraft} />;
 
   return (
     <main
@@ -942,6 +956,11 @@ export default function RequestFormClient() {
           {t("Proposer un rendez-vous")}
         </h1>
 
+        {limitReached && user && (
+          <div className="mt-6">
+            <PlusOffer user={user} before={saveDraft} />
+          </div>
+        )}
         {sentTo ? (
           <div className="mt-8">
             {/* Pika, "The Messenger — fast, diligent, always on the
@@ -1058,15 +1077,14 @@ export default function RequestFormClient() {
                 thoughtful for another person is exactly where "become a
                 founding member" belongs, same reasoning as the existing
                 post-accept nudge elsewhere in this app). Links to
-                /dashboard, same as every other Plus entry point — purchase
-                itself is pair-scoped and that page already handles
-                showing the real button vs. redirecting to sign in. */}
+                /dashboard, where the plan card (app/components/PlanCard.tsx)
+                has the real button. */}
             <Link
               href="/dashboard"
               className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-3 text-sm font-medium transition-transform hover:scale-[1.01]"
               style={{ borderColor: ACCENT, color: ACCENT }}
             >
-              {t("Devenir membre fondateur — 1\u00a0€/mois →")}
+              {t("Ittsui Plus : chaque semaine, sans limite →")}
             </Link>
           </div>
         ) : (

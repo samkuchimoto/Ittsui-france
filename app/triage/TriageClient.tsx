@@ -22,6 +22,9 @@ import { useLang } from "@/app/components/site/LangProvider";
 import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { BriefView } from "./BriefView";
+import type { User } from "firebase/auth";
+import { watchAuthState } from "@/lib/firebase";
+import { SignInGate } from "@/app/components/SignInGate";
 
 type Tab = "text" | "image" | "sample";
 type Ocr = { status: "idle" | "running" | "done" | "error"; stage: OcrProgress["stage"]; progress: number; text: string };
@@ -161,6 +164,9 @@ const COPY: Record<
 export default function TriageClient({ fontClass, displayFamily }: { fontClass: string; displayFamily: string }) {
   const { lang } = useLang();
   const t = COPY[lang];
+  // Signed in first (SignInGate.tsx); null while Firebase checks.
+  const [user, setUser] = useState<User | false | null>(null);
+  useEffect(() => watchAuthState((u) => setUser(u ?? false)), []);
   const [tab, setTab] = useState<Tab>("text");
   const [text, setText] = useState("");
   const [image, setImage] = useState<{ blob: Blob; url: string } | null>(null);
@@ -269,6 +275,10 @@ export default function TriageClient({ fontClass, displayFamily }: { fontClass: 
   const reading = tab === "image" && ocr.status === "running";
   const percent = Math.round(ocr.progress * 100);
   const field = "mt-3 w-full rounded-2xl border bg-white px-4 py-3 font-mono text-sm outline-none focus:border-current";
+
+
+  if (user === false) return <SignInGate />;
+  if (user === null) return null;
 
   return (
     <main

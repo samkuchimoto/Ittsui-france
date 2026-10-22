@@ -1,74 +1,61 @@
 // /app/api/stripe/checkout/route.ts
-// Creates a real Stripe Checkout session for a pair to become "Ittsui
-// Plus" — the actual payment button on the dashboard calls this, then
-// redirects the browser to the returned session URL. subscriptionStatus
-// itself is only ever updated by the webhook (app/api/stripe/webhook/
-// route.ts) once Stripe confirms the payment actually went through, never
-// here — this route only ever starts a checkout, it doesn't grant access.
+// Starts a Stripe Checkout session for the signed-in person to subscribe
+// to Ittsui Plus (lib/plan.ts: one subscription per person, every
+// relationship included). It only starts a checkout: billing/{uid} is
+// written by the webhook (app/api/stripe/webhook/route.ts) once Stripe
+// confirms the payment, never here.
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
+import { getBilling, getPlan } from "@/lib/plan";
+import { PLUS_PRICE_CENTS } from "@/lib/planConfig";
 import { stripe } from "@/lib/stripe";
-import type { Pair } from "@/lib/types";
 
-const bodySchema = z.object({
-  pairId: z.string().min(1),
-});
+const bodySchema = z.object({ lang: z.enum(["fr", "en", "ja"]).optional() });
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
   if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "champs invalides" }, { status: 400 });
-  }
-  const { pairId } = parsed.data;
+  const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+  const lang = parsed.success ? (parsed.data.lang ?? "fr") : "fr";
 
-  const pairRef = adminDb.collection("pairs").doc(pairId);
-  const pairSnap = await pairRef.get();
-  if (!pairSnap.exists) {
-    return NextResponse.json({ error: "relation introuvable" }, { status: 404 });
-  }
-  const pair = { id: pairSnap.id, ...pairSnap.data() } as Pair;
+  const plan = await getPlan(uid);
+  if (plan.tier === "plus") return NextResponse.json({ error: "déjà Plus" }, { status: 409 });
 
-  // The requester must actually be one of the two people in this pair —
-  // a plain client-supplied pairId is not enough authorization for
-  // something that starts a real charge, unlike most other routes in
-  // this app that trust a body-supplied userId (see firebaseAdmin.ts's
-  // own comment on verifyRequestUser: reserved for destructive or
-  // credential-like actions, and this is a financial one).
-  if (!pair.userIds.includes(uid)) {
-    return NextResponse.json({ error: "vous ne faites pas partie de cette relation" }, { status: 403 });
-  }
-
-  if (pair.subscriptionStatus === "active") {
-    return NextResponse.json({ error: "déjà membre fondateur" }, { status: 409 });
-  }
-
-  // .trim() for the same reason lib/stripe.ts trims the secret key — a
-  // dashboard-pasted env var can carry an invisible trailing newline.
+  // .trim(): a dashboard-pasted env var can carry an invisible trailing newline.
   const priceId = process.env.STRIPE_PLUS_PRICE_ID?.trim();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!priceId || !appUrl) {
-    // Honest fallback, same posture as every other optional integration in
-    // this app (GIPHY, Fal.ai) — missing configuration never
-    // fabricates a session, it just tells the caller billing isn't live yet.
+    // Missing configuration never fabricates a session: billing just isn't live yet.
     return NextResponse.json({ error: "paiement non configuré" }, { status: 501 });
   }
 
-  const userSnap = await adminDb.collection("users").doc(uid).get();
-  const userEmail: string | undefined = userSnap.data()?.email;
+  // The price shown in the app is the price charged: a leftover Price (the
+  // old 1 € one) is refused rather than silently used.
+  const price = await stripe.prices.retrieve(priceId);
+  if (price.unit_amount !== PLUS_PRICE_CENTS || price.currency !== "eur" || price.recurring?.interval !== "month") {
+    console.error(`stripe checkout: STRIPE_PLUS_PRICE_ID ${priceId} is not ${PLUS_PRICE_CENTS / 100} EUR a month`);
+    return NextResponse.json({ error: "paiement non configuré" }, { status: 501 });
+  }
+
+  const [billing, userSnap] = await Promise.all([getBilling(uid), adminDb.collection("users").doc(uid).get()]);
+  const userEmail: string | undefined = userSnap.data()?.email ?? undefined;
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    client_reference_id: pairId,
-    // Reuse the existing Stripe customer once this pair has one (a past
-    // cancel-then-resubscribe) instead of creating a duplicate — the two
-    // options are mutually exclusive as far as Stripe's API is concerned.
-    ...(pair.stripeCustomerId ? { customer: pair.stripeCustomerId } : userEmail ? { customer_email: userEmail } : {}),
+    client_reference_id: uid,
+    // app/uid on the session and the subscription: this Stripe account also
+    // takes kuchimoto.com's payments, and each webhook keeps to its own.
+    metadata: { app: "ittsui", uid },
+    subscription_data: { metadata: { app: "ittsui", uid } },
+    // Reuse the Stripe customer after a cancel-then-resubscribe instead of
+    // creating a duplicate (the two options are mutually exclusive).
+    ...(billing.stripeCustomerId ? { customer: billing.stripeCustomerId } : userEmail ? { customer_email: userEmail } : {}),
+    allow_promotion_codes: true,
+    locale: lang,
     success_url: `${appUrl}/dashboard?plus=success`,
     cancel_url: `${appUrl}/dashboard?plus=cancelled`,
   });
@@ -77,6 +64,5 @@ export async function POST(request: Request) {
     console.error(`stripe checkout: session ${session.id} created with no url`);
     return NextResponse.json({ error: "session sans URL" }, { status: 502 });
   }
-
   return NextResponse.json({ url: session.url });
 }
