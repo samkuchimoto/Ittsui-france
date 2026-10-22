@@ -32,6 +32,7 @@ import { useLang, useT } from "@/app/components/site/LangProvider";
 import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { REQUEST_PAGE } from "./request-page.i18n";
+import { YourTurn } from "@/app/components/PlanCard";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -137,6 +138,8 @@ export default function RequestResponsePage() {
   const [user, setUser] = useState<User | false | null>(null);
   const [slowConnection, setSlowConnection] = useState(false);
   const [accepted, setAccepted] = useState<AcceptedDetails | null>(null);
+  // The sender, for the guest's "your turn" card after accepting (YourTurn).
+  const [invite, setInvite] = useState<{ name: string | null; ref: string | null }>({ name: null, ref: null });
   const [signingIn, setSigningIn] = useState(false);
   const [preview, setPreview] = useState<RequestPreview | null>(null);
 
@@ -157,6 +160,7 @@ export default function RequestResponsePage() {
           return;
         }
         if (isLocale(data.lang)) suggestLang(data.lang);
+        setInvite({ name: data.senderName ?? null, ref: data.senderRef ?? null });
         if (data.status === "declined" || data.status === "expired") {
           setStatus("declined");
           return;
@@ -427,17 +431,11 @@ export default function RequestResponsePage() {
           {t("Aller au tableau de bord")}
         </button>
         {/* Right after confirming is the one moment this person has just
-            felt Ittsui's actual value from the receiving side — the
-            natural next step is trying the sending side themselves, not a
-            cold invite to install something. Soft and optional: no
-            reward, no pressure copy, just the door left open. */}
-        <Link
-          href="/request/new"
-          className="mt-4 block text-sm underline underline-offset-4"
-          style={{ color: MUTED }}
-        >
-          {t("Proposer un rendez-vous à quelqu'un d'autre")}
-        </Link>
+            felt Ittsui's actual value from the receiving side: the natural
+            next step is trying the sending side themselves. The link
+            carries the sender's invite code, so if they start, both get a
+            month of Plus (lib/referral.ts). */}
+        <YourTurn senderName={invite.name} senderRef={invite.ref} />
       </Shell>
     );
   }

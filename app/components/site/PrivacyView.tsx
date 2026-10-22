@@ -46,6 +46,10 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
         body: "Vous vous connectez avec votre compte Google (via Firebase Authentication). Ittsui reçoit votre nom, votre e-mail et votre photo de profil Google — rien d'autre n'est demandé pour se connecter.",
       },
       {
+        title: "Abonnement et parrainage",
+        body: "Votre essai, votre plan et, si vous passez à Plus, votre abonnement sont gérés par Ittsui et Stripe (le paiement) ; Ittsui ne voit jamais votre carte. Si vous arrivez par le lien d'invitation d'un proche, son code est gardé 30 jours dans un cookie (ittsui_ref), uniquement pour vous offrir à tous les deux le mois de Plus promis.",
+      },
+      {
         title: "Votre rituel",
         body: "Le prénom de votre proche, son e-mail, le jour et le créneau convenus, vos préférences de lieux et, si vous le renseignez, votre code postal sont stockés pour générer la proposition hebdomadaire. Rien de tout cela n'est utilisé à d'autres fins.",
       },
@@ -125,6 +129,10 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
         body: "You sign in with your Google account (through Firebase Authentication). Ittsui receives your name, your email address and your Google profile photo; nothing else is asked for to sign in.",
       },
       {
+        title: "Subscription and invites",
+        body: "Your trial, your plan and, if you go Plus, your subscription are handled by Ittsui and Stripe (payment); Ittsui never sees your card. If you arrive through someone's invite link, their code is kept for 30 days in a cookie (ittsui_ref), only so you both get the month of Plus it promises.",
+      },
+      {
         title: "Your ritual",
         body: "Your close one's first name and email address, the agreed day and time slot, your venue preferences and, if you enter it, your postcode are stored to generate the weekly proposal. None of it is used for anything else.",
       },
@@ -198,6 +206,10 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
       {
         title: "ログイン",
         body: "Googleアカウントでログインします（Firebase Authentication経由）。Ittsuiが受け取るのは、お名前、メールアドレス、Googleのプロフィール写真だけです。ログインのためにそれ以外の情報を求めることはありません。",
+      },
+      {
+        title: "サブスクリプションと招待",
+        body: "お試し期間、プラン、Plusのサブスクリプションは、IttsuiとStripe（決済）が管理します。Ittsuiがカード情報を見ることはありません。大切な人の招待リンクからいらした場合は、約束の1か月分のPlusをおふたりにお届けするためだけに、その招待コードを30日間Cookie（ittsui_ref）に保存します。",
       },
       {
         title: "あなたの習慣",

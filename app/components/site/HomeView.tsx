@@ -102,6 +102,8 @@ type Copy = {
   plusBody: string;
   plusNote: string;
   plusButton: string;
+  /** The founding offer (lib/planConfig.ts FOUNDING_CODE), typed at Stripe Checkout. */
+  plusCode: string;
   mobile: string;
 };
 
@@ -200,6 +202,7 @@ const COPY: Record<Locale, Copy> = {
     plusNote:
       "Des rendez-vous chaque semaine, sans limite, avec toutes les personnes qui comptent. Sans Plus, un rendez-vous par mois reste gratuit. Sans engagement.",
     plusButton: "Commencer, 14 jours offerts",
+    plusCode: "Code FONDATEUR : -50 % pendant 3 mois, pour les 100 premiers membres.",
     mobile: "Ittsui sur mobile →",
   },
   en: {
@@ -289,6 +292,7 @@ const COPY: Record<Locale, Copy> = {
     plusBody: "The price of a coffee, so you don't lose touch with your family, your friends or your partner.",
     plusNote: "Rendez-vous every week, with no limit, with everyone who matters. Without Plus, one rendez-vous a month stays free. Cancel anytime.",
     plusButton: "Start with 14 days free",
+    plusCode: "Code FONDATEUR: 50% off for 3 months, for the first 100 members.",
     mobile: "Ittsui on mobile →",
   },
   ja: {
@@ -378,6 +382,7 @@ const COPY: Record<Locale, Copy> = {
     plusBody: "コーヒー1杯の値段で、家族や友人、パートナーとのつながりを守る。",
     plusNote: "大切な人たちと、毎週、回数の制限なくランデヴーを。Plusに入らなくても、月1回のランデヴーは無料です。いつでも解約できます。",
     plusButton: "14日間無料ではじめる",
+    plusCode: "コードFONDATEUR：先着100名様は3か月間50%オフ。",
     mobile: "スマートフォンでIttsuiを使う →",
   },
 };
@@ -753,6 +758,9 @@ export function HomeView({ lang }: { lang: Locale }) {
             </p>
             <p className="mt-2 text-xs" style={{ color: MUTED }}>
               {t.plusNote}
+            </p>
+            <p className="mt-2 text-xs font-medium" style={{ color: ACCENT }}>
+              {t.plusCode}
             </p>
             <Link
               href={app("/dashboard")}

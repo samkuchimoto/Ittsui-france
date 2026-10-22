@@ -15,7 +15,19 @@ import { LANG_COOKIE, isLocale } from "@/lib/i18n";
 
 const YEAR = 60 * 60 * 24 * 365;
 
+// An invite link (?ref=CODE, lib/referral.ts) is kept for 30 days, so the
+// month of Plus it promises is there when the person signs up.
+const REF_COOKIE = "ittsui_ref";
+const MONTH = 60 * 60 * 24 * 30;
+
 export function middleware(request: NextRequest) {
+  const response = route(request);
+  const ref = request.nextUrl.searchParams.get("ref");
+  if (ref && /^[A-HJ-NP-Z2-9]{6}$/.test(ref)) response.cookies.set(REF_COOKIE, ref, { path: "/", maxAge: MONTH, sameSite: "lax" });
+  return response;
+}
+
+function route(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const fromUrl = searchParams.get("lang");
 
@@ -53,6 +65,8 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/en",
+    "/ja",
     "/setup/:path*",
     "/dashboard/:path*",
     "/contacts/:path*",

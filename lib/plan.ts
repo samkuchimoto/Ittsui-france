@@ -5,7 +5,8 @@
 //   - then the free plan: FREE_PER_MONTH rendez-vous per calendar month
 //     (Paris time), counting the requests someone sends and the ritual
 //     proposals Ittsui makes for a relationship they started;
-//   - Ittsui Plus, a Stripe subscription (lib/planConfig.ts): no limit.
+//   - Ittsui Plus, a Stripe subscription (lib/planConfig.ts): no limit;
+//   - an invite link (lib/referral.ts) adds a month of Plus to both people.
 //     A pair paid under the old per-relationship "membre fondateur" plan
 //     (Pair.subscriptionStatus "active") still counts as Plus.
 // Stored in billing/{uid}, which firestore.rules gives no client access to:
@@ -14,7 +15,8 @@
 
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { FREE_PER_MONTH, TRIAL_DAYS, type Plan } from "@/lib/planConfig";
+import { FREE_PER_MONTH, REFERRAL_DAYS, TRIAL_DAYS, type Plan } from "@/lib/planConfig";
+import { ensureReferralCode, referrerFor, rewardReferrer } from "@/lib/referral";
 
 export { FREE_PER_MONTH, TRIAL_DAYS, type Plan };
 
@@ -26,6 +28,9 @@ export interface Billing {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   usage?: { month: string; count: number };
+  referralCode?: string;
+  referredBy?: string;
+  referrals?: number;
 }
 
 /** "2026-10" in Paris time, the month the free rendez-vous belongs to. */
@@ -41,14 +46,24 @@ function billingRef(uid: string) {
   return adminDb.collection("billing").doc(uid);
 }
 
-/** The person's billing doc, created with a fresh trial the first time. */
-export async function getBilling(uid: string): Promise<Billing> {
+/**
+ * The person's billing doc, created with a fresh trial the first time. A
+ * valid invite code at that moment (`invite`, from the ittsui_ref cookie)
+ * adds REFERRAL_DAYS and rewards the person who shared it.
+ */
+export async function getBilling(uid: string, invite?: string): Promise<Billing> {
   const ref = billingRef(uid);
   const snap = await ref.get();
   if (snap.exists) return snap.data() as Billing;
-  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const referrer = invite ? await referrerFor(invite, uid) : null;
+  const days = TRIAL_DAYS + (referrer ? REFERRAL_DAYS : 0);
+  const trialEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   // create() fails if a concurrent first call got there first: read theirs.
-  await ref.create({ trialEndsAt, createdAt: new Date().toISOString() }).catch(() => undefined);
+  const created = await ref
+    .create({ trialEndsAt, createdAt: new Date().toISOString(), ...(referrer ? { referredBy: referrer } : {}) })
+    .then(() => true)
+    .catch(() => false);
+  if (created && referrer) await rewardReferrer(referrer).catch((err) => console.error("referral: reward failed", err));
   return ((await ref.get()).data() as Billing) ?? { trialEndsAt };
 }
 
@@ -65,19 +80,32 @@ async function hasLegacyPlus(uid: string): Promise<boolean> {
 export function planOf(billing: Billing, legacyPlus = false, now = new Date()): Plan {
   const month = parisMonth(now);
   const used = billing.usage?.month === month ? billing.usage.count : 0;
-  const manageable = Boolean(billing.stripeCustomerId);
+  const common = {
+    trialEndsAt: billing.trialEndsAt,
+    month,
+    used,
+    manageable: Boolean(billing.stripeCustomerId),
+    referralCode: billing.referralCode ?? null,
+    referrals: billing.referrals ?? 0,
+  };
   if (legacyPlus || (billing.subscriptionStatus && PLUS_STATUSES.includes(billing.subscriptionStatus))) {
-    return { tier: "plus", trialEndsAt: billing.trialEndsAt, month, used, limit: null, canCreate: true, manageable };
+    return { tier: "plus", ...common, limit: null, canCreate: true };
   }
-  if (now < new Date(billing.trialEndsAt)) {
-    return { tier: "trial", trialEndsAt: billing.trialEndsAt, month, used, limit: null, canCreate: true, manageable };
-  }
-  return { tier: "free", trialEndsAt: billing.trialEndsAt, month, used, limit: FREE_PER_MONTH, canCreate: used < FREE_PER_MONTH, manageable };
+  if (now < new Date(billing.trialEndsAt)) return { tier: "trial", ...common, limit: null, canCreate: true };
+  return { tier: "free", ...common, limit: FREE_PER_MONTH, canCreate: used < FREE_PER_MONTH };
 }
 
-export async function getPlan(uid: string): Promise<Plan> {
-  const [billing, legacy] = await Promise.all([getBilling(uid), hasLegacyPlus(uid)]);
-  return planOf(billing, legacy);
+/** `invite` only matters the first time (see getBilling). */
+export async function getPlan(uid: string, invite?: string): Promise<Plan> {
+  const [billing, legacy] = await Promise.all([getBilling(uid, invite), hasLegacyPlus(uid)]);
+  const referralCode = await ensureReferralCode(uid, billing.referralCode);
+  return planOf({ ...billing, referralCode }, legacy);
+}
+
+/** The invite code to put on someone's rendez-vous (the guest's "your turn"). */
+export async function referralCodeOf(uid: string): Promise<string> {
+  const billing = await getBilling(uid);
+  return ensureReferralCode(uid, billing.referralCode);
 }
 
 /** Counts one rendez-vous for this month, once it has actually been created or proposed. */
