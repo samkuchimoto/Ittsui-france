@@ -50,6 +50,8 @@ import { FriendlyLoading } from "@/app/components/FriendlyLoading";
 import { SlowLoadFallback } from "@/app/components/SlowLoadFallback";
 import { mostRecentByCreatedAt } from "@/lib/sort";
 import { signInWithPasskey } from "@/lib/passkeyClient";
+import { CITIES, defaultCityFor, type CityId } from "@/lib/cities";
+import { CityPicker, initialCity } from "@/app/components/CityPicker";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { StatusBanner, type StatusStep } from "@/app/components/StatusBanner";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
@@ -291,6 +293,12 @@ export default function SetupClient() {
 
   const [venueTypes, setVenueTypes] = useState<VenueType[]>(["cafe"]);
   const [postalCode, setPostalCode] = useState("");
+  // The city this pair meets in (lib/cities.ts): from the link, this
+  // device's last choice, or the language's own city; English leaves it to the person.
+  const [cityId, setCityId] = useState<CityId | null>(null);
+  useEffect(() => {
+    setCityId((c) => c ?? initialCity() ?? defaultCityFor(lang));
+  }, [lang]);
   const [dietaryFilters, setDietaryFilters] = useState<DietaryFilter[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
@@ -507,6 +515,11 @@ export default function SetupClient() {
     const hasPhone = partnerPhone.trim().length > 0;
     const hasEmail = partnerEmail.trim().length > 0;
 
+    if (!cityId) {
+      setError(t("Choisissez la ville du rendez-vous."));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/invite-partner", {
@@ -527,7 +540,8 @@ export default function SetupClient() {
           cadence,
           ...(duoType ? { relationshipKind: duoType } : {}),
           notifyDaysBefore,
-          postalCode: postalCode || undefined,
+          postalCode: !cityId || CITIES[cityId].frenchData ? postalCode || undefined : undefined,
+          ...(cityId ? { cityId } : {}),
           preferences: { venueTypes, dietaryFilters },
         }),
       });
@@ -1064,6 +1078,9 @@ export default function SetupClient() {
               </motion.button>
             </div>
 
+            <CityPicker value={cityId} onChange={setCityId} />
+
+            {(!cityId || CITIES[cityId].frenchData) && (
             <div>
               <label className="block text-sm font-medium">
                 {t("Code postal")} <span className="font-normal" style={{ color: MUTED }}>{t("(facultatif)")}</span>
@@ -1127,6 +1144,7 @@ export default function SetupClient() {
                 {t("Pour proposer des lieux près de chez vous. Sans code postal, on propose des lieux à Paris par défaut.")}
               </p>
             </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium">

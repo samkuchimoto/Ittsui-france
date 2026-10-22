@@ -29,6 +29,7 @@ import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
 import { recordVisit } from "@/lib/partnerPilot";
+import { cityOf } from "@/lib/cities";
 
 const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
 
@@ -62,6 +63,9 @@ export async function POST(request: Request) {
   const lang = langOf(data.lang);
   const t = makeT(lang, EMAILS);
   const dateLabel = lang === "fr" ? data.date : frenchDateLabel(data.date, lang);
+  // The time is the meeting city's own; outside Paris it says which city.
+  const city = cityOf(data.cityId);
+  const timeLabel = city.id === "paris" ? data.time : `${data.time} (${city.name[lang]})`;
 
   // Only an email-addressed request actually needs a signed-in identity
   // to accept — see the file header. A phone-only request accepted with
@@ -159,6 +163,7 @@ export async function POST(request: Request) {
     venueAddress: data.venueAddress,
     date: data.date,
     time: data.time,
+    timezone: city.timezone,
   });
   // The partner pilot (lib/partnerPilot.ts): accepted at a partner venue,
   // the rendez-vous gets the code both people show at the counter.
@@ -183,7 +188,7 @@ export async function POST(request: Request) {
   const sp = lang === "ja" ? "" : " ";
   const confirmationText =
     `${t("Rendez-vous confirmé :")}${sp}` +
-    t("{venue} ({address}), le {date} à {time}.", { venue: data.venueName, address: data.venueAddress, date: dateLabel, time: data.time }) +
+    t("{venue} ({address}), le {date} à {time}.", { venue: data.venueName, address: data.venueAddress, date: dateLabel, time: timeLabel }) +
     "\n" +
     t("Ajouter à Google Agenda : {url}", { url: calendarUrl }) +
     (visitLine ? `\n${visitLine}` : "");
@@ -193,7 +198,7 @@ export async function POST(request: Request) {
       venue: escapeHtml(data.venueName),
       address: escapeHtml(data.venueAddress),
       date: escapeHtml(dateLabel),
-      time: escapeHtml(data.time),
+      time: escapeHtml(timeLabel),
     }) +
     `</p>` +
     `<p><a href="${calendarUrl}">${t("Ajouter à Google Agenda")}</a></p>` +
@@ -238,6 +243,7 @@ export async function POST(request: Request) {
     date: data.date,
     time: data.time,
     visit: visitCode ? { code: visitCode, perk: data.partnerPerk ?? "" } : null,
+    cityId: city.id,
   });
 }
 

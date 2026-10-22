@@ -19,6 +19,9 @@ import { auth, db, signInWithGoogle, watchAuthState } from "@/lib/firebase";
 import { SignInGate } from "@/app/components/SignInGate";
 import { dayOfDate, inSlowHours, type SlowHour } from "@/lib/partnerHours";
 import { parseMeetingRequest } from "@/lib/parseMeetingRequest";
+import { CITIES, defaultCityFor, type CityId } from "@/lib/cities";
+import { zonedNow } from "@/lib/timezone";
+import { CityPicker, initialCity } from "@/app/components/CityPicker";
 import { PlusOffer } from "@/app/components/PlanCard";
 import { TimeSelect } from "@/app/components/TimeSelect";
 import { DiscoveryGrid, type DiscoveryTile } from "@/app/components/DiscoveryGrid";
@@ -153,6 +156,8 @@ interface Draft {
   time: string;
   // A partner venue of the pilot (lib/partnerPilot.ts), when one was picked.
   partnerId: string | null;
+  // The meeting's city (lib/cities.ts): its timezone and venue suggestions.
+  cityId: CityId | null;
 }
 
 function emptyDraft(): Draft {
@@ -166,6 +171,7 @@ function emptyDraft(): Draft {
     venueType: null,
     postalCode: "",
     partnerId: null,
+    cityId: null,
     date: today.toISOString().slice(0, 10),
     time: "15:00",
   };
@@ -224,6 +230,13 @@ export default function RequestFormClient() {
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; venueType?: VenueType }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [partners, setPartners] = useState<NearbyPartner[]>([]);
+  // The meeting's city: from the link (?city=), this device's last choice,
+  // or the language's own city; English leaves it to the person.
+  useEffect(() => {
+    setDraft((d) => (d.cityId ? d : { ...d, cityId: initialCity() ?? defaultCityFor(lang) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const city = draft.cityId ? CITIES[draft.cityId] : null;
   // The postal code's centre, once resolved — the reference point for the
   // name search and the per-type lists (the detected position is used
   // when there's no postal code).
@@ -381,6 +394,22 @@ export default function RequestFormClient() {
   // genuine failure or nothing OSM has mapped nearby), never overwriting
   // a set of real results with the static ones.
   useEffect(() => {
+    // Outside France (lib/cities.ts): no postal codes; OpenStreetMap venues
+    // around the city centre instead, named the local way.
+    const meetingCity = draft.cityId ? CITIES[draft.cityId] : null;
+    if (meetingCity && !meetingCity.frenchData) {
+      let stopped = false;
+      setAreaCoords(meetingCity.center);
+      setPartners([]);
+      setSuggestionsLoading(true);
+      fetchNearbyVenueSuggestions(meetingCity.center, meetingCity.osmWords)
+        .then((results) => !stopped && setSuggestions(results))
+        .catch(() => !stopped && setSuggestions([]))
+        .finally(() => !stopped && setSuggestionsLoading(false));
+      return () => {
+        stopped = true;
+      };
+    }
     if (!/^\d{5}$/.test(draft.postalCode)) {
       setSuggestions([]);
       setSuggestionsLoading(false);
@@ -407,7 +436,7 @@ export default function RequestFormClient() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [draft.postalCode]);
+  }, [draft.postalCode, draft.cityId]);
 
   const reference: Coords | null = areaCoords ?? detectedCoords ?? null;
 
@@ -668,7 +697,7 @@ export default function RequestFormClient() {
     try {
       // Rules in the browser (lib/parseMeetingRequest.ts): instant, free,
       // offline, no account needed; nothing leaves the phone.
-      const result = parseMeetingRequest(freeText, lang);
+      const result = parseMeetingRequest(freeText, lang, city ? zonedNow(city.timezone).dateStr : undefined, city?.dayFirst);
 
       if (!result) {
         setParseMessage(t("Rien n'a pu être deviné — complétez ci-dessous."));
@@ -796,6 +825,10 @@ export default function RequestFormClient() {
   async function handleSend() {
     if (!user) return;
     setError(null);
+    if (!draft.cityId) {
+      setError(t("Choisissez la ville du rendez-vous."));
+      return;
+    }
 
     if (!draft.recipientName.trim()) {
       setError(t("Le nom du destinataire est requis."));
@@ -844,6 +877,7 @@ export default function RequestFormClient() {
           date: draft.date,
           time: draft.time,
           lang,
+          cityId: draft.cityId,
         }),
       });
       const data = await res.json();
@@ -1331,7 +1365,15 @@ export default function RequestFormClient() {
               {/* Postal code input only shown when there isn't one already —
                   in simple mode this is usually already auto-filled from the
                   person's own weekly Pair, so this rarely appears at all. */}
-              {(!simpleMode || !draft.postalCode) && (
+              <div className="mt-2">
+                <CityPicker
+                  value={draft.cityId}
+                  onChange={(id) =>
+                    setDraft((d) => ({ ...d, cityId: id, ...(CITIES[id].frenchData ? {} : { postalCode: "", partnerId: null }) }))
+                  }
+                />
+              </div>
+              {city?.frenchData !== false && (!simpleMode || !draft.postalCode) && (
                 <>
                   <input
                     type="text"
@@ -1382,7 +1424,12 @@ export default function RequestFormClient() {
               )}
               {suggestionsLoading && (
                 <p className="mt-2 text-xs" style={{ color: MUTED }}>
-                  {t("Recherche de lieux près de {code}...", { code: draft.postalCode })}
+                  {city && !city.frenchData ? t("Recherche de lieux à {city}...", { city: city.name[lang] }) : t("Recherche de lieux près de {code}...", { code: draft.postalCode })}
+                </p>
+              )}
+              {city && !city.frenchData && suggestions.length > 0 && (
+                <p className="mt-2 text-xs" style={{ color: MUTED }}>
+                  {t("Lieux suggérés d'après OpenStreetMap : vérifiez les horaires avant d'y aller.")}
                 </p>
               )}
               {/* The pilot's partner venues first (lib/partnerPilot.ts), the

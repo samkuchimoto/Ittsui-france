@@ -12,8 +12,9 @@ export function googleCalendarLink(opts: {
   title: string;
   details: string;
   venueAddress: string;
-  date: string; // "YYYY-MM-DD", Europe/Paris calendar date
-  time: string; // "HH:MM", Europe/Paris wall-clock
+  date: string; // "YYYY-MM-DD", in the meeting's city
+  time: string; // "HH:MM", wall-clock in the meeting's city
+  timezone?: string; // the city's IANA zone (lib/cities.ts); Paris by default
 }): string {
   const [year, month, day] = opts.date.split("-").map(Number);
   const [hour, minute] = opts.time.split(":").map(Number);
@@ -31,9 +32,9 @@ export function googleCalendarLink(opts: {
     details: opts.details,
     location: opts.venueAddress,
     // Tells Google Calendar to read the naive "dates" values above as
-    // Europe/Paris wall-clock time, matching how date/time are already
+    // wall-clock time in the meeting's city, matching how date/time are
     // stored everywhere else in this app — not a real UTC instant.
-    ctz: "Europe/Paris",
+    ctz: opts.timezone ?? "Europe/Paris",
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;

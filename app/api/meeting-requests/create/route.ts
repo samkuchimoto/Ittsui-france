@@ -17,6 +17,7 @@ import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
 import { getPlan, recordRendezVous } from "@/lib/plan";
 import { partnerNamed } from "@/lib/partnerPilot";
+import { CITY_IDS, cityOf } from "@/lib/cities";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
@@ -57,6 +58,8 @@ const createSchema = z
     lang: z.enum(["fr", "en", "ja"]).optional(),
     // A partner venue picked in the form (lib/partnerPilot.ts); checked below.
     partnerId: z.string().max(64).optional(),
+    // The meeting's city (lib/cities.ts); Paris when absent (older app builds).
+    cityId: z.enum(CITY_IDS).optional(),
   })
   .refine((data) => data.recipientEmail || data.recipientPhone, {
     message: "indiquez un e-mail ou un numéro de téléphone",
@@ -78,6 +81,9 @@ export async function POST(request: Request) {
   const t = makeT(lang, EMAILS);
   // French keeps the stored "2026-09-20"; English and Japanese get the day written out.
   const dateLabel = lang === "fr" ? date : frenchDateLabel(date, lang);
+  // The time is the meeting city's own; outside Paris it says which city.
+  const city = cityOf(parsed.data.cityId);
+  const timeLabel = city.id === "paris" ? time : `${time} (${city.name[lang]})`;
 
   const senderSnap = await adminDb.collection("users").doc(uid).get();
   const senderName: string = senderSnap.data()?.displayName ?? t("Quelqu'un sur Ittsui");
@@ -109,6 +115,7 @@ export async function POST(request: Request) {
     venueName,
     venueAddress,
     ...(venueType ? { venueType } : {}),
+    cityId: city.id,
     ...(partner ? { partnerId: partner.id, partnerPerk: partner.perk ?? "" } : {}),
     date,
     time,
@@ -136,6 +143,7 @@ export async function POST(request: Request) {
       venueAddress,
       date,
       time,
+      timezone: city.timezone,
     });
     recipientEmailSent = await sendEmail({
       to: recipientEmail,
@@ -146,7 +154,7 @@ export async function POST(request: Request) {
         t("Lieu : {venue} ({address})", { venue: venueName, address: venueAddress }) +
         "\n" +
         (partner?.perk ? t("Partenaire Ittsui : {perk}, pour vous deux.", { perk: partner.perk }) + "\n" : "") +
-        t("Date : {date} à {time}", { date: dateLabel, time }) +
+        t("Date : {date} à {time}", { date: dateLabel, time: timeLabel }) +
         "\n\n" +
         t("Pour accepter ou décliner, connectez-vous ici : {url}", { url: requestUrl }) +
         "\n" +
@@ -159,7 +167,7 @@ export async function POST(request: Request) {
         bodyHtml: `
           <p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">
             <strong style="color: #1C1917;">${escapeHtml(venueName)}</strong> (${escapeHtml(venueAddress)})<br>
-            ${t("{date} à {time}", { date: escapeHtml(dateLabel), time: escapeHtml(time) })}
+            ${t("{date} à {time}", { date: escapeHtml(dateLabel), time: escapeHtml(timeLabel) })}
           </p>
           ${partner?.perk ? `<p style="font-size: 14px; font-weight: 600; color: #B84E2A; text-align: center;">${escapeHtml(t("Partenaire Ittsui : {perk}, pour vous deux.", { perk: partner.perk }))}</p>` : ""}
           ${emailButton(requestUrl, t("Accepter ou décliner"))}

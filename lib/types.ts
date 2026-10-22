@@ -1,6 +1,7 @@
 // Shared types — the state machine's shape, used across frontend + API routes
 
 import type { SlowHour } from "@/lib/partnerHours";
+import type { CityId } from "@/lib/cities";
 
 export type VenueType = "cafe" | "restaurant" | "home" | "park" | "museum";
 
@@ -69,6 +70,8 @@ export interface Pair {
   // a live venues data source; this only unlocks the handful of major
   // metros that are honestly hardcoded today.
   postalCode?: string;
+  // The city this pair meets in (lib/cities.ts): its timezone and venues; Paris when absent.
+  cityId?: CityId;
   // Orthogonal to `status`: a paused pair is still "active" (both people
   // stay connected, the schedule/preferences are kept exactly as set) —
   // it just stops generating new weekly proposals until resumed. A
@@ -199,6 +202,8 @@ export interface MeetingRequest {
   partnerId?: string;
   partnerPerk?: string;
   visitCode?: string;
+  // The meeting's city (lib/cities.ts): its timezone and venues; Paris when absent.
+  cityId?: CityId;
   senderName: string;
   senderEmail: string | null;
   recipientName: string; // name the sender gave for the recipient

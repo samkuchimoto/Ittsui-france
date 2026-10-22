@@ -7,6 +7,10 @@ import type { Catalog } from "@/lib/translate";
 
 export const REQUEST_NEW: Catalog = {
   en: {
+    // Cities (lib/cities.ts)
+    "Choisissez la ville du rendez-vous.": "Choose the city of the rendez-vous.",
+    "Recherche de lieux à {city}...": "Looking for places in {city}...",
+    "Lieux suggérés d'après OpenStreetMap : vérifiez les horaires avant d'y aller.": "Places suggested from OpenStreetMap: check opening hours before you go.",
     // The partner pilot
     "Partenaire · {perk}": "Partner · {perk}",
     "Partenaire Ittsui": "Ittsui partner",
@@ -124,6 +128,10 @@ export const REQUEST_NEW: Catalog = {
     "champs invalides": "Some fields aren't valid",
   },
   ja: {
+    // Cities (lib/cities.ts)
+    "Choisissez la ville du rendez-vous.": "会う街を選んでください。",
+    "Recherche de lieux à {city}...": "{city}で場所を探しています…",
+    "Lieux suggérés d'après OpenStreetMap : vérifiez les horaires avant d'y aller.": "OpenStreetMapをもとにした提案です。お出かけ前に営業時間をご確認ください。",
     // The partner pilot
     "Partenaire · {perk}": "パートナー・{perk}",
     "Partenaire Ittsui": "Ittsuiパートナー",

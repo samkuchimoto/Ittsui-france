@@ -4,6 +4,8 @@ import type { Catalog } from "@/lib/translate";
 
 export const SETUP: Catalog = {
   en: {
+    // Cities (lib/cities.ts)
+    "Choisissez la ville du rendez-vous.": "Choose the city of the rendez-vous.",
     // Days, venues, options
     Lundi: "Monday",
     Mardi: "Tuesday",
@@ -136,6 +138,8 @@ export const SETUP: Catalog = {
     "Connexion échouée.": "Sign-in failed.",
   },
   ja: {
+    // Cities (lib/cities.ts)
+    "Choisissez la ville du rendez-vous.": "会う街を選んでください。",
     Lundi: "月曜日",
     Mardi: "火曜日",
     Mercredi: "水曜日",

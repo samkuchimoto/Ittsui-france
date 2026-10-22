@@ -4,6 +4,7 @@
 // partner and a confirmation to the inviter. The pair activates later,
 // in /api/activate-pending-pair, once the partner logs in with Google.
 
+import { CITY_IDS } from "@/lib/cities";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
@@ -72,6 +73,8 @@ const bodySchema = z
     // week ahead of a weekly event" makes sense anyway.
     notifyDaysBefore: z.number().int().min(0).max(6).optional(),
     postalCode: z.string().optional(),
+    // The city this pair meets in (lib/cities.ts); Paris when absent.
+    cityId: z.enum(CITY_IDS).optional(),
     preferences: z.object({
       venueTypes: z.array(z.enum(["cafe", "restaurant", "home", "park", "museum"])),
       dietaryFilters: z.array(z.string()), // open list — user can add custom tags, see lib/types.ts
@@ -99,6 +102,7 @@ export async function POST(request: Request) {
     notifyDaysBefore,
     postalCode,
     preferences,
+    cityId,
   } = parsed.data;
 
   const lang = langOf(parsed.data.lang);
@@ -140,7 +144,9 @@ export async function POST(request: Request) {
     ...(cadence && cadence !== "weekly" ? { cadence } : {}),
     ...(relationshipKind ? { relationshipKind } : {}),
     notifyDaysBefore: typeof notifyDaysBefore === "number" ? notifyDaysBefore : 0,
-    ...(typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
+    ...(cityId ? { cityId } : {}),
+    // French postal codes only mean something in Paris (lib/cities.ts).
+    ...((!cityId || cityId === "paris") && typeof postalCode === "string" && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
     preferences,
     lang,
     status: "pending",

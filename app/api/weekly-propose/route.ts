@@ -83,7 +83,9 @@ import { generateWarmConfirmation } from "@/lib/confirmationText";
 import { getWeatherSignal } from "@/lib/weather";
 import type { Pair, VenueOption, VenueType } from "@/lib/types";
 import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venueCatalog";
-import { parisNow, parisMondayISO, parisWallClockToUTCISOString, WEEKDAYS } from "@/lib/timezone";
+import { parisNow, parisMondayISO, mondayISO, wallClockToUTCISOString, zonedNow, WEEKDAYS } from "@/lib/timezone";
+import { cityOf, type City } from "@/lib/cities";
+import { fetchVenuesOfType } from "@/lib/geoVenueSuggestions";
 import { langOf } from "@/lib/i18n";
 import { getPlan, recordRendezVous } from "@/lib/plan";
 import { notifyPlanLimit } from "@/lib/planEmails";
@@ -106,7 +108,7 @@ interface VenueProposal {
   optionA: VenueOption;
   optionB?: VenueOption; // present only when a second distinct real candidate existed
   confirmationText: string;
-  source: "rag-service" | "firestore-rule-engine" | "static-rule-engine" | "partner";
+  source: "rag-service" | "firestore-rule-engine" | "static-rule-engine" | "partner" | "osm";
 }
 
 export async function GET(request: Request) {
@@ -137,6 +139,12 @@ export async function GET(request: Request) {
 
   for (const pairDoc of pairsSnap.docs) {
     const pair = { id: pairDoc.id, ...pairDoc.data() } as Pair;
+    // The pair's city (lib/cities.ts): its own today, week and clock. One
+    // daily run at 06:00 UTC falls on the same local date in all eight cities.
+    const city = cityOf(pair.cityId);
+    const local = zonedNow(city.timezone);
+    const today = local.weekday;
+    const weekOf = mondayISO(city.timezone);
 
     if (pair.paused) {
       results.push({ pairId: pair.id, status: "paused" });
@@ -181,7 +189,7 @@ export async function GET(request: Request) {
 
     const { pair: weatherPair, swapNote } = await weatherAdjustPair(pair, weekOf);
 
-    const proposal = await getFridayProposal(weatherPair, weekOf);
+    const proposal = city.frenchData ? await getFridayProposal(weatherPair, weekOf) : await cityProposal(weatherPair, city, weekOf);
     if (!proposal) {
       results.push({ pairId: pair.id, status: "no_venues_available" });
       continue;
@@ -191,7 +199,7 @@ export async function GET(request: Request) {
     // hours cover this pair's slot, in their postal code, comes first as
     // option A with its perk; the usual suggestion stays as option B, so
     // the pair still chooses.
-    const partner = await partnerForRitual(pair, weekOf).catch(() => null);
+    const partner = city.frenchData ? await partnerForRitual(pair, weekOf).catch(() => null) : null;
     if (partner) {
       if (proposal.optionA.venueName !== partner.venueName) proposal.optionB = proposal.optionA;
       proposal.optionA = partner;
@@ -222,7 +230,7 @@ export async function GET(request: Request) {
       ? `${warmText} · ${makeT(langOf(pair.lang), EMAILS)("Partenaire Ittsui : {perk}", { perk: proposal.optionA.partner.perk })}`
       : warmText;
 
-    const proposedTime = buildProposedTime(pair.agreedWindowStart);
+    const proposedTime = buildProposedTime(pair, city, local.dateStr);
 
     const weekRef = adminDb.collection("pairs").doc(pair.id).collection("weeks").doc(weekOf);
 
@@ -657,8 +665,34 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
 // time) was being stored as if the meeting happened at 17:00 Paris time in
 // summer (CEST, UTC+2) — verified concretely, not assumed: this exact
 // input/output pair was reproduced under TZ=UTC before this fix.
-function buildProposedTime(windowStart: string): string {
-  return parisWallClockToUTCISOString(windowStart);
+//
+// 2026-10-23: the meeting's own day and city. The day is today plus the
+// pair's notice (notifyDaysBefore), not today: a pair told two days ahead
+// meets on agreedDay, and used to get a proposedTime two days early. The
+// clock is the city's (lib/cities.ts), DST included.
+function buildProposedTime(pair: Pair, city: City, localToday: string): string {
+  const meeting = new Date(`${localToday}T12:00:00.000Z`);
+  meeting.setUTCDate(meeting.getUTCDate() + (pair.notifyDaysBefore ?? 0));
+  return wallClockToUTCISOString(pair.agreedWindowStart, meeting.toISOString().slice(0, 10), city.timezone);
+}
+
+// Outside France (lib/cities.ts): no French catalogue or address data, so
+// the venue comes from OpenStreetMap around the city centre, of a type the
+// pair likes. Real places only; nothing found means no proposal this week
+// (no_venues_available), never an invented one.
+async function cityProposal(pair: Pair, city: City, weekOf: string): Promise<VenueProposal | null> {
+  const liked = (pair.preferences?.venueTypes ?? []).filter((type): type is Exclude<VenueType, "home"> => type !== "home");
+  for (const type of liked.length ? liked : (["cafe"] as Exclude<VenueType, "home">[])) {
+    const venues = await fetchVenuesOfType(type, city.center).catch(() => []);
+    if (!venues.length) continue;
+    const pick = venues[hashToIndex(pair.id + weekOf + type, Math.min(venues.length, 6))];
+    return {
+      optionA: { venueId: `osm_${city.id}_${pick.name}`, venueName: pick.name, venueAddress: pick.address, venueType: pick.venueType ?? type },
+      confirmationText: `${pick.name}, ${dayLabel(pair.agreedDay, langOf(pair.lang))} ${pair.agreedWindowStart}`,
+      source: "osm",
+    };
+  }
+  return null;
 }
 
 // Small deterministic string hash -> bounded index. Not cryptographic,

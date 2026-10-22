@@ -47,6 +47,8 @@ export async function GET(request: Request, { params }: { params: { requestId: s
     requiresLogin: Boolean(data.recipientEmail),
     // The sender's language, for a recipient who hasn't chosen one.
     lang: data.lang ?? "fr",
+    // The meeting's city (lib/cities.ts): its date and time are that city's own.
+    cityId: data.cityId ?? "paris",
     // The sender's invite code, on the guest's "your turn" link: if the
     // guest starts using Ittsui, both get a month of Plus (lib/referral.ts).
     senderRef: data.senderId ? await referralCodeOf(data.senderId).catch(() => null) : null,

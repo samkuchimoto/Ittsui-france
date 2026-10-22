@@ -18,6 +18,7 @@ import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { DATE_LOCALE, type Locale } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { REQUESTS } from "./requests.i18n";
+import { cityOf } from "@/lib/cities";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -153,6 +154,7 @@ function RequestRow({
             venueAddress: request.venueAddress,
             date: request.date,
             time: request.time,
+            timezone: cityOf(request.cityId).timezone,
           })}
           target="_blank"
           rel="noopener noreferrer"

@@ -14,16 +14,15 @@
 // and downloading the file locally avoids a second network round-trip to
 // a dedicated API route that would otherwise need to exist for this alone.
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
+import { PARIS_TZ, wallClockToUTCISOString } from "@/lib/timezone";
 
-// Naive local time, no trailing "Z" — matches how date/time are already
-// stored everywhere in this app (Europe/Paris wall-clock, not a UTC
-// instant), same reasoning lib/googleCalendarLink.ts's own ctz param
-// documents for the exact same fields.
-function formatICSDate(d: Date): string {
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+// UTC ("...Z"), the one form every calendar reads the same way wherever the
+// phone is: date/time are wall-clock in the meeting's city, converted with
+// its timezone. (Until 2026-10-23 these were "floating" times, which each
+// phone read in its own zone: a Paris 15:00 opened in Tokyo landed at 15:00
+// Tokyo time.)
+function formatICSDate(iso: string): string {
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
 
 // CRLF line endings and 75-octet line folding are both real RFC 5545
@@ -48,14 +47,13 @@ export function buildICSContent(opts: {
   title: string;
   description: string;
   venueAddress: string;
-  date: string; // "YYYY-MM-DD", Europe/Paris calendar date
-  time: string; // "HH:MM", Europe/Paris wall-clock
+  date: string; // "YYYY-MM-DD", in the meeting's city
+  time: string; // "HH:MM", wall-clock in the meeting's city
   uid: string; // stable per-event id — the meeting request's own id is a natural fit
+  timezone?: string; // the city's IANA zone (lib/cities.ts); Paris by default
 }): string {
-  const [year, month, day] = opts.date.split("-").map(Number);
-  const [hour, minute] = opts.time.split(":").map(Number);
-  const start = new Date(year, month - 1, day, hour, minute);
-  const end = new Date(start.getTime() + 60 * 60 * 1000); // 1h default — no duration is collected anywhere in this app
+  const start = wallClockToUTCISOString(opts.time, opts.date, opts.timezone ?? PARIS_TZ);
+  const end = new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString(); // 1h default — no duration is collected anywhere in this app
 
   const lines = [
     "BEGIN:VCALENDAR",
@@ -64,7 +62,7 @@ export function buildICSContent(opts: {
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${opts.uid}@ittsui.fr`,
-    `DTSTAMP:${formatICSDate(new Date())}`,
+    `DTSTAMP:${formatICSDate(new Date().toISOString())}`,
     `DTSTART:${formatICSDate(start)}`,
     `DTEND:${formatICSDate(end)}`,
     `SUMMARY:${escapeICSText(opts.title)}`,

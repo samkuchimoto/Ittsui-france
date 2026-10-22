@@ -33,6 +33,7 @@ import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { REQUEST_PAGE } from "./request-page.i18n";
 import { YourTurn } from "@/app/components/PlanCard";
+import { cityOf } from "@/lib/cities";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -53,6 +54,7 @@ interface RequestPreview {
   time: string;
   requiresLogin: boolean;
   perk?: string | null;
+  cityId?: string;
 }
 
 interface AcceptedDetails {
@@ -62,14 +64,17 @@ interface AcceptedDetails {
   date: string;
   time: string;
   visit?: { code: string; perk: string } | null;
+  cityId?: string;
 }
 
 type Status = "checking" | "ready" | "not_found" | "declining" | "declined" | "accepting" | "accepted" | "error";
 
 // The stored date stays as it was in French ("2026-09-20 à 15:30"); English
 // and Japanese get a written-out day.
-function whenLabel(t: (text: string, vars?: Record<string, string>) => string, lang: Locale, date: string, time: string) {
-  return t("{date} à {time}", { date: lang === "fr" ? date : frenchDateLabel(date, lang), time });
+// The meeting city's own date and time (lib/cities.ts); outside Paris it says which city.
+function whenLabel(t: (text: string, vars?: Record<string, string>) => string, lang: Locale, date: string, time: string, cityId?: string) {
+  const city = cityOf(cityId);
+  return t("{date} à {time}", { date: lang === "fr" ? date : frenchDateLabel(date, lang), time: city.id === "paris" ? time : `${time} (${city.name[lang]})` });
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -128,7 +133,7 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
           its sharpest. */}
       <VenueDirections venueName={preview.venueName} venueAddress={preview.venueAddress} className="mt-0.5" />
       <p className="mt-2 text-sm" style={{ color: MUTED }}>
-        {whenLabel(t, lang, preview.date, preview.time)}
+        {whenLabel(t, lang, preview.date, preview.time, preview.cityId)}
       </p>
     </div>
   );
@@ -180,6 +185,7 @@ export default function RequestResponsePage() {
             date: data.date,
             time: data.time,
             visit: data.visit ?? null,
+            cityId: data.cityId,
           });
           setStatus("accepted");
           return;
@@ -257,6 +263,7 @@ export default function RequestResponsePage() {
         date: data.date,
         time: data.time,
         visit: data.visit ?? null,
+        cityId: data.cityId,
       });
       setStatus("accepted");
     } catch (err) {
@@ -325,6 +332,7 @@ export default function RequestResponsePage() {
       date: accepted.date,
       time: accepted.time,
       uid: String(params.requestId),
+      timezone: cityOf(accepted.cityId).timezone,
     });
     downloadICSFile("ittsui-rendez-vous.ics", content);
   }
@@ -388,7 +396,7 @@ export default function RequestResponsePage() {
         </h1>
         {accepted && (
           <p className="mt-2 text-sm font-medium">
-            {accepted.venueName} · {whenLabel(t, lang, accepted.date, accepted.time)}
+            {accepted.venueName} · {whenLabel(t, lang, accepted.date, accepted.time, accepted.cityId)}
           </p>
         )}
         {/* Honest status, not just a checkmark and a venue name: "Calé sur

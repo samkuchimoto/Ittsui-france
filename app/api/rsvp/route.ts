@@ -17,7 +17,8 @@ import { logEvent } from "@/lib/analytics";
 import { dayLabel, notifyBothUsers } from "@/lib/notify";
 import { generateWarmConfirmation } from "@/lib/confirmationText";
 import { googleCalendarLink } from "@/lib/googleCalendarLink";
-import { parisDateTimeParts } from "@/lib/timezone";
+import { parisDateTimeParts, zonedDateTimeParts } from "@/lib/timezone";
+import { cityOf } from "@/lib/cities";
 import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
@@ -215,7 +216,8 @@ export async function POST(request: Request) {
   // confirmation text, not a new notification: this respects the "silence
   // between meets" principle (no separate reminder ping), it's just one
   // more useful thing inside the one confirmation message that already goes out.
-  const { date, time } = parisDateTimeParts(week.proposedTime);
+  // The pair's city (lib/cities.ts): the date and time are its own.
+  const { date, time } = zonedDateTimeParts(week.proposedTime, cityOf(pair.cityId).timezone);
   // The pair's language (Pair.lang) for the confirmation both people get.
   const t = makeT(langOf(pair.lang), EMAILS);
   const calendarUrl = googleCalendarLink({
@@ -224,6 +226,7 @@ export async function POST(request: Request) {
     venueAddress,
     date,
     time,
+    timezone: cityOf(pair.cityId).timezone,
   });
   const notifyResults = await notifyBothUsers(
     pair,

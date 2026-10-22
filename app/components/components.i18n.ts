@@ -6,6 +6,8 @@ import type { Catalog } from "@/lib/translate";
 
 export const COMPONENTS: Catalog = {
   en: {
+    // CityPicker
+    "Ville du rendez-vous": "City of the rendez-vous",
     // FriendlyLoading
     "Un instant…": "One moment…",
     "On vérifie tout ça…": "Checking everything…",
@@ -53,6 +55,8 @@ export const COMPONENTS: Catalog = {
     Passer: "Skip",
   },
   ja: {
+    // CityPicker
+    "Ville du rendez-vous": "会う街",
     "Un instant…": "少々お待ちください…",
     "On vérifie tout ça…": "確認しています…",
     "Presque prêt…": "もうすぐです…",

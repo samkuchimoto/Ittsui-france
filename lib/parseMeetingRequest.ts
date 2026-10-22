@@ -89,7 +89,7 @@ const DAY_WORDS: [RegExp, Weekday][] = [
   [/\bdimanche\b|\bsunday\b|日曜/, "sun"],
 ];
 
-function findDate(plain: string, lang: Lang, today: string): string | null {
+function findDate(plain: string, lang: Lang, today: string, dayFirst?: boolean): string | null {
   if (/apres[- ]demain|day after tomorrow|明後日|あさって/.test(plain)) return addDays(today, 2);
   if (/\bdemain\b|\btomorrow\b|明日|あした|あす/.test(plain)) return addDays(today, 1);
   if (/aujourd'?hui|aujourd’hui|ce soir|\btoday\b|\btonight\b|今日|きょう|今夜|今晩/.test(plain)) return today;
@@ -103,10 +103,11 @@ function findDate(plain: string, lang: Lang, today: string): string | null {
   m = plain.match(/\b(\d{1,2})\/(\d{1,2})\b/);
   if (m) {
     const [a, b] = [Number(m[1]), Number(m[2])];
-    // Day first in French, month first in Japanese; in English, day first
-    // only when it can't be a month.
-    const dayFirst = lang === "fr" || (lang === "en" && a > 12);
-    return dayFirst ? explicitDate(a, b, today) : explicitDate(b, a, today);
+    // The meeting city's convention when known (lib/cities.ts: London day
+    // first, New York month first); otherwise day first in French, month
+    // first in Japanese, and in English day first only when it can't be a month.
+    const first = dayFirst === undefined ? lang === "fr" || (lang === "en" && a > 12) : dayFirst || a > 12;
+    return first ? explicitDate(a, b, today) : explicitDate(b, a, today);
   }
   m = plain.match(/\ble (\d{1,2})(?:er)?\b(?!\s*h|\s*:)/) ?? plain.match(/(?<![\d月])(\d{1,2})日(?!曜)/);
   if (m) return explicitDate(Number(m[1]), null, today);
@@ -259,7 +260,7 @@ function findVenue(text: string, name: string | null): string | null {
   return null;
 }
 
-export function parseMeetingRequest(input: string, lang: Lang = "fr", today = parisToday()): ParsedMeetingRequest | null {
+export function parseMeetingRequest(input: string, lang: Lang = "fr", today = parisToday(), dayFirst?: boolean): ParsedMeetingRequest | null {
   const text = input.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).trim();
   if (!text) return null;
   const plain = text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -269,7 +270,7 @@ export function parseMeetingRequest(input: string, lang: Lang = "fr", today = pa
     venueName: findVenue(text, recipientName),
     venueAddress: findAddress(text),
     venueType: findType(plain, lang),
-    date: findDate(plain, lang, today),
+    date: findDate(plain, lang, today, dayFirst),
     time: findTime(plain),
   };
   return Object.values(result).some((v) => v !== null) ? result : null;

@@ -467,11 +467,15 @@ export async function fetchVenuesOfType(type: SearchableType, near: Coords): Pro
 
 /** The mixed chips shown as soon as a postal code is known: the nearest
  *  cafés and restaurants, and the best-known parks and museums. */
-export async function fetchNearbyVenueSuggestions(near: Coords): Promise<GeoVenueSuggestion[]> {
+export async function fetchNearbyVenueSuggestions(
+  near: Coords,
+  // How parks and museums are named where the meeting is (lib/cities.ts osmWords).
+  words: { park: string; museum: string } = { park: "parc", museum: "musée" }
+): Promise<GeoVenueSuggestion[]> {
   const [eateries, parks, museums] = await Promise.all([
     nearest(near, [...TYPE_SEARCH.cafe.tags, ...TYPE_SEARCH.restaurant.tags], 16),
-    notable(near, "parc", TYPE_SEARCH.park.tags, 4),
-    notable(near, "musée", TYPE_SEARCH.museum.tags, 4),
+    notable(near, words.park, TYPE_SEARCH.park.tags, 4),
+    notable(near, words.museum, TYPE_SEARCH.museum.tags, 4),
   ]);
   const pick = (list: Candidate[], type: SearchableType, n: number) =>
     dedupeByName(list.filter((c) => c.venueType === type)).slice(0, n);
