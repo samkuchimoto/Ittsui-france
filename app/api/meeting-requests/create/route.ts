@@ -96,7 +96,10 @@ export async function POST(request: Request) {
   // The free plan's one rendez-vous a month (lib/plan.ts). The 402 carries
   // the plan, so the form can show the Plus offer instead of an error.
   const plan = await getPlan(uid);
-  if (!plan.canCreate) return NextResponse.json({ error: "plan_limit", plan }, { status: 402 });
+  if (!plan.canCreate) {
+    await logEvent("plan_limit_reached", { source: "request", cityId: city.id, lang });
+    return NextResponse.json({ error: "plan_limit", plan }, { status: 402 });
+  }
 
   // Only an active partner under the very name picked counts.
   const partner = parsed.data.partnerId ? await partnerNamed(parsed.data.partnerId, venueName).catch(() => null) : null;

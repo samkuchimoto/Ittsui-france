@@ -1,7 +1,9 @@
 // scripts/funnel.mjs — `npm run funnel -- 30`
 // Ittsui's funnel by city and language for the last N days (30 by default):
-// landing views, accounts, requests sent and accepted, rituals, paying
-// people, from the events collection (lib/analytics.ts) and billing docs.
+// landing views, accounts, requests sent and accepted, rituals, the free
+// month used up, checkouts and payments, venue commitments and verified
+// visits, from the events collection (lib/analytics.ts), billing docs and
+// venue applications.
 // Counts only: prints no person, email or id. Needs the Firebase service
 // account in firebase-key.json (gitignored, never committed).
 
@@ -39,6 +41,23 @@ show("Requests accepted (city / language)", count((await events("custom_rendezvo
 show("Weekly rituals started (city / language)", count(await events("invite_activated"), where));
 show("Weekly proposals sent (city)", count(await events("proposal_shown"), (e) => e.cityId ?? "(before cities)"));
 show("Weeks confirmed", count(await events("week_confirmed"), () => "all cities"));
+
+// Willingness to pay: the free month used up, then a checkout, then a payment.
+show("Free month used up (request refused / ritual week skipped)", count(await events("plan_limit_reached"), (e) => `${e.source} · ${e.cityId ?? "?"} / ${e.lang ?? "-"}`));
+show("Plus checkouts opened (currency / language · plan)", count(await events("checkout_started"), (e) => `${e.currency} / ${e.lang} · ${e.tier}`));
+show("Plus subscriptions paid (currency)", count(await events("subscription_started"), (e) => e.currency ?? "?"));
+show("Plus subscriptions ended (currency)", count(await events("subscription_ended"), (e) => e.currency ?? "?"));
+
+// Venue pilot (lib/venuePilot.ts): an application is not a partnership, a
+// confirmed visit is not a verified one, a verified one is not cash.
+const venues = (await db.collection("venuePartnerApplications").get()).docs;
+show(
+  "Venue applications, all time (city / status / terms)",
+  count(venues.map((d) => d.data()), (a) => `${a.cityId ?? "(no city)"} / ${a.status} / ${a.pilotTermsAcceptedAt ? "terms accepted" : "no yes to terms"}`),
+);
+const visits = [];
+for (const d of venues) for (const v of (await d.ref.collection("visits").get()).docs) visits.push({ ...v.data(), cityId: d.data().cityId });
+show("Partner visits in the period (city / confirmed or verified)", count(visits.filter((v) => (v.createdAt ?? "") >= since), (v) => `${v.cityId ?? "(no city)"} / ${v.status === "visited" ? "verified" : v.status}`));
 
 const billing = (await db.collection("billing").get()).docs.map((d) => d.data());
 const now = new Date();

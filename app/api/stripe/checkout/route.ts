@@ -11,6 +11,7 @@ import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { getBilling, getPlan } from "@/lib/plan";
 import { PLAN_CURRENCIES, PLUS_PRICE } from "@/lib/planConfig";
 import { stripe } from "@/lib/stripe";
+import { logEvent } from "@/lib/analytics";
 
 const bodySchema = z.object({
   lang: z.enum(["fr", "en", "ja", "es", "he"]).optional(),
@@ -74,5 +75,6 @@ export async function POST(request: Request) {
     console.error(`stripe checkout: session ${session.id} created with no url`);
     return NextResponse.json({ error: "session sans URL" }, { status: 502 });
   }
+  await logEvent("checkout_started", { currency, lang, tier: plan.tier });
   return NextResponse.json({ url: session.url });
 }

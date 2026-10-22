@@ -3,8 +3,9 @@
 // /paris, /en/<city>, /ja/tokyo, /es/ciudad-de-mexico, /he/tel-aviv, for
 // ads and links. The homepage's proposition, then only what is true in that
 // city (its clock, where the place suggestions come from, the price in its
-// currency) and the two ways in, with the city already chosen. Each view is
-// counted by city and language (LandingBeacon), with no identifier.
+// currency) and the two ways in, with the city already chosen; then the
+// venue pilot's terms (lib/venuePilot.ts). Each view is counted by city and
+// language (LandingBeacon), with no identifier.
 
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -13,6 +14,7 @@ import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { CITIES, CITY_IDS, type CityId } from "@/lib/cities";
 import { DATE_LOCALE, LOCALE_LABEL, OG_LOCALE, dirOf, pagePath, withLang, type Locale } from "@/lib/i18n";
 import { plusOffer } from "@/lib/planConfig";
+import { VENUE_PILOT } from "@/lib/venuePilot";
 import { DocumentLang } from "@/app/components/site/DocumentLang";
 import { SiteFooter } from "@/app/components/site/SiteFooter";
 import { LandingBeacon } from "@/app/components/site/LandingBeacon";
@@ -37,9 +39,10 @@ type Copy = {
   priceTitle: string;
   priceBody: string;
   venueTitle: string;
-  venueBody: string;
   venueSignUp: string;
   venueWrite: string;
+  /** Prefilled in the email a venue sends to join (lib/venuePilot.ts terms). */
+  venueMail: string;
   otherCities: string;
 };
 
@@ -62,9 +65,9 @@ const COPY: Record<Locale, Copy> = {
     priceTitle: "Gratuit pour commencer",
     priceBody: "Un rendez-vous par mois est gratuit, avec 14 jours de Plus à l'inscription. Ittsui Plus, chaque semaine et sans limite : {price} par mois, sans engagement.",
     venueTitle: "Vous tenez un café ou un lieu à {city} ?",
-    venueBody: "Ittsui cherche ses premiers lieux partenaires : des personnes qui viennent retrouver un proche, aux heures creuses que vous choisissez.",
-    venueSignUp: "Devenir lieu partenaire",
-    venueWrite: "Nous écrire",
+    venueSignUp: "Rejoindre le pilote",
+    venueWrite: "Rejoindre le pilote par e-mail",
+    venueMail: "Nom du lieu :\nAdresse :\nVotre nom et rôle :\nTéléphone :\nHeures creuses (jours et horaires) :\nAvantage pour les personnes envoyées par Ittsui :\n\nNous souhaitons rejoindre le pilote partenaires d'Ittsui aux conditions de {url}",
     otherCities: "Ittsui est aussi à",
   },
   en: {
@@ -85,9 +88,9 @@ const COPY: Record<Locale, Copy> = {
     priceTitle: "Free to start",
     priceBody: "One rendez-vous a month is free, with 14 days of Plus when you sign up. Ittsui Plus, every week with no limit: {price} a month, cancel anytime.",
     venueTitle: "Do you run a café or a venue in {city}?",
-    venueBody: "Ittsui is looking for its first partner venues: people who come to meet someone close, at the quiet hours you choose.",
-    venueSignUp: "Become a partner venue (in French)",
-    venueWrite: "Write to us",
+    venueSignUp: "Join the pilot (form in French)",
+    venueWrite: "Join the pilot by email",
+    venueMail: "Venue name:\nAddress:\nYour name and role:\nPhone:\nQuiet hours (days and times):\nPerk for the people Ittsui sends:\n\nWe would like to join the Ittsui partner pilot on the terms at {url}",
     otherCities: "Ittsui is also in",
   },
   ja: {
@@ -108,9 +111,9 @@ const COPY: Record<Locale, Copy> = {
     priceTitle: "無料で始められます",
     priceBody: "月1回の約束は無料。登録すると14日間Plusをお試しいただけます。Ittsui Plusは毎週、回数の制限なしで月額{price}。いつでも解約できます。",
     venueTitle: "{city}でカフェやお店を営んでいますか？",
-    venueBody: "Ittsuiは最初の提携店を探しています。大切な人と会うためのお客さまを、お店が選んだ空いている時間帯にご案内します。",
-    venueSignUp: "提携店になる（フランス語）",
-    venueWrite: "お問い合わせ",
+    venueSignUp: "試験運用に参加する（フランス語のフォーム）",
+    venueWrite: "メールで試験運用に参加する",
+    venueMail: "店名：\n住所：\nお名前と役職：\n電話番号：\n空いている時間帯（曜日と時間）：\nIttsuiからのお客さまへの特典：\n\n{url} の条件で、Ittsuiの提携店の試験運用に参加を希望します。",
     otherCities: "Ittsuiはこちらの都市でも",
   },
   es: {
@@ -131,9 +134,9 @@ const COPY: Record<Locale, Copy> = {
     priceTitle: "Gratis para empezar",
     priceBody: "Un encuentro al mes es gratis, con 14 días de Plus al registrarte. Ittsui Plus, cada semana y sin límite: {price} al mes, cancela cuando quieras.",
     venueTitle: "¿Tienes un café o un local en {city}?",
-    venueBody: "Ittsui busca sus primeros lugares aliados: personas que llegan a verse con alguien cercano, en los horarios tranquilos que tú elijas.",
-    venueSignUp: "Ser lugar aliado (en francés)",
-    venueWrite: "Escríbenos",
+    venueSignUp: "Unirme al piloto (formulario en francés)",
+    venueWrite: "Unirme al piloto por correo",
+    venueMail: "Nombre del lugar:\nDirección:\nTu nombre y puesto:\nTeléfono:\nHorarios tranquilos (días y horas):\nBeneficio para las personas que envía Ittsui:\n\nQueremos unirnos al piloto de aliados de Ittsui con las condiciones de {url}",
     otherCities: "Ittsui también está en",
   },
   he: {
@@ -154,9 +157,9 @@ const COPY: Record<Locale, Copy> = {
     priceTitle: "בחינם בהתחלה",
     priceBody: "מפגש אחד בחודש בחינם, עם 14 ימי Plus בהרשמה. Ittsui Plus, כל שבוע בלי הגבלה: {price} לחודש, אפשר לבטל מתי שרוצים.",
     venueTitle: "יש לכם בית קפה או מקום ב{city}?",
-    venueBody: "Ittsui מחפשת את בתי העסק השותפים הראשונים שלה: אנשים שמגיעים להיפגש עם מישהו קרוב, בשעות השקטות שתבחרו.",
-    venueSignUp: "להצטרף כבית עסק שותף (בצרפתית)",
-    venueWrite: "כתבו לנו",
+    venueSignUp: "הצטרפות לפיילוט (טופס בצרפתית)",
+    venueWrite: "הצטרפות לפיילוט במייל",
+    venueMail: "שם המקום:\nכתובת:\nשם ותפקיד:\nטלפון:\nשעות שקטות (ימים ושעות):\nהטבה לאנשים ש-Ittsui שולחת:\n\nנשמח להצטרף לפיילוט השותפים של Ittsui בתנאים שב-{url}",
     otherCities: "Ittsui נמצאת גם ב:",
   },
 };
@@ -224,6 +227,7 @@ export function CityLanding({ cityId, lang }: { cityId: CityId; lang: Locale }) 
     [t.priceTitle, fill(t.priceBody, vars)],
   ];
   const others = CITY_IDS.filter((id) => id !== cityId);
+  const pilot = VENUE_PILOT[lang];
 
   return (
     <main
@@ -302,21 +306,33 @@ export function CityLanding({ cityId, lang }: { cityId: CityId; lang: Locale }) 
           ))}
         </dl>
 
-        {/* Venues: the partner pilot's sign-up page is French and for Paris; elsewhere, a first conversation. */}
-        <section className="mt-12 rounded-2xl border bg-white p-6" style={{ borderColor: BORDER }}>
+        {/* Venues: the pilot's terms (lib/venuePilot.ts), then a way in. Paris has the
+            French sign-up form and live matching; elsewhere a venue joins by email,
+            and the page says the pilot hasn't started there. */}
+        <section id="venues" className="mt-12 rounded-2xl border bg-white p-6" style={{ borderColor: BORDER }}>
           <h2 className="text-lg" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
             {fill(t.venueTitle, vars)}
           </h2>
           <p className="mt-2 text-[15px] leading-relaxed" style={{ color: MUTED }}>
-            {t.venueBody}
+            {pilot.benefit}
           </p>
+          <p className="mt-2 text-sm font-medium" style={{ color: INK }}>
+            {city.frenchData ? pilot.live : fill(pilot.notYet, vars)}
+          </p>
+          <ul className="mt-3 list-disc space-y-1.5 ps-5 text-sm leading-relaxed" style={{ color: MUTED }}>
+            {pilot.terms.map((term) => (
+              <li key={term}>{term}</li>
+            ))}
+          </ul>
           {city.frenchData ? (
             <Link href="/partenaires" hrefLang="fr" className="mt-4 inline-block font-medium underline underline-offset-4" style={{ color: ACCENT }}>
               {t.venueSignUp}
             </Link>
           ) : (
             <a
-              href={`mailto:contact@kuchimoto.com?subject=${encodeURIComponent(`Ittsui · ${city.name.en} · partner venue`)}`}
+              href={`mailto:contact@kuchimoto.com?subject=${encodeURIComponent(`Ittsui · ${city.name.en} · partner venue`)}&body=${encodeURIComponent(
+                fill(t.venueMail, { url: `https://www.ittsui.fr${city.landing[lang]}#venues` }),
+              )}`}
               className="mt-4 inline-block font-medium underline underline-offset-4"
               style={{ color: ACCENT }}
             >

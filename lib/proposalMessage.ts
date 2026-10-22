@@ -108,6 +108,16 @@ export function meetingRequestShareText({
     const tail = noAccountNeeded ? "アカウントなしで、ワンタップで返事できるよ：" : "ここから返事できるよ：";
     return `${name ? `${name}、` : ""}${frenchDateLabel(date, "ja")} ${frenchTimeLabel(time, "ja")}に${where}会わない？ ${tail}`;
   }
+  if (lang === "es") {
+    const where = venue ? ` en ${venue}` : "";
+    const tail = noAccountNeeded ? "Responde con un toque, sin crear cuenta:" : "Puedes responder aquí:";
+    return `${name ? `Hola ${name}, ¿` : "¿"}nos vemos${where} el ${frenchDateLabel(date, "es")} a las ${frenchTimeLabel(time, "es")}? ¿Te late? ${tail}`;
+  }
+  if (lang === "he") {
+    const where = venue ? ` ב-${venue}` : "";
+    const tail = noAccountNeeded ? "אפשר לענות בנגיעה אחת, בלי חשבון:" : "אפשר לענות כאן:";
+    return `${name ? `היי ${name}, ` : ""}ניפגש${where} ב${frenchDateLabel(date, "he")} בשעה ${frenchTimeLabel(time, "he")}? מתאים לך? ${tail}`;
+  }
   const when = `${frenchDateLabel(date)} à ${frenchTimeLabel(time)}`;
   const where = venueName.trim() ? ` — ${venueName.trim()}` : "";
   const tail = noAccountNeeded ? "Réponds en un tap, sans compte à créer :" : "Tu peux répondre ici :";

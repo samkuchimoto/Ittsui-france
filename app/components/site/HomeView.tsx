@@ -41,7 +41,9 @@
 // homepage (its section and hero link); the gesture pages still work for
 // links already sent. 2026-10-23: the homepage says one thing, "one
 // proposal, one decision, more time with the people who matter", so the
-// email summary left it (/triage still works, from the dashboard).
+// email summary left it (/triage still works, from the dashboard). No copy
+// promises "no account": a guest invited by email, or to a weekly ritual,
+// confirms with a Google sign-in. Only "no app to install" is true for all.
 //
 // The mascot's removal from the header is a Zone 0 decision only — see
 // HeaderNav.tsx's comment. The cast stays everywhere in-product.
@@ -110,7 +112,7 @@ const COPY: Record<Locale, Copy> = {
   fr: {
     badge: "Pour vos proches, votre partenaire et vos ami(e)s qui comptent déjà",
     title: "Une proposition. Une décision. Plus de temps avec les personnes qui comptent.",
-    lede: "Ittsui choisit le lieu et l'horaire. Vous validez en 1 clic. Votre invité(e) n'a besoin d'aucune application, ni même d'un compte.",
+    lede: "Ittsui choisit le lieu et l'horaire. Vous validez en 1 clic. Votre invité(e) n'a aucune application à installer.",
     oneOff: "Proposer un rendez-vous ponctuel",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: " : l'art d'entretenir le lien à deux.",
@@ -132,7 +134,7 @@ const COPY: Record<Locale, Copy> = {
       {
         dimension: "Ce que ça demande à l'autre",
         whatsapp: "Participer à toute la négociation",
-        ittsui: "Ouvrir un lien et toucher « Je viens ». Aucun compte, aucune application.",
+        ittsui: "Ouvrir un lien et toucher « Je viens ». Aucune application à installer.",
       },
       {
         dimension: "Après",
@@ -151,7 +153,7 @@ const COPY: Record<Locale, Copy> = {
       },
       {
         title: "Votre invité(e) répond en un geste",
-        body: "Elle ou il reçoit un lien par SMS ou WhatsApp, voit le lieu et l'heure, touche « Je viens ». Pas de compte à créer, pas d'application à installer, rien à négocier.",
+        body: "Elle ou il reçoit un lien par SMS ou WhatsApp, voit le lieu et l'heure, touche « Je viens ». Pas d'application à installer, rien à négocier.",
       },
       {
         title: "Puis plus rien",
@@ -187,7 +189,7 @@ const COPY: Record<Locale, Copy> = {
   en: {
     badge: "For your family, your partner and the friends who already matter",
     title: "One proposal. One decision. More time with the people who matter.",
-    lede: "Ittsui picks the place and the time. You confirm in one tap. Your guest needs no app, not even an account.",
+    lede: "Ittsui picks the place and the time. You confirm in one tap. Your guest has no app to install.",
     oneOff: "Suggest a one-off rendez-vous",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: ": the art of tending the bond between two people.",
@@ -209,7 +211,7 @@ const COPY: Record<Locale, Copy> = {
       {
         dimension: "What it asks of the other person",
         whatsapp: "Taking part in the whole negotiation",
-        ittsui: "Opening a link and tapping “I'm in”. No account, no app.",
+        ittsui: "Opening a link and tapping “I'm in”. No app to install.",
       },
       {
         dimension: "Afterwards",
@@ -228,7 +230,7 @@ const COPY: Record<Locale, Copy> = {
       },
       {
         title: "Your guest replies in one tap",
-        body: "They get a link by SMS or WhatsApp, see the place and the time, and tap “I'm in”. No account to create, no app to install, nothing to negotiate.",
+        body: "They get a link by SMS or WhatsApp, see the place and the time, and tap “I'm in”. No app to install, nothing to negotiate.",
       },
       {
         title: "Then nothing",
@@ -262,7 +264,7 @@ const COPY: Record<Locale, Copy> = {
   ja: {
     badge: "家族、パートナー、そして大切な友人のために",
     title: "提案はひとつ。決めるのは一度。大切な人との時間を、もっと。",
-    lede: "場所と時間はIttsuiが選びます。あなたはワンタップで確定するだけ。相手はアプリもアカウントも必要ありません。",
+    lede: "場所と時間はIttsuiが選びます。あなたはワンタップで確定するだけ。相手はアプリをインストールする必要がありません。",
     oneOff: "1回だけの約束を提案する",
     kanjiName: "Ittsui（一対）",
     kanjiGloss: "：ふたりのつながりを、大切に育てるために。",
@@ -284,7 +286,7 @@ const COPY: Record<Locale, Copy> = {
       {
         dimension: "相手にかかる手間",
         whatsapp: "やり取りのすべてに付き合ってもらう",
-        ittsui: "リンクを開いて「行きます」をタップするだけ。アカウントもアプリも不要。",
+        ittsui: "リンクを開いて「行きます」をタップするだけ。アプリのインストールは不要。",
       },
       {
         dimension: "そのあと",
@@ -303,7 +305,7 @@ const COPY: Record<Locale, Copy> = {
       },
       {
         title: "相手はワンタップで返事",
-        body: "相手にはSMSかWhatsAppでリンクが届き、場所と時間を見て「行きます」をタップするだけ。アカウント作成もアプリのインストールも、日程の交渉もいりません。",
+        body: "相手にはSMSかWhatsAppでリンクが届き、場所と時間を見て「行きます」をタップするだけ。アプリのインストールも、日程の交渉もいりません。",
       },
       {
         title: "あとは何もしない",
@@ -337,7 +339,7 @@ const COPY: Record<Locale, Copy> = {
   es: {
     badge: "Para tu familia, tu pareja y las amistades que ya importan",
     title: "Una propuesta. Una decisión. Más tiempo con la gente que importa.",
-    lede: "Ittsui elige el lugar y la hora. Tú confirmas con un toque. Tu invitado no necesita ninguna app, ni siquiera una cuenta.",
+    lede: "Ittsui elige el lugar y la hora. Tú confirmas con un toque. Tu invitado no tiene que instalar ninguna app.",
     oneOff: "Proponer un encuentro puntual",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: ": el arte de cuidar el vínculo entre dos personas.",
@@ -359,7 +361,7 @@ const COPY: Record<Locale, Copy> = {
       {
         dimension: "Lo que se le pide a la otra persona",
         whatsapp: "Participar en toda la negociación",
-        ittsui: "Abrir un enlace y tocar “Me uno”. Sin cuenta, sin app.",
+        ittsui: "Abrir un enlace y tocar “Me uno”. Sin instalar ninguna app.",
       },
       {
         dimension: "Después",
@@ -378,7 +380,7 @@ const COPY: Record<Locale, Copy> = {
       },
       {
         title: "Tu invitado responde con un toque",
-        body: "Recibe un enlace por SMS o WhatsApp, ve el lugar y la hora, y toca “Me uno”. Sin crear una cuenta, sin instalar nada, sin negociar.",
+        body: "Recibe un enlace por SMS o WhatsApp, ve el lugar y la hora, y toca “Me uno”. Sin instalar nada, sin negociar.",
       },
       {
         title: "Y luego, nada",
@@ -412,7 +414,7 @@ const COPY: Record<Locale, Copy> = {
   he: {
     badge: "למשפחה, לבן או בת הזוג ולחברים שכבר חשובים לכם",
     title: "הצעה אחת. החלטה אחת. יותר זמן עם האנשים שחשובים לכם.",
-    lede: "Ittsui בוחרת את המקום ואת השעה. אתם מאשרים בנגיעה אחת. מי שמוזמן לא צריך אפליקציה, ואפילו לא חשבון.",
+    lede: "Ittsui בוחרת את המקום ואת השעה. אתם מאשרים בנגיעה אחת. מי שמוזמן לא צריך להתקין אפליקציה.",
     oneOff: "להציע מפגש חד־פעמי",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: ": האמנות של טיפוח הקשר בין שני אנשים.",
@@ -434,7 +436,7 @@ const COPY: Record<Locale, Copy> = {
       {
         dimension: "מה זה דורש מהצד השני",
         whatsapp: "להשתתף בכל המשא ומתן",
-        ittsui: 'לפתוח קישור וללחוץ "אני בפנים". בלי חשבון, בלי אפליקציה.',
+        ittsui: 'לפתוח קישור וללחוץ "אני בפנים". בלי להתקין אפליקציה.',
       },
       {
         dimension: "ואחר כך",
@@ -453,7 +455,7 @@ const COPY: Record<Locale, Copy> = {
       },
       {
         title: "מי שמוזמן עונה בנגיעה אחת",
-        body: 'מגיע קישור ב-SMS או ב-WhatsApp, רואים את המקום ואת השעה, ולוחצים "אני בפנים". בלי לפתוח חשבון, בלי להתקין אפליקציה, בלי משא ומתן.',
+        body: 'מגיע קישור ב-SMS או ב-WhatsApp, רואים את המקום ואת השעה, ולוחצים "אני בפנים". בלי להתקין אפליקציה, בלי משא ומתן.',
       },
       {
         title: "ואז כלום",

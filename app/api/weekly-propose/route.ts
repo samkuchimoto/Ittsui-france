@@ -183,6 +183,7 @@ export async function GET(request: Request) {
     const unlimited = plans.some((p) => p.tier !== "free");
     if (!unlimited && !plans[0]?.canCreate) {
       await notifyPlanLimit(pair, plans[0].month);
+      logEvent("plan_limit_reached", { source: "ritual", cityId: city.id });
       results.push({ pairId: pair.id, status: "plan_limit" });
       continue;
     }

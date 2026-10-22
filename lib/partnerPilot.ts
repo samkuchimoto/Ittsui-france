@@ -1,6 +1,7 @@
 // /lib/partnerPilot.ts
-// The partner pilot (Paris 11e first): venues pay for the rendez-vous Ittsui
-// brings them in their slow hours. Server-only.
+// The partner pilot (live in Paris: matching is by French postal code):
+// venues pay for the rendez-vous Ittsui brings them in their slow hours, on
+// the terms of lib/venuePilot.ts. Server-only.
 //   - Matching: an active partner in the rendez-vous' postal code whose slow
 //     hours cover its day and time (lib/partnerHours.ts) is suggested first,
 //     as "Partenaire · {perk}": option A of the weekly ritual
@@ -11,7 +12,7 @@
 //     {id}/visits/{visitId} gets a 4-character code that both people show at
 //     the counter; the venue validates it on its own page, which counts the
 //     visits Ittsui brought (/api/venue-partners/[id]/pilot). That count is
-//     what gets invoiced after the free pilot.
+//     what gets invoiced (lib/venuePilot.ts: €1.50 per verified visit).
 
 import { randomInt } from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";

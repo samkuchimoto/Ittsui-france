@@ -17,6 +17,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { CITY_IDS } from "@/lib/cities";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const bodySchema = z.object({
@@ -39,6 +40,10 @@ const bodySchema = z.object({
     .regex(/^[0-9+()\-.\s]+$/, "numéro invalide")
     .optional(),
   notes: z.string().trim().max(1000).optional(),
+  // Which of the eight cities (lib/cities.ts), and the venue's explicit yes
+  // to the pilot's terms (lib/venuePilot.ts), dated: what makes it a commitment.
+  cityId: z.enum(CITY_IDS).optional(),
+  pilotTermsAccepted: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -47,11 +52,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "champs invalides" }, { status: 400 });
   }
 
-  const { postalCode, ...rest } = parsed.data;
+  const { postalCode, pilotTermsAccepted, ...rest } = parsed.data;
   const ref = adminDb.collection("venuePartnerApplications").doc();
   await ref.set({
     ...rest,
     ...(postalCode && /^\d{5}$/.test(postalCode) ? { postalCode } : {}),
+    ...(pilotTermsAccepted ? { pilotTermsAcceptedAt: new Date().toISOString() } : {}),
     status: "pending_review",
     createdAt: new Date().toISOString(),
   });

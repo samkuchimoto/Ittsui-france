@@ -17,6 +17,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
+import { VENUE_PILOT } from "@/lib/venuePilot";
 
 const CATEGORIES: { value: "cafe" | "restaurant" | "museum" | "autre"; label: string }[] = [
   { value: "cafe", label: "Café" },
@@ -34,6 +35,8 @@ export default function PartenairesPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [notes, setNotes] = useState("");
+  // The explicit yes to the pilot's terms: an application without it isn't a commitment.
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +57,8 @@ export default function PartenairesPage() {
           contactEmail,
           ...(contactPhone ? { contactPhone } : {}),
           ...(notes ? { notes } : {}),
+          ...(postalCode.trim().startsWith("75") ? { cityId: "paris" } : {}),
+          pilotTermsAccepted: termsAccepted,
         }),
       });
       const data = await res.json();
@@ -82,16 +87,20 @@ export default function PartenairesPage() {
           Chaque semaine, Ittsui propose un lieu à deux personnes qui se retrouvent. L&apos;idée : que votre
           café, votre restaurant ou votre lieu puisse être ce lieu-là directement, réservable sans appel.
         </p>
-        {/* The partner pilot (lib/partnerPilot.ts), Paris 11e first. */}
+        {/* The partner pilot (lib/partnerPilot.ts) and its terms (lib/venuePilot.ts),
+            the same on the city landing pages. Matching is live in Paris. */}
         <div className="mt-5 rounded-2xl border p-4" style={{ borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }}>
           <p className="text-sm font-medium" style={{ color: ACCENT }}>
-            Pilote Paris 11e : gratuit
+            Pilote partenaires : 1,50 € par visite vérifiée
           </p>
           <p className="mt-1 text-sm" style={{ color: INK }}>
-            Indiquez vos heures creuses et un petit avantage (un café offert, par exemple). Pendant ces heures, Ittsui
-            propose votre lieu en premier aux personnes du quartier, avec « Partenaire · votre avantage ». Vous voyez
-            chaque rendez-vous apporté et validez la venue avec un code. Rien n&apos;est facturé pendant le pilote.
+            {VENUE_PILOT.fr.benefit} {VENUE_PILOT.fr.live}
           </p>
+          <ul className="mt-2 list-disc space-y-1 ps-5 text-sm" style={{ color: INK }}>
+            {VENUE_PILOT.fr.terms.map((term) => (
+              <li key={term}>{term}</li>
+            ))}
+          </ul>
         </div>
         <p className="mt-3 text-sm" style={{ color: MUTED }}>
           Une fois votre candidature validée, vous recevez votre propre lien pour ouvrir les créneaux où
@@ -221,6 +230,17 @@ export default function PartenairesPage() {
               />
             </div>
 
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                required
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>J&apos;accepte les conditions du pilote ci-dessus (1,50 € par visite vérifiée, sans engagement).</span>
+            </label>
+
             {error && (
               <p className="text-sm" style={{ color: ACCENT }}>
                 {error}
@@ -229,7 +249,7 @@ export default function PartenairesPage() {
 
             <button
               type="submit"
-              disabled={status === "submitting"}
+              disabled={status === "submitting" || !termsAccepted}
               className="w-full rounded-full py-3.5 text-sm font-medium text-white transition-transform hover:scale-[1.01] disabled:opacity-60"
               style={{ backgroundColor: ACCENT }}
             >

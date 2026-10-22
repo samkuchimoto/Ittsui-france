@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { stripe } from "@/lib/stripe";
+import { logEvent } from "@/lib/analytics";
 import type Stripe from "stripe";
 import type { Pair } from "@/lib/types";
 import { setSubscription, uidForSubscription } from "@/lib/plan";
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
               stripeSubscriptionId: String(session.subscription),
               ...(session.currency ? { currency: session.currency.toUpperCase() } : {}),
             });
+            await logEvent("subscription_started", { currency: session.currency?.toUpperCase() ?? null });
           }
           break;
         }
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
         const uid = subscription.metadata?.app === "ittsui" ? (subscription.metadata.uid ?? null) : await uidForSubscription(subscription.id);
         if (uid) {
           await setSubscription(uid, { subscriptionStatus: mapStripeStatus(subscription.status) });
+          if (event.type === "customer.subscription.deleted") await logEvent("subscription_ended", { currency: subscription.currency.toUpperCase() });
           break;
         }
         const snap = await adminDb

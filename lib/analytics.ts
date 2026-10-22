@@ -28,7 +28,14 @@ export type AnalyticsEvent =
   // A city landing page seen (app/api/landing-view), and a new account with
   // the city page or campaign it first came through: no identifier in either.
   | "landing_view"
-  | "account_created";
+  | "account_created"
+  // Willingness to pay: the free month's rendez-vous used up (a request
+  // refused, or a ritual week skipped), a Plus checkout opened, a
+  // subscription paid for, a subscription gone.
+  | "plan_limit_reached"
+  | "checkout_started"
+  | "subscription_started"
+  | "subscription_ended";
 
 /** Returns the write, for the rare caller whose whole job it is (it never rejects). */
 export function logEvent(name: AnalyticsEvent, properties: Record<string, string | number | boolean | null> = {}): Promise<void> {
