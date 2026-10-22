@@ -131,6 +131,44 @@ const COPY: Record<
     skip: "今週はスキップ",
     why: "Ittsuiが生まれた理由 →",
   },
+  es: {
+    booked: "Listo, quedó agendado.",
+    bookedLine: (venue, when) => `${venue}, ${when}. Nada más que organizar hasta la próxima semana.`,
+    receives: (name) => `Lo que recibe ${name}`,
+    message: (name, when, venue) => `“Hola ${name}, Ittsui propone que nos veamos ${when} en ${venue}. ¿Te late?”`,
+    yes: "¡Va!",
+    no: "No puedo",
+    explain: "Un enlace, un toque, y el momento queda en su calendario. Sin cuenta ni app que instalar de su lado.",
+    retry: "Probar la demo otra vez",
+    rendezVous: (when) => `Cita · ${when}`,
+    alternative: (when) => `Alternativa 1/1 · ${when}`,
+    seePlace: "Ver el lugar",
+    original: "Opción original",
+    swap: "Cambiar",
+    confirm: "Confirmar →",
+    skipped: "Sin presión esta semana. Nosotros nos encargamos del resto. Nos vemos la próxima.",
+    skip: "Saltar esta semana",
+    why: "Por qué creamos Ittsui →",
+  },
+  he: {
+    booked: "נקבע.",
+    bookedLine: (venue, when) => `${venue}, ${when}. אין עוד מה לארגן עד השבוע הבא.`,
+    receives: (name) => `ההודעה ל${name}`,
+    message: (name, when, venue) => `״היי ${name}, Ittsui מציעה שניפגש ${when} ב-${venue}. מתאים לך?״`,
+    yes: "אני בפנים",
+    no: "לא מסתדר לי",
+    explain: "קישור אחד, נגיעה אחת, והמפגש כבר ביומן. בלי חשבון ובלי אפליקציה להתקין מהצד שלהם.",
+    retry: "לנסות שוב את ההדגמה",
+    rendezVous: (when) => `פגישה · ${when}`,
+    alternative: (when) => `חלופה 1/1 · ${when}`,
+    seePlace: "לראות את המקום",
+    original: "האפשרות המקורית",
+    swap: "להחליף",
+    confirm: "לאשר ←",
+    skipped: "בלי לחץ השבוע. אנחנו נדאג לשאר. נתראה בשבוע הבא.",
+    skip: "לדלג השבוע",
+    why: "למה בנינו את Ittsui ←",
+  },
 };
 
 // "swapped" (which of the two venues is showing) and "confirmed"
@@ -247,7 +285,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0], lang = "fr" }: { s
             {/* The message the invitee actually receives. Showing it
                 verbatim is the point: no mystery about what lands in
                 someone else's phone, and no account on the other end. */}
-            <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "#FFFDF9" }}>
+            <div className="mt-5 rounded-2xl border p-4 text-start" style={{ borderColor: BORDER, backgroundColor: "#FFFDF9" }}>
               <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: MUTED }}>
                 {t.receives(sampleRecipient)}
               </p>
@@ -311,7 +349,7 @@ export function FridayCard({ scenario = SANDBOX_SCENARIOS[0], lang = "fr" }: { s
               <button
                 type="button"
                 onClick={() => setSheetVenue(venue)}
-                className="flex w-full items-start justify-between gap-3 text-left"
+                className="flex w-full items-start justify-between gap-3 text-start"
               >
                 <span>
                   <span className="block text-sm font-medium underline decoration-dotted underline-offset-4">

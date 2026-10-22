@@ -25,6 +25,8 @@ export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled"
 export interface Billing {
   trialEndsAt: string; // ISO
   subscriptionStatus?: SubscriptionStatus;
+  // The currency they pay in (Stripe), for the invite credit (lib/referral.ts).
+  currency?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   usage?: { month: string; count: number };
@@ -120,7 +122,7 @@ export async function recordRendezVous(uid: string): Promise<void> {
 }
 
 /** Written by the Stripe webhook only. */
-export async function setSubscription(uid: string, fields: Partial<Pick<Billing, "subscriptionStatus" | "stripeCustomerId" | "stripeSubscriptionId">>): Promise<void> {
+export async function setSubscription(uid: string, fields: Partial<Pick<Billing, "subscriptionStatus" | "stripeCustomerId" | "stripeSubscriptionId" | "currency">>): Promise<void> {
   await billingRef(uid).set(fields, { merge: true });
 }
 

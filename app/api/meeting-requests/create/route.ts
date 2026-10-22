@@ -162,6 +162,7 @@ export async function POST(request: Request) {
         "\n\n" +
         t("Cette demande expire dans {n} jours.", { n: REQUEST_EXPIRY_DAYS }),
       html: emailShell({
+        lang,
         mascotName: "pika",
         title: t("{sender} vous propose un rendez-vous", { sender: escapeHtml(senderName) }),
         bodyHtml: `

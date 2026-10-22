@@ -104,7 +104,7 @@ function VenuePreviewCard({ preview }: { preview: RequestPreview }) {
   const { lang } = useLang();
   const t = useT(REQUEST_PAGE);
   return (
-    <div className="mt-5 rounded-2xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+    <div className="mt-5 rounded-2xl border p-4 text-start" style={{ borderColor: BORDER, backgroundColor: "white" }}>
       {/* Collapses to nothing rather than an empty box when there's no
           real photo to show — the blank top area a real tester hit
           live was exactly this rendering with no image at all. */}
@@ -416,7 +416,7 @@ export default function RequestResponsePage() {
           </span>
         )}
         {accepted?.visit && (
-          <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
+          <div className="mt-3 rounded-xl border p-3 text-start" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
             <p className="text-sm font-medium" style={{ color: ACCENT }}>
               {accepted.visit.perk ? t("Partenaire · {perk}", { perk: accepted.visit.perk }) : t("Partenaire Ittsui")}
             </p>
@@ -426,7 +426,7 @@ export default function RequestResponsePage() {
           </div>
         )}
         {accepted && (accepted.venueType === "restaurant" || accepted.venueType === "museum") && (
-          <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
+          <div className="mt-3 rounded-xl border p-3 text-start" style={{ borderColor: "#B0890033", backgroundColor: "#B0890014" }}>
             <p className="text-sm font-medium" style={{ color: "#B08900" }}>
               {t("⚠ Réservation requise")}
             </p>

@@ -54,4 +54,55 @@ export const PENDING: Catalog = {
     Annulée: "キャンセル",
     "Invitations précédentes": "これまでの招待",
   },
+  es: {
+    "✓ E-mail envoyé": "✓ Correo enviado",
+    "⚠ Échec d'envoi de l'e-mail": "⚠ No se pudo enviar el correo",
+    "Cette invitation n'a pas d'e-mail — envoyez-lui le lien vous-même si ce n'est pas déjà fait.":
+      "Esta invitación no tiene correo: envíale tú el enlace si aún no lo hiciste.",
+    "Invitation déclinée": "Invitación rechazada",
+    "{name} n'a pas souhaité être lié(e). Vous pouvez inviter quelqu'un d'autre.":
+      "{name} prefirió no vincularse. Puedes invitar a otra persona.",
+    "Nouvelle invitation": "Nueva invitación",
+    "Se déconnecter": "Cerrar sesión",
+    "Invitation annulée": "Invitación cancelada",
+    "Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.":
+      "Esta invitación fue reemplazada por una más reciente. Puedes enviar una nueva.",
+    "Invitation expirée": "Invitación vencida",
+    "{name} n'a pas répondu à temps. Vous pouvez réessayer.":
+      "{name} no respondió a tiempo. Puedes intentarlo de nuevo.",
+    "En attente": "En espera",
+    "{name} n'a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que c'est fait.":
+      "{name} aún no se une a Ittsui. Esta página se actualiza sola en cuanto lo haga.",
+    "Annulation...": "Cancelando…",
+    "Annuler l'invitation": "Cancelar la invitación",
+    Déclinée: "Rechazada",
+    Expirée: "Vencida",
+    Annulée: "Cancelada",
+    "Invitations précédentes": "Invitaciones anteriores",
+  },
+  he: {
+    "✓ E-mail envoyé": "✓ האימייל נשלח",
+    "⚠ Échec d'envoi de l'e-mail": "⚠ לא ניתן היה לשלוח את האימייל",
+    "Cette invitation n'a pas d'e-mail — envoyez-lui le lien vous-même si ce n'est pas déjà fait.":
+      "להזמנה הזו אין אימייל: אם עוד לא שלחת, צריך לשלוח את הקישור בעצמך.",
+    "Invitation déclinée": "ההזמנה נדחתה",
+    "{name} n'a pas souhaité être lié(e). Vous pouvez inviter quelqu'un d'autre.":
+      "ההזמנה ל-{name} נדחתה. אפשר להזמין מישהו אחר.",
+    "Nouvelle invitation": "הזמנה חדשה",
+    "Se déconnecter": "התנתקות",
+    "Invitation annulée": "ההזמנה בוטלה",
+    "Cette invitation a été remplacée par une plus récente. Vous pouvez en envoyer une nouvelle.":
+      "ההזמנה הזו הוחלפה בהזמנה חדשה יותר. אפשר לשלוח הזמנה חדשה.",
+    "Invitation expirée": "תוקף ההזמנה פג",
+    "{name} n'a pas répondu à temps. Vous pouvez réessayer.": "לא התקבלה תשובה מ-{name} בזמן. אפשר לנסות שוב.",
+    "En attente": "בהמתנה",
+    "{name} n'a pas encore rejoint Ittsui. Cette page se met à jour automatiquement dès que c'est fait.":
+      "עדיין אין הצטרפות של {name} ל-Ittsui. הדף הזה יתעדכן מעצמו ברגע שזה יקרה.",
+    "Annulation...": "מבטלים…",
+    "Annuler l'invitation": "ביטול ההזמנה",
+    Déclinée: "נדחתה",
+    Expirée: "פג תוקפה",
+    Annulée: "בוטלה",
+    "Invitations précédentes": "הזמנות קודמות",
+  },
 };

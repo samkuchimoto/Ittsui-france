@@ -41,6 +41,18 @@ const COPY: Record<Locale, { label: string; placeholder: string; start: string; 
     start: "はじめる",
     helper: "無料 · 設定は1分 · カレンダーの同期は不要",
   },
+  es: {
+    label: "¿Con quién quieres apartar un momento?",
+    placeholder: "Tomás, mamá, Valeria…",
+    start: "Empezar",
+    helper: "Gratis · listo en 1 minuto · sin calendario que sincronizar",
+  },
+  he: {
+    label: "עם מי תרצו לפנות זמן?",
+    placeholder: "נועה, אמא, יונתן…",
+    start: "להתחיל",
+    helper: "חינם · הגדרה בדקה · בלי יומן לסנכרן",
+  },
 };
 
 // onDark: the hero sits over cinematic footage now, so the label and the

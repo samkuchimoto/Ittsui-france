@@ -20,6 +20,7 @@
 // someone an account.
 
 import { NextResponse } from "next/server";
+import { emailDirection } from "@/lib/emailTemplates";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { logEvent } from "@/lib/analytics";
@@ -209,7 +210,7 @@ export async function POST(request: Request) {
           to: data.senderEmail,
           subject: t("Votre demande de rendez-vous a été acceptée"),
           text: `${t("{name} a accepté.", { name: data.recipientName })}${sp}${confirmationText}`,
-          html: `<p>${t("{name} a accepté.", { name: escapeHtml(data.recipientName ?? "") })}</p>${confirmationHtml}`,
+          html: `<div${emailDirection(lang)}><p>${t("{name} a accepté.", { name: escapeHtml(data.recipientName ?? "") })}</p>${confirmationHtml}</div>`,
         })
       : Promise.resolve(false),
     // A phone-only request has no recipientEmail on file. If the person
@@ -223,7 +224,7 @@ export async function POST(request: Request) {
           to: (data.recipientEmail ?? userEmail)!,
           subject: t("Rendez-vous confirmé sur Ittsui"),
           text: confirmationText,
-          html: confirmationHtml,
+          html: `<div${emailDirection(lang)}>${confirmationHtml}</div>`,
         })
       : Promise.resolve(false),
   ]);

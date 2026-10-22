@@ -71,6 +71,32 @@ const COPY: Record<
       "Google Playプロテクトが「アプリがブロックされました」と表示し、先に進めないことがあります。Googleに認識される前のPlayストア外のアプリでは普通のことです。Playストアアプリで、プロフィールアイコン（右上）→ Playプロテクト → 設定 →「Playプロテクトでアプリをスキャン」をオフにしてインストールし、必要ならあとでオンに戻してください。",
     web: "Webで続ける →",
   },
+  es: {
+    desktop: "Ittsui funciona mejor en tu teléfono. Escanea el código o elige tu plataforma:",
+    googlePlay: "Disponible en Google Play",
+    androidSoon: "Android: muy pronto",
+    apk: "Descargar el APK directamente (versión de prueba)",
+    appStore: "Descargar en el App Store",
+    iosSoon: "iPhone: muy pronto",
+    apkNote:
+      "El APK directo se instala a mano, fuera de Google Play: Android te pedirá permitir “orígenes desconocidos” para este archivo. Cuando la app esté publicada en Google Play, esta opción dejará su lugar al botón de arriba.",
+    playProtect:
+      "Google Play Protect puede mostrar “App bloqueada” sin opción para continuar. Es normal con cualquier app instalada fuera de Google Play antes de que Google la reconozca. En la app de Play Store: ícono de perfil (arriba a la derecha) → Play Protect → Configuración → desactiva “Analizar apps con Play Protect”, instala y vuelve a activarlo si quieres.",
+    web: "Seguir en la web →",
+  },
+  he: {
+    desktop: "Ittsui עובדת הכי טוב בטלפון. סרקו את הקוד או בחרו את הפלטפורמה שלכם:",
+    googlePlay: "להורדה ב-Google Play",
+    androidSoon: "אנדרואיד: בקרוב",
+    apk: "הורדת קובץ ה-APK ישירות (גרסת ניסיון)",
+    appStore: "להורדה ב-App Store",
+    iosSoon: "אייפון: בקרוב",
+    apkNote:
+      "קובץ ה-APK הישיר מותקן ידנית, מחוץ ל-Google Play: אנדרואיד יבקש לאשר ״מקורות לא ידועים״ עבור הקובץ. כשהאפליקציה תפורסם ב-Google Play, האפשרות הזו תפנה את מקומה לכפתור שלמעלה.",
+    playProtect:
+      "Google Play Protect עשוי להציג ״האפליקציה נחסמה״ בלי אפשרות להמשיך. זה רגיל לכל אפליקציה שמותקנת מחוץ ל-Google Play לפני ש-Google מזהה אותה. באפליקציית Play Store: סמל הפרופיל ← Play Protect ← הגדרות ← כבו את ״סריקת אפליקציות עם Play Protect״, התקינו, ואז הפעילו שוב אם תרצו.",
+    web: "להמשיך באתר ←",
+  },
 };
 
 function detectPlatform(): Platform {

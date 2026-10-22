@@ -41,6 +41,8 @@ const FRENCH_DATE = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "nu
 const DATE_FORMAT: Record<Exclude<Locale, "fr">, Intl.DateTimeFormat> = {
   en: new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }),
   ja: new Intl.DateTimeFormat("ja-JP", { weekday: "short", day: "numeric", month: "long" }),
+  es: new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }),
+  he: new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long" }),
 };
 
 /**

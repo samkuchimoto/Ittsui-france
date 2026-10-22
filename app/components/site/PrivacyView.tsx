@@ -16,7 +16,7 @@
 
 import { ACCENT } from "@/lib/theme";
 import type { Locale } from "@/lib/i18n";
-import { LegalShell, Item } from "@/app/components/site/LegalShell";
+import { LegalShell, Item, legalLang } from "@/app/components/site/LegalShell";
 
 const Mail = () => (
   <a href="mailto:contact@kuchimoto.com" style={{ color: ACCENT }}>
@@ -26,7 +26,7 @@ const Mail = () => (
 
 type Section = { title: string; body: React.ReactNode };
 
-const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }> = {
+const COPY: Record<"fr" | "en" | "ja", { title: string; intro: string; sections: Section[] }> = {
   fr: {
     title: "Confidentialité",
     intro:
@@ -260,7 +260,7 @@ const COPY: Record<Locale, { title: string; intro: string; sections: Section[] }
 };
 
 export function PrivacyView({ lang }: { lang: Locale }) {
-  const t = COPY[lang];
+  const t = COPY[legalLang(lang)];
   return (
     <LegalShell page="privacy" lang={lang} title={t.title} intro={t.intro}>
       <div className="mt-8">

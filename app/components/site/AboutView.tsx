@@ -20,7 +20,7 @@ import { localeTypography } from "@/app/components/site/typography";
 function Pullquote({ children }: { children: React.ReactNode }) {
   return (
     <blockquote
-      className="my-10 border-l-2 py-1 pl-6 text-xl leading-snug"
+      className="my-10 border-s-2 py-1 ps-6 text-xl leading-snug"
       style={{ borderColor: ACCENT, fontFamily: "var(--font-display)", fontWeight: 500, fontStyle: "italic" }}
     >
       {children}
@@ -81,6 +81,40 @@ const COPY: Record<Locale, Copy> = {
       "このプロジェクトはまだ若く、ひとりでつくっています。パリで直接出会った最初のユーザーたちとの本当の会話を通して、今も変わり続けています。このページがあるのは、彼らの何人もが同じ質問を正直にしてくれたからです。「そもそも、どういう経緯なの？」その答えが、これです。",
     ],
     cta: "Ittsuiを見てみる",
+  },
+  es: {
+    title: "Por qué existe Ittsui.",
+    intro: "La historia real detrás del proyecto: no es un folleto, solo lo que pasó.",
+    before: [
+      "Antes de Ittsui, pasé seis meses haciendo wwoofing (voluntariado en granjas orgánicas) en Yugawara y luego en Negoro, en la prefectura de Wakayama, en Japón. Días largos y sencillos: la tierra, las estaciones, muy poco ruido. Ahí empezó a darme vueltas una pregunta, antes de saber qué hacer con ella: en una ciudad enorme como Tokio, rodeado de millones de personas, ¿cómo es que uno termina sintiéndose solo?",
+      "El viaje siguió con mochila, de Berlín a Praga. Una noche llegué tarde y encontré cerrado el hostal donde pensaba dormir. Encontré otro. Ahí conocí a una viajera japonesa, también sola, y terminamos hablando de esta idea, todavía vaga, de una app.",
+      "Su primera reacción fue dejar claro lo que no era: no una red social, no un lugar para hablar con desconocidos, algo de lo que, según dijo, desconfiaba por naturaleza, sobre todo como mujer. Pero lo que dijo después cambió el rumbo del proyecto.",
+    ],
+    quote: "“El problema no es que no queramos ver a la gente. Es que no tenemos tiempo.”",
+    after: [
+      "Me describió su realidad en Tokio: jornadas de ocho a diez horas, a veces más, semanas completas de lunes a viernes y un domingo que se va casi todo en recuperarse. En la práctica, solo queda el viernes o el sábado por la noche para organizar algo con alguien, y aun así hace falta tener energía. Según ella, eso no va a cambiar, ni en diez años ni en veinte.",
+      "Entonces no es un problema de ganas. Es un problema de carga: tener que proponer una y otra vez, insistir, encontrar un horario, sostener la conversación que termina muriendo por falta de tiempo para contestarla. Agregar una app más que revisar no habría resuelto nada; solo habría sumado una cosa más que cargar.",
+      "Esa observación, y no una idea de partida, es lo que le dio a Ittsui su forma actual: una propuesta, una decisión y luego nada que gestionar hasta la próxima vez. El silencio de en medio no es falta de funciones. Es justamente la idea.",
+      "El proyecto todavía es joven, lo construye una sola persona y sigue evolucionando gracias a conversaciones reales con los primeros usuarios, conocidos en persona en París. Esta página existe porque varios de ellos hicieron la misma pregunta honesta: “¿cuál es el contexto?”. Aquí está.",
+    ],
+    cta: "Descubre Ittsui",
+  },
+  he: {
+    title: "למה Ittsui קיימת.",
+    intro: "הסיפור האמיתי מאחורי הפרויקט: לא חוברת שיווקית, רק מה שקרה.",
+    before: [
+      "לפני Ittsui, ביליתי שישה חודשים בווּפינג (התנדבות בחוות אורגניות) ביוגווארה, ואחר כך בנגורו, במחוז וואקאיאמה ביפן. ימים ארוכים ופשוטים: האדמה, העונות, מעט מאוד רעש. שם התחילה להעסיק אותי שאלה, עוד לפני שידעתי מה לעשות איתה: בעיר ענקית כמו טוקיו, מוקפים במיליוני אנשים, איך בכל זאת מרגישים לבד?",
+      "המסע המשיך עם תרמיל, מברלין לפראג. ערב אחד הגעתי מאוחר, ומצאתי את ההוסטל שתכננתי לישון בו סגור ללילה. מצאתי אחר. שם פגשתי מטיילת יפנית, גם היא לבד, ומצאנו את עצמנו מדברים על רעיון עדיין מעורפל לאפליקציה.",
+      "התגובה הראשונה שלה הייתה להבהיר מה זה לא: לא רשת חברתית, לא מקום לדבר עם זרים, דבר שלדבריה היא נזהרת ממנו מטבעה, במיוחד כאישה. אבל מה שאמרה אחר כך שינה את כיוון הפרויקט.",
+    ],
+    quote: '"הבעיה היא לא שאנחנו לא רוצים לראות אנשים. הבעיה היא שאין לנו זמן."',
+    after: [
+      "היא תיארה את המציאות שלה בטוקיו: ימי עבודה של שמונה עד עשר שעות, לפעמים יותר, שבועות מלאים מיום שני עד שישי, ויום ראשון שהולך בעיקר על התאוששות. בפועל, נשאר רק שישי או שבת בערב כדי לארגן משהו עם מישהו, וגם אז צריך כוח. לדבריה, זה לא עומד להשתנות, לא בעוד עשר שנים ולא בעוד עשרים.",
+      "אז זו לא בעיה של רצון. זו בעיה של עומס: להציע שוב ושוב, להזכיר, למצוא זמן, לנהל את השרשור שבסוף גווע כי אין זמן לענות. עוד אפליקציה שצריך לבדוק לא הייתה פותרת כלום; היא רק הייתה מוסיפה עוד דבר לסחוב.",
+      "התובנה הזו, ולא רעיון מוכן מראש, היא שנתנה ל-Ittsui את הצורה שלה היום: הצעה אחת, החלטה אחת, ואז שום דבר לנהל עד הפעם הבאה. השקט שבאמצע הוא לא חוסר בפיצ׳רים. זו כל הנקודה.",
+      'הפרויקט עדיין צעיר, נבנה על ידי אדם אחד, וממשיך להתפתח מתוך שיחות אמיתיות עם משתמשים ראשונים, שפגשתי פנים אל פנים בפריז. הדף הזה קיים כי כמה מהם שאלו את אותה שאלה כנה: "מה ההקשר?" אז הנה הוא.',
+    ],
+    cta: "הכירו את Ittsui",
   },
 };
 

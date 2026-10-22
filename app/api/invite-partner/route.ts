@@ -246,6 +246,7 @@ function inviteEmailHtml({
   // Japanese sentences run on with no space between them.
   const between = lang === "ja" ? "" : "\n        ";
   return emailShell({
+    lang,
     mascotName: "pika",
     title: t("{inviter} vous invite sur Ittsui", { inviter: safeName }),
     bodyHtml: `

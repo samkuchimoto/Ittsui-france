@@ -17,7 +17,8 @@ import Link from "next/link";
 import type { User } from "firebase/auth";
 import { ACCENT, BORDER, INK, MUTED } from "@/lib/theme";
 import { pagePath } from "@/lib/i18n";
-import { FOUNDING_CODE, PLUS_PRICE_LABEL } from "@/lib/planConfig";
+import { FOUNDING_CODE, plusOffer } from "@/lib/planConfig";
+import { initialCity } from "@/app/components/CityPicker";
 import { fetchPlan, openBillingPortal, startPlusCheckout, type Plan } from "@/lib/planClient";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { PLAN } from "./plan.i18n";
@@ -34,7 +35,7 @@ function useUpgrade(user: User) {
     setBusy(true);
     setError(null);
     before?.();
-    const failure = action === "checkout" ? await startPlusCheckout(user, lang) : await openBillingPortal(user, lang);
+    const failure = action === "checkout" ? await startPlusCheckout(user, lang, plusOffer(lang, initialCity()).currency) : await openBillingPortal(user, lang);
     if (failure) {
       setError(failure === "not_configured" ? t("Le paiement n'est pas encore activé, revenez bientôt.") : t("Une erreur est survenue."));
       setBusy(false);
@@ -53,7 +54,7 @@ function UpgradeButton({ busy, onClick }: { busy: boolean; onClick: () => void }
       className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium text-white transition-transform hover:scale-[1.02] disabled:opacity-60"
       style={{ backgroundColor: ACCENT }}
     >
-      {busy ? "..." : t("Passer à Plus, {price}/mois", { price: PLUS_PRICE_LABEL[lang] })}
+      {busy ? "..." : t("Passer à Plus, {price}/mois", { price: plusOffer(lang, initialCity()).label })}
     </button>
   );
 }
@@ -202,7 +203,7 @@ export function YourTurn({ senderName, senderRef }: { senderName: string | null;
   const t = useT(PLAN);
   const href = senderRef ? `/request/new?ref=${senderRef}` : "/request/new";
   return (
-    <div className="mt-6 rounded-2xl border px-5 py-5 text-left" style={{ borderColor: ACCENT }}>
+    <div className="mt-6 rounded-2xl border px-5 py-5 text-start" style={{ borderColor: ACCENT }}>
       <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.2rem", color: INK }}>{t("À votre tour")}</p>
       <p className="mt-2 text-sm" style={{ color: MUTED }}>
         {t("Bloquez du temps avec les personnes qui comptent pour vous : Ittsui propose le lieu et l'heure, il ne reste qu'à confirmer.")}

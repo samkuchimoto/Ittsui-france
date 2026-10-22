@@ -13,12 +13,14 @@
 
 import type { Metadata } from "next";
 
-export type Locale = "fr" | "en" | "ja";
+// Mexican Spanish ("es") and Hebrew ("he", right to left) since 2026-10-23,
+// for Mexico City and Tel Aviv (lib/cities.ts); German and Dutch come later.
+export type Locale = "fr" | "en" | "ja" | "es" | "he";
 
-export const LOCALES: Locale[] = ["fr", "en", "ja"];
+export const LOCALES: Locale[] = ["fr", "en", "ja", "es", "he"];
 
 export function isLocale(value: unknown): value is Locale {
-  return value === "fr" || value === "en" || value === "ja";
+  return typeof value === "string" && (LOCALES as string[]).includes(value);
 }
 
 /** A stored or received language, French when there's none (older records). */
@@ -46,20 +48,25 @@ export function withLang(href: string, lang: Locale): string {
 }
 
 /** For Intl date and number formatting. */
-export const DATE_LOCALE: Record<Locale, string> = { fr: "fr-FR", en: "en-GB", ja: "ja-JP" };
+export const DATE_LOCALE: Record<Locale, string> = { fr: "fr-FR", en: "en-GB", ja: "ja-JP", es: "es-MX", he: "he-IL" };
+
+/** Hebrew reads right to left: the page's `dir`. */
+export function dirOf(lang: Locale): "rtl" | "ltr" {
+  return lang === "he" ? "rtl" : "ltr";
+}
 
 /** The switch's labels: FR | EN | 日本語. */
-export const LOCALE_LABEL: Record<Locale, string> = { fr: "FR", en: "EN", ja: "日本語" };
+export const LOCALE_LABEL: Record<Locale, string> = { fr: "FR", en: "EN", ja: "日本語", es: "ES", he: "עברית" };
 
-const OG_LOCALE: Record<Locale, string> = { fr: "fr_FR", en: "en_GB", ja: "ja_JP" };
+const OG_LOCALE: Record<Locale, string> = { fr: "fr_FR", en: "en_GB", ja: "ja_JP", es: "es_MX", he: "he_IL" };
 
 const PATHS = {
-  home: { fr: "/", en: "/en", ja: "/ja" },
-  about: { fr: "/a-propos", en: "/en/about", ja: "/ja/about" },
-  download: { fr: "/download", en: "/en/download", ja: "/ja/download" },
-  privacy: { fr: "/confidentialite", en: "/en/privacy", ja: "/ja/privacy" },
-  terms: { fr: "/conditions-utilisation", en: "/en/terms", ja: "/ja/terms" },
-  deleteAccount: { fr: "/supprimer-mon-compte", en: "/en/delete-account", ja: "/ja/delete-account" },
+  home: { fr: "/", en: "/en", ja: "/ja", es: "/es", he: "/he" },
+  about: { fr: "/a-propos", en: "/en/about", ja: "/ja/about", es: "/es/about", he: "/he/about" },
+  download: { fr: "/download", en: "/en/download", ja: "/ja/download", es: "/es/download", he: "/he/download" },
+  privacy: { fr: "/confidentialite", en: "/en/privacy", ja: "/ja/privacy", es: "/es/privacy", he: "/he/privacy" },
+  terms: { fr: "/conditions-utilisation", en: "/en/terms", ja: "/ja/terms", es: "/es/terms", he: "/he/terms" },
+  deleteAccount: { fr: "/supprimer-mon-compte", en: "/en/delete-account", ja: "/ja/delete-account", es: "/es/delete-account", he: "/he/delete-account" },
 } satisfies Record<string, Record<Locale, string>>;
 
 export type PublicPage = keyof typeof PATHS;
@@ -75,7 +82,7 @@ export function languageAlternates(page: PublicPage, lang: Locale): Metadata["al
   const paths = PATHS[page];
   return {
     canonical: paths[lang],
-    languages: { fr: paths.fr, en: paths.en, ja: paths.ja, "x-default": paths.fr },
+    languages: { fr: paths.fr, en: paths.en, ja: paths.ja, "es-MX": paths.es, he: paths.he, "x-default": paths.fr },
   };
 }
 

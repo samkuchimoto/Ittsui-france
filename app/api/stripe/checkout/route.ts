@@ -9,10 +9,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb, verifyRequestUser } from "@/lib/firebaseAdmin";
 import { getBilling, getPlan } from "@/lib/plan";
-import { PLUS_PRICE_CENTS } from "@/lib/planConfig";
+import { PLAN_CURRENCIES, PLUS_PRICE } from "@/lib/planConfig";
 import { stripe } from "@/lib/stripe";
 
-const bodySchema = z.object({ lang: z.enum(["fr", "en", "ja"]).optional() });
+const bodySchema = z.object({
+  lang: z.enum(["fr", "en", "ja", "es", "he"]).optional(),
+  // The currency the app showed (lib/planConfig.ts plusOffer); euros by default.
+  currency: z.enum(PLAN_CURRENCIES as [string, ...string[]]).optional(),
+});
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -20,6 +24,7 @@ export async function POST(request: Request) {
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   const lang = parsed.success ? (parsed.data.lang ?? "fr") : "fr";
+  const currency = (parsed.success ? parsed.data.currency : undefined) ?? "EUR";
 
   const plan = await getPlan(uid);
   if (plan.tier === "plus") return NextResponse.json({ error: "déjà Plus" }, { status: 409 });
@@ -32,11 +37,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "paiement non configuré" }, { status: 501 });
   }
 
-  // The price shown in the app is the price charged: a leftover Price (the
-  // old 1 € one) is refused rather than silently used.
-  const price = await stripe.prices.retrieve(priceId);
-  if (price.unit_amount !== PLUS_PRICE_CENTS || price.currency !== "eur" || price.recurring?.interval !== "month") {
-    console.error(`stripe checkout: STRIPE_PLUS_PRICE_ID ${priceId} is not ${PLUS_PRICE_CENTS / 100} EUR a month`);
+  // The price shown in the app is the price charged, in the currency shown:
+  // a leftover Price (the old 1 € one), or a currency Stripe doesn't have at
+  // that amount, is refused rather than silently charged another way.
+  const price = await stripe.prices.retrieve(priceId, { expand: ["currency_options"] });
+  const amount =
+    currency === "EUR" ? (price.currency === "eur" ? price.unit_amount : null) : (price.currency_options?.[currency.toLowerCase()]?.unit_amount ?? null);
+  if (amount !== PLUS_PRICE[currency as keyof typeof PLUS_PRICE] || price.recurring?.interval !== "month") {
+    console.error(`stripe checkout: STRIPE_PLUS_PRICE_ID ${priceId} has no ${currency} ${PLUS_PRICE[currency as keyof typeof PLUS_PRICE]} a month`);
     return NextResponse.json({ error: "paiement non configuré" }, { status: 501 });
   }
 
@@ -55,7 +63,9 @@ export async function POST(request: Request) {
     // creating a duplicate (the two options are mutually exclusive).
     ...(billing.stripeCustomerId ? { customer: billing.stripeCustomerId } : userEmail ? { customer_email: userEmail } : {}),
     allow_promotion_codes: true,
-    locale: lang,
+    currency: currency.toLowerCase(),
+    // Stripe Checkout has no Hebrew interface: Hebrew readers get it in English.
+    locale: lang === "he" ? "en" : lang,
     success_url: `${appUrl}/dashboard?plus=success`,
     cancel_url: `${appUrl}/dashboard?plus=cancelled`,
   });

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { LOCALES, LOCALE_LABEL, pagePath, type Locale, type PublicPage } from "@/lib/i18n";
 import { rememberLang } from "@/app/components/site/LangProvider";
 
-const NAV_LABEL: Record<Locale, string> = { fr: "Langue", en: "Language", ja: "言語" };
+const NAV_LABEL: Record<Locale, string> = { fr: "Langue", en: "Language", ja: "言語", es: "Idioma", he: "שפה" };
 
 export function LangSwitch({
   page,

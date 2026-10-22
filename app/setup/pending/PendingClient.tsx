@@ -113,7 +113,7 @@ function SharePhoneInvite({ pair }: { pair: Pair }) {
   }
 
   return (
-    <div className="mt-4 space-y-2 text-left">
+    <div className="mt-4 space-y-2 text-start">
       <p className="text-xs" style={{ color: MUTED }}>
         {pair.invitedEmail
           ? t("Pour que ça aille plus vite, vous pouvez aussi lui envoyer le lien tout de suite :")
@@ -396,7 +396,7 @@ function InvitationHistory({ items }: { items: Pair[] }) {
   const t = useT(CATALOG);
   if (items.length === 0) return null;
   return (
-    <div className="mt-10 border-t pt-6 text-left" style={{ borderColor: BORDER }}>
+    <div className="mt-10 border-t pt-6 text-start" style={{ borderColor: BORDER }}>
       <p className="text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>
         {t("Invitations précédentes")}
       </p>

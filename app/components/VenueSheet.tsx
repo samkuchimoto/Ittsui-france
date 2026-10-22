@@ -47,6 +47,20 @@ const COPY: Record<Locale, { close: string; getThere: string; maps: string; city
     citymapper: "Citymapperで経路を見る",
     note: "場所の一例です。Ittsuiはあなたの近くにある実在の場所を提案するので、自分で探す必要はありません。",
   },
+  es: {
+    close: "Cerrar",
+    getThere: "Cómo llegar",
+    maps: "Abrir en Google Maps",
+    citymapper: "Ruta en Citymapper",
+    note: "Un lugar de ejemplo. Ittsui sugiere una dirección real cerca de ti, sin que tengas que buscar nada.",
+  },
+  he: {
+    close: "סגירה",
+    getThere: "איך מגיעים",
+    maps: "פתיחה ב-Google Maps",
+    citymapper: "מסלול ב-Citymapper",
+    note: "מקום לדוגמה. Ittsui מציעה כתובת אמיתית קרובה אליכם, בלי שתצטרכו לחפש.",
+  },
 };
 
 export function VenueSheet({ venue, onClose, lang = "fr" }: { venue: SandboxVenue | null; onClose: () => void; lang?: Locale }) {

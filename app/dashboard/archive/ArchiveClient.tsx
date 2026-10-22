@@ -134,7 +134,7 @@ export default function ArchiveClient() {
                       <Image src={photo} alt="" fill sizes="80px" className="object-cover" />
                     </div>
                   )}
-                  <div className="min-w-0 py-3 pr-4">
+                  <div className="min-w-0 py-3 pe-4">
                     <p className="truncate text-sm font-medium">{w.venueName}</p>
                     <p className="mt-0.5 text-xs" style={{ color: MUTED }}>
                       {formatWeekOf(w.weekOf, lang)}

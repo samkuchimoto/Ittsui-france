@@ -7,7 +7,7 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailButton, emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { langOf } from "@/lib/i18n";
-import { PLUS_PRICE_LABEL } from "@/lib/planConfig";
+import { plusOffer } from "@/lib/planConfig";
 import type { Pair } from "@/lib/types";
 
 const COPY = {
@@ -32,6 +32,20 @@ const COPY = {
     button: "Plusにする",
     after: "来月になると、無料のランデヴーはまた自動で使えるようになります。",
   },
+  es: {
+    subject: "Ittsui: ya usaste la cita gratis de este mes",
+    title: "La cita gratis del mes ya se usó",
+    body: "Esta semana Ittsui no propuso un momento con {name}: el plan gratis incluye una cita al mes, y la de este mes ya se usó. Con Ittsui Plus ({price} al mes, sin plazo forzoso), las propuestas vuelven cada semana, con todas las personas que te importan.",
+    button: "Pasarme a Plus",
+    after: "El próximo mes, tu cita gratis vuelve sola.",
+  },
+  he: {
+    subject: "Ittsui: הפגישה החינמית של החודש כבר נוצלה",
+    title: "הפגישה החינמית של החודש נוצלה",
+    body: "השבוע Ittsui לא הציעה מפגש עם {name}: התוכנית החינמית כוללת פגישה אחת בחודש, והפגישה של החודש כבר נוצלה. עם Ittsui Plus ({price} לחודש, בלי התחייבות), ההצעות חוזרות כל שבוע, עם כל האנשים שחשובים לך.",
+    button: "לעבור ל-Plus",
+    after: "בחודש הבא הפגישה החינמית חוזרת מעצמה.",
+  },
 } as const;
 
 export async function notifyPlanLimit(pair: Pair, month: string): Promise<void> {
@@ -41,7 +55,7 @@ export async function notifyPlanLimit(pair: Pair, month: string): Promise<void> 
   const lang = langOf(pair.lang);
   const c = COPY[lang];
   if (email && process.env.RESEND_API_KEY) {
-    const body = c.body.replace("{name}", pair.partnerName).replace("{price}", PLUS_PRICE_LABEL[lang]);
+    const body = c.body.replace("{name}", pair.partnerName).replace("{price}", plusOffer(lang, pair.cityId).label);
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`;
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -52,6 +66,7 @@ export async function notifyPlanLimit(pair: Pair, month: string): Promise<void> 
         subject: c.subject,
         text: `${body}\n\n${c.button} : ${link}\n\n${c.after}`,
         html: emailShell({
+          lang,
           mascotName: "pika",
           title: escapeHtml(c.title),
           bodyHtml: `<p style="font-size: 15px; line-height: 1.6;">${escapeHtml(body)}</p>${emailButton(link, escapeHtml(c.button))}<p style="font-size: 13px; color: #78716C; text-align: center;">${escapeHtml(c.after)}</p>`,

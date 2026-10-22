@@ -31,7 +31,7 @@ import type { MascotPairId } from "@/lib/mascots.config";
 import type { Locale } from "@/lib/i18n";
 import { useLang } from "@/app/components/site/LangProvider";
 
-const HELLO: Record<Locale, string> = { fr: "Dire bonjour", en: "Say hello", ja: "あいさつする" };
+const HELLO: Record<Locale, string> = { fr: "Dire bonjour", en: "Say hello", ja: "あいさつする", es: "Saludar", he: "להגיד שלום" };
 
 // `lang` for the public pages (language in the URL); inside the app the
 // LangProvider context supplies it.

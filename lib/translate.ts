@@ -12,7 +12,7 @@
 
 import type { Locale } from "@/lib/i18n";
 
-export type Catalog = { en: Record<string, string>; ja: Record<string, string> };
+export type Catalog = { en: Record<string, string>; ja: Record<string, string>; es: Record<string, string>; he: Record<string, string> };
 
 export type Translate = (text: string, vars?: Record<string, string | number>) => string;
 
@@ -21,6 +21,8 @@ export function mergeCatalogs(...catalogs: Catalog[]): Catalog {
   return {
     en: Object.assign({}, ...catalogs.map((catalog) => catalog.en)),
     ja: Object.assign({}, ...catalogs.map((catalog) => catalog.ja)),
+    es: Object.assign({}, ...catalogs.map((catalog) => catalog.es)),
+    he: Object.assign({}, ...catalogs.map((catalog) => catalog.he)),
   };
 }
 

@@ -39,6 +39,14 @@ const COPY: Record<Locale, { tabs: string; hint: string }> = {
     tabs: "誰と",
     hint: "これがIttsuiから届く提案です。カードをスワイプしたり、場所を入れ替えたり、確定したり。実際のアプリと同じように動きます。",
   },
+  es: {
+    tabs: "Con quién",
+    hint: "Esta es la propuesta que Ittsui enviaría. Desliza la tarjeta, cambia el lugar o confirma: funciona exactamente como la app.",
+  },
+  he: {
+    tabs: "עם מי",
+    hint: "זו ההצעה ש-Ittsui הייתה שולחת. החליקו את הכרטיס, החליפו מקום או אשרו: זה עובד בדיוק כמו באפליקציה.",
+  },
 };
 
 export function DuoSandbox({ lang = "fr" }: { lang?: Locale } = {}) {
@@ -65,7 +73,7 @@ export function DuoSandbox({ lang = "fr" }: { lang?: Locale } = {}) {
               // box vertically, so once one tile's label wrapped to two
               // lines the grid stretched all four and the three shorter
               // ones floated their photos ~4px down out of alignment.
-              className="flex flex-col overflow-hidden rounded-2xl border bg-white text-left transition-transform hover:scale-[1.02]"
+              className="flex flex-col overflow-hidden rounded-2xl border bg-white text-start transition-transform hover:scale-[1.02]"
               style={{
                 borderColor: selected ? ACCENT : BORDER,
                 boxShadow: selected ? `0 0 0 1px ${ACCENT}` : undefined,

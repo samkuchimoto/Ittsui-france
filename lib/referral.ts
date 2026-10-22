@@ -14,7 +14,7 @@
 import { randomInt } from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { stripe } from "@/lib/stripe";
-import { PLUS_PRICE_CENTS, REFERRAL_DAYS } from "@/lib/planConfig";
+import { PLUS_PRICE, REFERRAL_DAYS, type PlanCurrency } from "@/lib/planConfig";
 
 export const MAX_REFERRAL_REWARDS = 12;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I
@@ -62,16 +62,17 @@ export async function rewardReferrer(uid: string): Promise<void> {
     }
     if (data.subscriptionStatus === "active" && data.stripeCustomerId) {
       tx.set(ref, { referrals: referrals + 1 }, { merge: true });
-      return data.stripeCustomerId as string;
+      return { customer: data.stripeCustomerId as string, currency: ((data.currency as string) ?? "EUR") as PlanCurrency };
     }
     const from = Math.max(Date.now(), data.trialEndsAt ? new Date(data.trialEndsAt).getTime() : 0);
     tx.set(ref, { referrals: referrals + 1, trialEndsAt: new Date(from + REFERRAL_DAYS * DAY).toISOString() }, { merge: true });
     return null;
   });
   if (credit) {
-    await stripe.customers.createBalanceTransaction(credit, {
-      amount: -PLUS_PRICE_CENTS,
-      currency: "eur",
+    // A month of Plus in the currency they pay in.
+    await stripe.customers.createBalanceTransaction(credit.customer, {
+      amount: -(PLUS_PRICE[credit.currency] ?? PLUS_PRICE.EUR),
+      currency: (PLUS_PRICE[credit.currency] ? credit.currency : "EUR").toLowerCase(),
       description: "Ittsui Plus : un mois offert (parrainage)",
     });
   }

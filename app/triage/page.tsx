@@ -23,6 +23,15 @@ const META: Record<Locale, { title: string; description: string }> = {
     title: "メールを要約する · Ittsui",
     description: "受信トレイの内容かスクリーンショットを貼り付けるだけ。優先事項、期限、調整したい約束を、何も送信せずにブラウザの中で。",
   },
+  // Not translated yet: shown in English.
+  es: {
+    title: "Sum up your emails · Ittsui",
+    description: "Paste your inbox or a screenshot: priorities, deadlines and meetings to set up, in your browser, without sending anything.",
+  },
+  he: {
+    title: "Sum up your emails · Ittsui",
+    description: "Paste your inbox or a screenshot: priorities, deadlines and meetings to set up, in your browser, without sending anything.",
+  },
 };
 
 export function generateMetadata(): Metadata {

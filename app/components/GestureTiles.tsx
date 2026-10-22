@@ -51,12 +51,36 @@ const ITEM_LABEL: Record<Exclude<Locale, "fr">, Record<CuratedGestureItem, strin
     repas: "食事のデリバリー",
     autre: "その他",
   },
+  // Not translated yet: shown in English.
+  es: {
+    fleurs: "Flowers",
+    livre: "A book",
+    chocolat: "Chocolates",
+    plante: "A plant",
+    bougie: "A candle",
+    papeterie: "Nice stationery",
+    repas: "A meal delivered",
+    autre: "Other",
+  },
+  he: {
+    fleurs: "Flowers",
+    livre: "A book",
+    chocolat: "Chocolates",
+    plante: "A plant",
+    bougie: "A candle",
+    papeterie: "Nice stationery",
+    repas: "A meal delivered",
+    autre: "Other",
+  },
 };
 
 const UI: Record<Locale, { close: string; examples: string; send: string }> = {
   fr: { close: "Replier", examples: "Voir des exemples →", send: "Envoyer ce geste" },
   en: { close: "Close", examples: "See examples →", send: "Send this gesture" },
   ja: { close: "閉じる", examples: "例を見る →", send: "この贈りものを送る" },
+  // Not translated yet: shown in English.
+  es: { close: "Close", examples: "See examples →", send: "Send this gesture" },
+  he: { close: "Close", examples: "See examples →", send: "Send this gesture" },
 };
 
 const TILES: Tile[] = [
@@ -153,6 +177,63 @@ const TILES_BY_LOCALE: Record<Locale, Tile[]> = {
       items: [],
     },
   ],
+  // Not translated yet: shown in English.
+  es: [
+    {
+      id: "own",
+      emoji: "🎁",
+      title: "Something of yours",
+      body: "Send something you already have that makes you think of them.",
+      detail:
+        "A book you've finished, a printed photo, the jumper she always borrowed. You describe it, and they tell you where to send it, or that they'd rather get it from you in person next time you meet.",
+      items: [],
+    },
+    {
+      id: "curated",
+      emoji: "🛍️",
+      title: "A small gift",
+      body: "Pick a kind of gesture and have it delivered.",
+      detail: "The categories on offer today (you finish the order on a French shop's website):",
+      items: CURATED_ITEMS.map((i) => ITEM_LABEL.en[i]),
+    },
+    {
+      id: "suggested",
+      emoji: "✨",
+      title: "Let Ittsui find the idea",
+      body: "A ready-made suggestion, so you don't have to think about it.",
+      detail:
+        "Ittsui picks from the same categories and suggests one. No algorithm pretending to know the person you love: just one less decision to make, as many times as you like.",
+      items: [],
+    },
+  ],
+  he: [
+    {
+      id: "own",
+      emoji: "🎁",
+      title: "Something of yours",
+      body: "Send something you already have that makes you think of them.",
+      detail:
+        "A book you've finished, a printed photo, the jumper she always borrowed. You describe it, and they tell you where to send it, or that they'd rather get it from you in person next time you meet.",
+      items: [],
+    },
+    {
+      id: "curated",
+      emoji: "🛍️",
+      title: "A small gift",
+      body: "Pick a kind of gesture and have it delivered.",
+      detail: "The categories on offer today (you finish the order on a French shop's website):",
+      items: CURATED_ITEMS.map((i) => ITEM_LABEL.en[i]),
+    },
+    {
+      id: "suggested",
+      emoji: "✨",
+      title: "Let Ittsui find the idea",
+      body: "A ready-made suggestion, so you don't have to think about it.",
+      detail:
+        "Ittsui picks from the same categories and suggests one. No algorithm pretending to know the person you love: just one less decision to make, as many times as you like.",
+      items: [],
+    },
+  ],
 };
 
 export function GestureTiles({ lang = "fr" }: { lang?: Locale } = {}) {
@@ -173,7 +254,7 @@ export function GestureTiles({ lang = "fr" }: { lang?: Locale } = {}) {
               type="button"
               aria-expanded={expanded}
               onClick={() => setOpen(expanded ? null : tile.id)}
-              className="w-full p-5 text-left"
+              className="w-full p-5 text-start"
             >
               <span
                 className="flex h-11 w-11 items-center justify-center rounded-full text-xl"

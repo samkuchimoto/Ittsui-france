@@ -92,7 +92,7 @@ export function OriginStorySheet({ onOpenChange }: { onOpenChange?: (open: boole
         </p>
 
         {"scenario" in current && (
-          <div className="mt-3 rounded-xl border p-4 text-left" style={{ borderColor: BORDER }}>
+          <div className="mt-3 rounded-xl border p-4 text-start" style={{ borderColor: BORDER }}>
             <p className="text-xs" style={{ color: MUTED }}>{t("Exemple — Samedi 15h30")}</p>
             {/* A café's name: a proper noun, the same in every language. */}
             <p className="mt-1 text-sm font-medium">{"Le Café des Tilleuls"}</p>

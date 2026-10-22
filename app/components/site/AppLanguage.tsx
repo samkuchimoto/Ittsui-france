@@ -13,7 +13,10 @@ export function AppLanguage({ children }: { children: React.ReactNode }) {
   const chosen = isLocale(value);
   return (
     <LangProvider initialLang={chosen ? value : "fr"} chosen={chosen}>
-      {children}
+      {/* Hebrew saved: right to left from the server's first paint. Not set
+          otherwise, so a guest shown the sender's Hebrew (suggestLang, no
+          cookie) still follows <html dir> from DocumentLang. */}
+      <div dir={value === "he" ? "rtl" : undefined}>{children}</div>
     </LangProvider>
   );
 }

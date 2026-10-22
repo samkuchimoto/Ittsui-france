@@ -37,6 +37,22 @@ const COPY: Record<
     terms: "利用規約",
     legal: "法的表示（フランス語）",
   },
+  es: {
+    line: "© 2026 Ittsui France. Diseñado con sobriedad.",
+    about: "Acerca de",
+    partners: "Socios (en francés)",
+    privacy: "Privacidad",
+    terms: "Condiciones de uso",
+    legal: "Aviso legal (en francés)",
+  },
+  he: {
+    line: "© 2026 Ittsui France. מעוצב באיפוק.",
+    about: "אודות",
+    partners: "שותפים (בצרפתית)",
+    privacy: "פרטיות",
+    terms: "תנאי שימוש",
+    legal: "מידע משפטי (בצרפתית)",
+  },
 };
 
 export function SiteFooter({ page, lang, links = "full" }: { page: PublicPage; lang: Locale; links?: "full" | "legal" }) {

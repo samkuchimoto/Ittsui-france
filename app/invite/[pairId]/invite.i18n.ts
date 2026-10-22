@@ -78,4 +78,76 @@ export const INVITE: Catalog = {
     "invitation expirée": "招待の期限が切れています",
     "cette invitation ne correspond pas à votre compte": "この招待は、お使いのアカウント宛てではありません",
   },
+  es: {
+    "Une erreur est survenue.": "Algo salió mal.",
+    "Échec de la connexion.": "No se pudo iniciar sesión.",
+    "Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut qu'il bloque la connexion à Google — essayez avec les données mobiles.":
+      "Esto está tardando más de lo esperado. A veces el wifi público o del trabajo bloquea la conexión con Google: prueba con tus datos móviles.",
+    Réessayer: "Intentar de nuevo",
+    "Vous êtes lié(e) à {name}": "Ya estás en contacto con {name}",
+    "Vous êtes lié(e) à cette personne": "Ya estás en contacto con esta persona",
+    "Rendez-vous chaque {day}, vers {time}. La première proposition arrive automatiquement, sans rien à faire d'ici là.":
+      "Un encuentro cada {day}, hacia las {time}. La primera propuesta llega sola; no tienes que hacer nada hasta entonces.",
+    "Aller au tableau de bord": "Ir al panel",
+    "Faire pareil avec quelqu'un d'autre": "Hacer lo mismo con otra persona",
+    "Invitation déclinée": "Invitación rechazada",
+    "Aucune donnée n'a été conservée. Rien d'autre à faire.": "No se guardó ningún dato. No hay nada más que hacer.",
+    "Décliner l'invitation ?": "¿Rechazar la invitación?",
+    "Vous ne serez pas lié(e) et vos informations seront supprimées.": "No habrá vínculo y se borrarán tus datos.",
+    Décliner: "Rechazar",
+    "Vous avez été invité(e) sur Ittsui": "Te invitaron a Ittsui",
+    "Pas une appli de rencontre : un rendez-vous protégé, une fois par semaine, avec la personne qui vous a envoyé ce lien — une proposition, validable en un geste, sans agenda à gérer.":
+      "No es una app de citas: un encuentro protegido, una vez a la semana, con la persona que te envió este enlace. Una propuesta, confirmada con un toque, sin agenda que administrar.",
+    "Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à activer le lien.":
+      "Un paso para confirmar: basta con iniciar sesión con Google para activar el vínculo.",
+    ". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation.":
+      ". Iniciaste sesión con otra cuenta de Google: vuelve a entrar con la que recibió la invitación.",
+    "Connexion...": "Iniciando sesión…",
+    "Se connecter avec un autre compte": "Usar otra cuenta",
+    "Je viens": "Me uno",
+    "Via Google, juste pour vérifier que c'est bien vous.": "Con Google, solo para verificar que eres tú.",
+    "champs manquants": "Faltan algunos datos",
+    "invitation introuvable": "No se encontró la invitación",
+    "cette invitation n'est plus valide — une invitation plus récente a peut-être été envoyée":
+      "Esta invitación ya no es válida. Quizá se envió una más reciente",
+    "invitation déjà traitée": "Ya se respondió esta invitación",
+    "invitation expirée": "Esta invitación venció",
+    "cette invitation ne correspond pas à votre compte": "Esta invitación no corresponde a tu cuenta",
+  },
+  he: {
+    "Une erreur est survenue.": "משהו השתבש.",
+    "Échec de la connexion.": "ההתחברות נכשלה.",
+    "Cela prend plus de temps que prévu. Si vous êtes sur un wifi public ou professionnel, il se peut qu'il bloque la connexion à Google — essayez avec les données mobiles.":
+      "זה לוקח יותר זמן מהצפוי. לפעמים Wi-Fi ציבורי או של מקום העבודה חוסם את החיבור ל-Google: כדאי לנסות עם חבילת הגלישה.",
+    Réessayer: "לנסות שוב",
+    "Vous êtes lié(e) à {name}": "החיבור עם {name} פעיל",
+    "Vous êtes lié(e) à cette personne": "החיבור עם האדם הזה פעיל",
+    "Rendez-vous chaque {day}, vers {time}. La première proposition arrive automatiquement, sans rien à faire d'ici là.":
+      "מפגש בכל {day}, בסביבות {time}. ההצעה הראשונה תגיע מעצמה, ועד אז אין מה לעשות.",
+    "Aller au tableau de bord": "מעבר ללוח הבקרה",
+    "Faire pareil avec quelqu'un d'autre": "לעשות את אותו הדבר עם מישהו אחר",
+    "Invitation déclinée": "ההזמנה נדחתה",
+    "Aucune donnée n'a été conservée. Rien d'autre à faire.": "לא נשמר שום מידע. אין צורך לעשות שום דבר נוסף.",
+    "Décliner l'invitation ?": "לדחות את ההזמנה?",
+    "Vous ne serez pas lié(e) et vos informations seront supprimées.": "לא ייווצר חיבור, והפרטים שלך יימחקו.",
+    Décliner: "דחייה",
+    "Vous avez été invité(e) sur Ittsui": "קיבלת הזמנה ל-Ittsui",
+    "Pas une appli de rencontre : un rendez-vous protégé, une fois par semaine, avec la personne qui vous a envoyé ce lien — une proposition, validable en un geste, sans agenda à gérer.":
+      "זו לא אפליקציית היכרויות: מפגש שמור, פעם בשבוע, עם מי ששלח לך את הקישור הזה. הצעה אחת, אישור בנגיעה אחת, בלי יומן לנהל.",
+    "Un seul geste pour confirmer : connectez-vous avec Google, ça suffit à activer le lien.":
+      "צעד אחד לאישור: מספיק להתחבר עם Google כדי להפעיל את החיבור.",
+    ". Vous êtes connecté(e) avec le mauvais compte Google — reconnectez-vous avec celui qui a reçu l'invitation.":
+      ". התחברת עם חשבון Google אחר: יש להתחבר שוב עם החשבון שקיבל את ההזמנה.",
+    "Connexion...": "מתחברים…",
+    "Se connecter avec un autre compte": "התחברות עם חשבון אחר",
+    "Je viens": "אני בפנים",
+    "Via Google, juste pour vérifier que c'est bien vous.": "עם Google, רק כדי לאמת את הזהות.",
+    "champs manquants": "חסרים כמה פרטים",
+    "invitation introuvable": "ההזמנה לא נמצאה",
+    "cette invitation n'est plus valide — une invitation plus récente a peut-être été envoyée":
+      "ההזמנה הזו כבר לא בתוקף. ייתכן שנשלחה הזמנה חדשה יותר",
+    "invitation déjà traitée": "כבר ענו על ההזמנה הזו",
+    "invitation expirée": "תוקף ההזמנה הזו פג",
+    "cette invitation ne correspond pas à votre compte": "ההזמנה הזו לא תואמת לחשבון שלך",
+  },
 };

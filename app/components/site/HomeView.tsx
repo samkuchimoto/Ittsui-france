@@ -37,11 +37,11 @@
 // 4. Every surface that looks tappable now is. Duo tiles reconfigure the
 //    card, the venue opens its real address and a map link.
 //
-// 2026-10-20, product direction: Ittsui does two things now, the weekly
-// rendez-vous and email summaries (/triage). "Envoyer un geste" is hidden
-// from the homepage (its section and hero link); the gesture pages still
-// work for links already sent. The summary section takes the gestures'
-// place, right after the rendez-vous mechanic.
+// 2026-10-20, product direction: "Envoyer un geste" is hidden from the
+// homepage (its section and hero link); the gesture pages still work for
+// links already sent. 2026-10-23: the homepage says one thing, "one
+// proposal, one decision, more time with the people who matter", so the
+// email summary left it (/triage still works, from the dashboard).
 //
 // The mascot's removal from the header is a Zone 0 decision only — see
 // HeaderNav.tsx's comment. The cast stays everywhere in-product.
@@ -50,6 +50,7 @@
 import Link from "next/link";
 import { fraunces, workSans } from "@/app/fonts";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
+import { plusOffer } from "@/lib/planConfig";
 import { pagePath, withLang, type Locale } from "@/lib/i18n";
 import { HeaderNav } from "@/app/components/HeaderNav";
 import { Reveal } from "@/app/components/Reveal";
@@ -69,7 +70,6 @@ type Copy = {
   title: string;
   lede: string;
   oneOff: string;
-  summarize: string;
   kanjiName: string;
   kanjiGloss: string;
   versusTitle: string;
@@ -82,11 +82,6 @@ type Copy = {
   steps: { title: string; body: string }[];
   ownRequest: string;
   disconnect: string;
-  triageTitle: string;
-  triageLede: string;
-  triageCards: { title: string; body: string }[];
-  triagePrivacy: string;
-  triageCta: string;
   whyTitle: [string, string];
   whyQuote: string;
   whyBody: string;
@@ -97,7 +92,6 @@ type Copy = {
   ctaTitle: string;
   ctaButton: string;
   ctaFree: string;
-  plusAmount: string;
   plusUnit: string;
   plusBody: string;
   plusNote: string;
@@ -115,10 +109,9 @@ type Copy = {
 const COPY: Record<Locale, Copy> = {
   fr: {
     badge: "Pour vos proches, votre partenaire et vos ami(e)s qui comptent déjà",
-    title: "Un rendez-vous par semaine avec les personnes qui comptent.",
+    title: "Une proposition. Une décision. Plus de temps avec les personnes qui comptent.",
     lede: "Ittsui choisit le lieu et l'horaire. Vous validez en 1 clic. Votre invité(e) n'a besoin d'aucune application, ni même d'un compte.",
     oneOff: "Proposer un rendez-vous ponctuel",
-    summarize: "Résumer mes e-mails",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: " : l'art d'entretenir le lien à deux.",
     versusTitle: "Pourquoi pas juste un message ?",
@@ -167,19 +160,6 @@ const COPY: Record<Locale, Copy> = {
     ],
     ownRequest: "Vous savez déjà quoi faire ? Proposez votre propre rendez-vous →",
     disconnect: "Le droit à la déconnexion, appliqué à vos relations.",
-    triageTitle: "📬 Vos e-mails, résumés",
-    triageLede:
-      "Collez votre boîte de réception, ou une capture d'écran : Ittsui en tire les priorités, les dates limites et les rendez-vous à caler, et met le reste de côté.",
-    triageCards: [
-      { title: "🔴 Priorités & dates limites", body: "Ce qui demande une action, trié par date, avec la prochaine étape." },
-      {
-        title: "📅 Rendez-vous à caler",
-        body: "Une réunion ou un rendez-vous proposé par e-mail ? Un clic, et Ittsui le propose à la personne.",
-      },
-      { title: "⚪ Bruit écarté", body: "Newsletters, promotions et notifications : mises de côté, sans les ouvrir." },
-    ],
-    triagePrivacy: "Tout se passe dans votre navigateur : vos e-mails ne sont envoyés nulle part.",
-    triageCta: "Résumer mes e-mails",
     whyTitle: ["Le problème n'est pas l'envie.", "C'est le temps."],
     whyQuote: "« Le problème, ce n'est pas qu'on n'a pas envie de voir les gens. C'est qu'on n'a pas le temps. »",
     whyBody:
@@ -195,7 +175,6 @@ const COPY: Record<Locale, Copy> = {
     ctaTitle: "Offrez du temps réel aux personnes qui comptent.",
     ctaButton: "Bloquer un premier moment",
     ctaFree: "Gratuit : un rendez-vous par mois. 14 jours de Plus offerts à l'inscription.",
-    plusAmount: "4,99 €",
     plusUnit: "/ mois",
     plusBody:
       "Le prix d'un café, pour ne pas perdre le lien avec votre famille, vos ami(e)s ou votre partenaire.",
@@ -207,10 +186,9 @@ const COPY: Record<Locale, Copy> = {
   },
   en: {
     badge: "For your family, your partner and the friends who already matter",
-    title: "One rendez-vous a week with the people who matter.",
+    title: "One proposal. One decision. More time with the people who matter.",
     lede: "Ittsui picks the place and the time. You confirm in one tap. Your guest needs no app, not even an account.",
     oneOff: "Suggest a one-off rendez-vous",
-    summarize: "Summarise my emails",
     kanjiName: "Ittsui (一対)",
     kanjiGloss: ": the art of tending the bond between two people.",
     versusTitle: "Why not just send a message?",
@@ -259,19 +237,6 @@ const COPY: Record<Locale, Copy> = {
     ],
     ownRequest: "Already know what you want to do? Suggest your own rendez-vous →",
     disconnect: "The right to disconnect, applied to your relationships.",
-    triageTitle: "📬 Your emails, summed up",
-    triageLede:
-      "Paste your inbox, or a screenshot of it: Ittsui pulls out the priorities, the deadlines and the meetings to set up, and puts the rest aside.",
-    triageCards: [
-      { title: "🔴 Priorities & deadlines", body: "What needs action, sorted by date, with the next step." },
-      {
-        title: "📅 Meetings to set up",
-        body: "A meeting or a rendez-vous suggested by email? One click and Ittsui proposes it to the person.",
-      },
-      { title: "⚪ Noise set aside", body: "Newsletters, promotions and notifications, put aside without opening them." },
-    ],
-    triagePrivacy: "Everything happens in your browser: your emails are sent nowhere.",
-    triageCta: "Summarise my emails",
     whyTitle: ["The problem isn't wanting to.", "It's time."],
     whyQuote: "“The problem isn't that we don't want to see people. It's that we don't have the time.”",
     whyBody:
@@ -287,7 +252,6 @@ const COPY: Record<Locale, Copy> = {
     ctaTitle: "Give real time to the people who matter.",
     ctaButton: "Set aside a first moment",
     ctaFree: "Free: one rendez-vous a month. 14 days of Plus when you sign up.",
-    plusAmount: "€4.99",
     plusUnit: "/ month",
     plusBody: "The price of a coffee, so you don't lose touch with your family, your friends or your partner.",
     plusNote: "Rendez-vous every week, with no limit, with everyone who matters. Without Plus, one rendez-vous a month stays free. Cancel anytime.",
@@ -297,10 +261,9 @@ const COPY: Record<Locale, Copy> = {
   },
   ja: {
     badge: "家族、パートナー、そして大切な友人のために",
-    title: "大切な人と、週にひとつの約束を。",
+    title: "提案はひとつ。決めるのは一度。大切な人との時間を、もっと。",
     lede: "場所と時間はIttsuiが選びます。あなたはワンタップで確定するだけ。相手はアプリもアカウントも必要ありません。",
     oneOff: "1回だけの約束を提案する",
-    summarize: "メールを要約する",
     kanjiName: "Ittsui（一対）",
     kanjiGloss: "：ふたりのつながりを、大切に育てるために。",
     versusTitle: "メッセージを送るだけでは、だめ？",
@@ -349,19 +312,6 @@ const COPY: Record<Locale, Copy> = {
     ],
     ownRequest: "やりたいことが決まっている？自分で約束を提案する →",
     disconnect: "「つながらない権利」を、大切な人との関係にも。",
-    triageTitle: "📬 メールを、要点だけに",
-    triageLede:
-      "受信トレイの内容か、そのスクリーンショットを貼り付けるだけ。優先すべきこと、期限、調整が必要な約束をIttsuiが取り出し、それ以外は脇によけます。",
-    triageCards: [
-      { title: "🔴 優先事項と期限", body: "対応が必要なものを期限順に、次にやることと一緒に。" },
-      {
-        title: "📅 調整したい約束",
-        body: "メールで届いた打ち合わせや約束の相談も、ワンクリックでIttsuiから相手に提案できます。",
-      },
-      { title: "⚪ 不要なメールを除外", body: "ニュースレター、広告、通知は、開かずに脇へ。" },
-    ],
-    triagePrivacy: "処理はすべてブラウザの中で行われます。メールがどこかに送信されることはありません。",
-    triageCta: "メールを要約する",
     whyTitle: ["問題は、会いたい気持ちではありません。", "時間です。"],
     whyQuote: "「人に会いたくないわけじゃない。時間がないだけ。」",
     whyBody:
@@ -377,13 +327,162 @@ const COPY: Record<Locale, Copy> = {
     ctaTitle: "大切な人に、本当の時間を。",
     ctaButton: "最初の時間をつくる",
     ctaFree: "無料プランは月1回のランデヴー。登録から14日間はPlusを無料でお試しいただけます。",
-    plusAmount: "4.99ユーロ",
     plusUnit: "/ 月",
     plusBody: "コーヒー1杯の値段で、家族や友人、パートナーとのつながりを守る。",
     plusNote: "大切な人たちと、毎週、回数の制限なくランデヴーを。Plusに入らなくても、月1回のランデヴーは無料です。いつでも解約できます。",
     plusButton: "14日間無料ではじめる",
     plusCode: "コードFONDATEUR：先着100名様は3か月間50%オフ。",
     mobile: "スマートフォンでIttsuiを使う →",
+  },
+  es: {
+    badge: "Para tu familia, tu pareja y las amistades que ya importan",
+    title: "Una propuesta. Una decisión. Más tiempo con la gente que importa.",
+    lede: "Ittsui elige el lugar y la hora. Tú confirmas con un toque. Tu invitado no necesita ninguna app, ni siquiera una cuenta.",
+    oneOff: "Proponer un encuentro puntual",
+    kanjiName: "Ittsui (一対)",
+    kanjiGloss: ": el arte de cuidar el vínculo entre dos personas.",
+    versusTitle: "¿Por qué no mandar un mensaje y ya?",
+    versusLede:
+      "Quedar para un café con alguien casi nunca toma un solo mensaje. Toma doce, a lo largo de cuatro días, y muchas veces nunca pasa.",
+    versusHead: "Mensajes",
+    versus: [
+      {
+        dimension: "Encontrar una fecha",
+        whatsapp: "“¿Cuándo nos vemos?” · “¿Qué día puedes?” · un recordatorio tres días después",
+        ittsui: "Un día y una hora ya elegidos, de una vez por todas, al configurarlo.",
+      },
+      {
+        dimension: "Encontrar un lugar",
+        whatsapp: "Buscar un café, revisar los horarios, mandar tres enlaces, esperar una opinión",
+        ittsui: "Una dirección real sugerida para ti, con una alternativa si no te convence.",
+      },
+      {
+        dimension: "Lo que se le pide a la otra persona",
+        whatsapp: "Participar en toda la negociación",
+        ittsui: "Abrir un enlace y tocar “Me uno”. Sin cuenta, sin app.",
+      },
+      {
+        dimension: "Después",
+        whatsapp: "La conversación sigue, y las notificaciones también",
+        ittsui: "Silencio total hasta el día del encuentro.",
+      },
+    ],
+    notWantTitle: "No es que no quieras.",
+    notWantBody:
+      "Son la carga de trabajo y la falta de tiempo las que nos hacen perder de vista a la gente que importa, sin decidirlo nunca. Ittsui toma la decisión por ti cada semana; tú solo dices que sí.",
+    howTitle: "Cómo funciona.",
+    steps: [
+      {
+        title: "1 propuesta por semana",
+        body: "Cada semana recibes una sola propuesta (un lugar real, una hora) lista para confirmar con un toque.",
+      },
+      {
+        title: "Tu invitado responde con un toque",
+        body: "Recibe un enlace por SMS o WhatsApp, ve el lugar y la hora, y toca “Me uno”. Sin crear una cuenta, sin instalar nada, sin negociar.",
+      },
+      {
+        title: "Y luego, nada",
+        body: "Una vez fijado el encuentro, silencio total hasta la semana siguiente. El vínculo sigue sin ningún esfuerzo de memoria.",
+      },
+    ],
+    ownRequest: "¿Ya sabes qué quieres hacer? Propón tu propio encuentro →",
+    disconnect: "El derecho a desconectarse, aplicado a tus relaciones.",
+    whyTitle: ["El problema no son las ganas.", "Es el tiempo."],
+    whyQuote: "“El problema no es que no queramos ver a la gente. Es que no tenemos tiempo.”",
+    whyBody:
+      "Una frase escuchada por casualidad, una noche de viaje, que le dio a Ittsui su forma actual: una propuesta, una decisión y luego nada que gestionar hasta la próxima vez.",
+    whyLink: "Leer la historia completa →",
+    feedbackTitle: "Primeras opiniones",
+    feedback: [
+      { quote: "Es rápido, fluido… el SMS está limpio.", from: "Usuario de prueba en París, 27 de agosto de 2026 · traducido del francés" },
+      { quote: "Ayuda a encontrar un contacto rápido.", from: "Usuario de prueba en París, 27 de agosto de 2026 · traducido del francés" },
+      { quote: "La interfaz es bonita… Intuitiva.", from: "Estudiante estadounidense en París, 27 de agosto de 2026 · traducido del inglés" },
+    ],
+    ctaBadge: "El vínculo, sin el esfuerzo",
+    ctaTitle: "Dale tiempo de verdad a la gente que importa.",
+    ctaButton: "Apartar un primer momento",
+    ctaFree: "Gratis: un encuentro al mes. 14 días de Plus al registrarte.",
+    plusUnit: "/ mes",
+    plusBody: "El precio de un café para no perder el contacto con tu familia, tus amigos o tu pareja.",
+    plusNote: "Encuentros cada semana, sin límite, con toda la gente que importa. Sin Plus, un encuentro al mes sigue siendo gratis. Cancela cuando quieras.",
+    plusButton: "Empezar con 14 días gratis",
+    plusCode: "Código FONDATEUR: 50% de descuento durante 3 meses, para los primeros 100 miembros.",
+    mobile: "Ittsui en el celular →",
+  },
+  he: {
+    badge: "למשפחה, לבן או בת הזוג ולחברים שכבר חשובים לכם",
+    title: "הצעה אחת. החלטה אחת. יותר זמן עם האנשים שחשובים לכם.",
+    lede: "Ittsui בוחרת את המקום ואת השעה. אתם מאשרים בנגיעה אחת. מי שמוזמן לא צריך אפליקציה, ואפילו לא חשבון.",
+    oneOff: "להציע מפגש חד־פעמי",
+    kanjiName: "Ittsui (一対)",
+    kanjiGloss: ": האמנות של טיפוח הקשר בין שני אנשים.",
+    versusTitle: "למה לא פשוט לשלוח הודעה?",
+    versusLede:
+      "לתאם קפה עם מישהו קרוב כמעט אף פעם לא לוקח הודעה אחת. זה לוקח שתים־עשרה הודעות, לאורך ארבעה ימים, ולפעמים זה פשוט לא קורה.",
+    versusHead: "הודעות",
+    versus: [
+      {
+        dimension: "למצוא תאריך",
+        whatsapp: '"מתי נפגשים?" · "איזה יום נוח לך?" · תזכורת שלושה ימים אחר כך',
+        ittsui: "יום ושעה שכבר נבחרו, פעם אחת ולתמיד, בהגדרה.",
+      },
+      {
+        dimension: "למצוא מקום",
+        whatsapp: "לחפש בית קפה, לבדוק שעות פתיחה, לשלוח שלושה קישורים, לחכות לתגובה",
+        ittsui: "כתובת אמיתית שמוצעת לכם, עם חלופה אם היא לא מתאימה.",
+      },
+      {
+        dimension: "מה זה דורש מהצד השני",
+        whatsapp: "להשתתף בכל המשא ומתן",
+        ittsui: 'לפתוח קישור וללחוץ "אני בפנים". בלי חשבון, בלי אפליקציה.',
+      },
+      {
+        dimension: "ואחר כך",
+        whatsapp: "השרשור ממשיך, וגם ההתראות",
+        ittsui: "שקט מוחלט עד היום עצמו.",
+      },
+    ],
+    notWantTitle: "זה לא שאתם לא רוצים.",
+    notWantBody:
+      "העומס וחוסר הזמן הם שגורמים לנו לאבד קשר עם האנשים שחשובים לנו, בלי שאי פעם החלטנו על כך. Ittsui מקבלת את ההחלטה בשבילכם בכל שבוע; אתם רק אומרים כן.",
+    howTitle: "איך זה עובד.",
+    steps: [
+      {
+        title: "הצעה אחת בשבוע",
+        body: "בכל שבוע מגיעה הצעה אחת בלבד (מקום אמיתי, שעה) שמוכנה לאישור בנגיעה אחת.",
+      },
+      {
+        title: "מי שמוזמן עונה בנגיעה אחת",
+        body: 'מגיע קישור ב-SMS או ב-WhatsApp, רואים את המקום ואת השעה, ולוחצים "אני בפנים". בלי לפתוח חשבון, בלי להתקין אפליקציה, בלי משא ומתן.',
+      },
+      {
+        title: "ואז כלום",
+        body: "אחרי שהמפגש נקבע, שקט מוחלט עד השבוע הבא. הקשר ממשיך בלי שום מאמץ לזכור.",
+      },
+    ],
+    ownRequest: "כבר יודעים מה רוצים לעשות? הציעו מפגש משלכם ←",
+    disconnect: "הזכות להתנתק, גם במערכות היחסים שלכם.",
+    whyTitle: ["הבעיה היא לא הרצון.", "הבעיה היא הזמן."],
+    whyQuote: '"הבעיה היא לא שאנחנו לא רוצים לראות אנשים. הבעיה היא שאין לנו זמן."',
+    whyBody:
+      "משפט ששמעתי במקרה, ערב אחד בטיול, שנתן ל-Ittsui את הצורה שלה היום: הצעה אחת, החלטה אחת, ואז שום דבר לנהל עד הפעם הבאה.",
+    whyLink: "לסיפור המלא ←",
+    feedbackTitle: "תגובות ראשונות",
+    feedback: [
+      { quote: "מהיר, חלק… ה-SMS נקי.", from: "בודק בפריז, 27 באוגוסט 2026 · תורגם מצרפתית" },
+      { quote: "עוזר למצוא איש קשר מהר.", from: "בודק בפריז, 27 באוגוסט 2026 · תורגם מצרפתית" },
+      { quote: "הממשק יפה… אינטואיטיבי.", from: "סטודנטית אמריקאית בפריז, 27 באוגוסט 2026 · תורגם מאנגלית" },
+    ],
+    ctaBadge: "הקשר, בלי המאמץ",
+    ctaTitle: "לתת זמן אמיתי לאנשים שחשובים לכם.",
+    ctaButton: "לשמור רגע ראשון",
+    ctaFree: "בחינם: מפגש אחד בחודש. 14 ימי Plus בהרשמה.",
+    plusUnit: "/ לחודש",
+    plusBody: "במחיר של קפה, כדי לא לאבד קשר עם המשפחה, עם החברים או עם בן או בת הזוג.",
+    plusNote: "מפגשים כל שבוע, בלי הגבלה, עם כל מי שחשוב לכם. בלי Plus, מפגש אחד בחודש נשאר בחינם. אפשר לבטל מתי שרוצים.",
+    plusButton: "להתחיל עם 14 ימים בחינם",
+    plusCode: "קוד FONDATEUR: הנחה של 50% למשך 3 חודשים, ל-100 המצטרפים הראשונים.",
+    mobile: "Ittsui בנייד ←",
   },
 };
 
@@ -415,7 +514,7 @@ export function HomeView({ lang }: { lang: Locale }) {
       <section className="relative isolate -mt-[68px] flex min-h-[86vh] items-center overflow-hidden px-6 pb-16 pt-[104px] sm:pb-24 lg:min-h-[92vh]">
         <AmbientHeroVideo />
         <div className="relative mx-auto max-w-6xl lg:grid lg:grid-cols-2 lg:items-center lg:gap-12">
-          <Reveal className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
+          <Reveal className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-start">
             <span
               className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-medium"
               style={{
@@ -454,20 +553,11 @@ export function HomeView({ lang }: { lang: Locale }) {
               <StartRitualField onDark lang={lang} />
             </div>
 
-            {/* Two lower-commitment entry points, kept as one quiet row: a
-                one-off rendez-vous for someone not ready for a standing
-                weekly ritual, and the email summary. */}
+            {/* The lower-commitment entry point: a one-off rendez-vous for
+                someone not ready for a standing weekly ritual. */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm lg:justify-start">
               <Link href={app("/request/new")} className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
                 {t.oneOff}
-              </Link>
-              {/* Hidden where the row wraps — a lone middot stranded at
-                  the end of a line reads as a typo. */}
-              <span aria-hidden="true" className="hidden sm:inline" style={{ color: "rgba(255,253,249,0.35)" }}>
-                ·
-              </span>
-              <Link href={app("/triage")} className="underline underline-offset-4" style={{ color: "rgba(255,253,249,0.78)" }}>
-                {t.summarize}
               </Link>
             </div>
 
@@ -596,44 +686,6 @@ export function HomeView({ lang }: { lang: Locale }) {
         </Reveal>
       </section>
 
-      {/* The second thing Ittsui does: the email summary, with the
-          meetings it finds handed straight to a rendez-vous request. */}
-      <section className="border-t px-6 py-20 sm:py-28" style={{ borderColor: BORDER }}>
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2.5rem)" }}>
-            {t.triageTitle}
-          </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm" style={{ color: MUTED }}>
-            {t.triageLede}
-          </p>
-        </Reveal>
-
-        <Reveal className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-3">
-          {t.triageCards.map((card) => (
-            <div key={card.title} className="rounded-2xl border bg-white p-5" style={{ borderColor: BORDER }}>
-              <p className="text-sm font-medium">{card.title}</p>
-              <p className="mt-1.5 text-xs leading-relaxed" style={{ color: MUTED }}>
-                {card.body}
-              </p>
-            </div>
-          ))}
-        </Reveal>
-
-        <Reveal className="mt-8 text-center">
-          <Link
-            href={app("/triage")}
-            className="inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium transition-transform hover:scale-[1.02]"
-            style={{ borderColor: ACCENT, color: ACCENT }}
-          >
-            {t.triageCta}
-            <IconArrowRight className="h-4 w-4" />
-          </Link>
-          <p className="mx-auto mt-3 max-w-sm text-xs" style={{ color: MUTED }}>
-            {t.triagePrivacy}
-          </p>
-        </Reveal>
-      </section>
-
       {/* Early access email capture — real feature request: visible on
           the first page, not buried in a footer or a separate page. Sits
           below the mechanic rather than next to the hero, so there is
@@ -723,7 +775,7 @@ export function HomeView({ lang }: { lang: Locale }) {
             style={{ backgroundColor: ACCENT }}
           >
             {t.ctaButton}
-            <IconArrowRight className="h-4 w-4" />
+            <IconArrowRight className="rtl:-scale-x-100 h-4 w-4" />
           </Link>
           <p className="mt-4 text-xs" style={{ color: MUTED }}>
             {t.ctaFree}
@@ -733,7 +785,7 @@ export function HomeView({ lang }: { lang: Locale }) {
               footnote caption, per direct product/pricing feedback: lead
               with what a subscription actually protects (a specific
               relationship — family, ami, partenaire), not a vague feature
-              list. 4,99 €/mois (since 2026-10-22) is a deliberate price point, not a placeholder.
+              list. 4,99 €/mois (since 2026-10-22; each currency's amount is in lib/planConfig.ts) is a deliberate price point, not a placeholder.
               No fabricated feature list: "à venir" stays honest about what
               Plus doesn't concretely include yet. Links to /dashboard
               rather than starting checkout directly from this public,
@@ -741,14 +793,14 @@ export function HomeView({ lang }: { lang: Locale }) {
               lib/types.ts's Pair.subscriptionStatus) and /dashboard
               already redirects to /setup on its own when nobody is signed
               in. */}
-          <div className="mt-8 rounded-2xl border p-6 text-left" style={{ borderColor: BORDER, backgroundColor: "white" }}>
+          <div className="mt-8 rounded-2xl border p-6 text-start" style={{ borderColor: BORDER, backgroundColor: "white" }}>
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-semibold" style={{ color: ACCENT }}>
                 Ittsui Plus
               </p>
               <p className="text-sm" style={{ color: MUTED }}>
                 <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.5rem", color: INK }}>
-                  {t.plusAmount}
+                  {plusOffer(lang).label}
                 </span>{" "}
                 {t.plusUnit}
               </p>
@@ -768,7 +820,7 @@ export function HomeView({ lang }: { lang: Locale }) {
               style={{ backgroundColor: ACCENT }}
             >
               {t.plusButton}
-              <IconArrowRight className="h-3.5 w-3.5" />
+              <IconArrowRight className="rtl:-scale-x-100 h-3.5 w-3.5" />
             </Link>
           </div>
 

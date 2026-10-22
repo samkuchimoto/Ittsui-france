@@ -656,7 +656,7 @@ export default function SetupClient() {
                   steps={SENT_STEPS.map((s) => ({ ...s, label: t(s.label) }))}
                   currentKey="sent"
                   doneSlot={
-                    <button type="button" onClick={handleShare} className="ml-1 font-medium underline underline-offset-4">
+                    <button type="button" onClick={handleShare} className="ms-1 font-medium underline underline-offset-4">
                       {t("Partager l'invitation")}
                     </button>
                   }
@@ -737,7 +737,7 @@ export default function SetupClient() {
             </p>
           )}
 
-          <div className="mt-6 rounded-xl border p-4 text-left" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
+          <div className="mt-6 rounded-xl border p-4 text-start" style={{ borderColor: BORDER, backgroundColor: CREAM }}>
             <p className="text-sm font-medium">{t("Et maintenant ?")}</p>
             <p className="mt-1 text-sm" style={{ color: MUTED }}>
               {t(
@@ -866,7 +866,7 @@ export default function SetupClient() {
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
                       transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                      className="flex items-center gap-1.5 rounded-full border py-1.5 pl-2 pr-3.5 text-sm"
+                      className="flex items-center gap-1.5 rounded-full border py-1.5 ps-2 pe-3.5 text-sm"
                       style={
                         duoType === d.value
                           ? { borderColor: ACCENT, backgroundColor: ACCENT, color: "white" }
@@ -934,7 +934,7 @@ export default function SetupClient() {
                     onClick={() => applyPreset(p)}
                     whileTap={{ scale: 0.97 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                    className="rounded-xl border px-4 py-3 text-left text-sm"
+                    className="rounded-xl border px-4 py-3 text-start text-sm"
                     style={
                       !customTime && activePreset === p.label
                         ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }
@@ -947,7 +947,7 @@ export default function SetupClient() {
                 <button
                   type="button"
                   onClick={enableCustomTime}
-                  className="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
+                  className="rounded-xl border px-4 py-3 text-start text-sm transition-colors"
                   style={
                     customTime
                       ? { borderColor: ACCENT, backgroundColor: `${ACCENT}0D` }

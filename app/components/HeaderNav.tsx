@@ -48,6 +48,8 @@ const COPY: Record<Locale, { tagline: string; app: string; signIn: string; start
   },
   en: { tagline: "Your shared moments, organised", app: "Mobile app", signIn: "Sign in", start: "Get started" },
   ja: { tagline: "大切な人との時間をつくるアプリ", app: "アプリ", signIn: "ログイン", start: "はじめる" },
+  es: { tagline: "Tus momentos compartidos, organizados", app: "App móvil", signIn: "Iniciar sesión", start: "Empezar" },
+  he: { tagline: "הרגעים המשותפים שלכם, מסודרים", app: "אפליקציה", signIn: "התחברות", start: "להתחיל" },
 };
 
 export function HeaderNav({ lang = "fr" }: { lang?: Locale } = {}) {

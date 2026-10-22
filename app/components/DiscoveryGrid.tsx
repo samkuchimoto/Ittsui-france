@@ -141,7 +141,7 @@ export function DiscoveryTileButton({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 380, damping: 22 }}
-      className="relative aspect-[4/3] max-h-[130px] overflow-hidden rounded-2xl border text-left"
+      className="relative aspect-[4/3] max-h-[130px] overflow-hidden rounded-2xl border text-start"
       style={{ borderColor: active ? ACCENT : BORDER, borderWidth: active ? 2 : 1 }}
     >
       {tile.video ? (

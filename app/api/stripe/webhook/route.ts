@@ -69,6 +69,7 @@ export async function POST(request: Request) {
               subscriptionStatus: "active",
               stripeCustomerId: String(session.customer),
               stripeSubscriptionId: String(session.subscription),
+              ...(session.currency ? { currency: session.currency.toUpperCase() } : {}),
             });
           }
           break;

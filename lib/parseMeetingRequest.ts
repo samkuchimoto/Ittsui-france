@@ -1,7 +1,8 @@
 // /lib/parseMeetingRequest.ts
 // "Décrire en une phrase" (/request/new): "un café avec Marie mardi vers 15h
 // à Bastille" -> a best guess at recipientName/venueName/venueAddress/
-// venueType/date/time, in French, English or Japanese.
+// venueType/date/time, in French, English and Japanese, and the basics in
+// Mexican Spanish and Hebrew (days, times, the person, the kind of place).
 //
 // Rules only, since 2026-10-22: it used to ask Mistral, then Groq, over the
 // network. Plain patterns do this job instantly, offline, in the browser,
@@ -26,7 +27,7 @@ export interface ParsedMeetingRequest {
   time: string | null;
 }
 
-type Lang = "fr" | "en" | "ja";
+type Lang = "fr" | "en" | "ja" | "es" | "he";
 type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
 const WEEKDAYS: Weekday[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -76,25 +77,29 @@ const MONTHS: Record<string, number> = {
   aout: 8, septembre: 9, sept: 9, octobre: 10, oct: 10, novembre: 11, nov: 11, decembre: 12, dec: 12,
   january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7,
   august: 8, aug: 8, september: 9, sep: 9, october: 10, november: 11, december: 12,
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9,
+  octubre: 10, noviembre: 11, diciembre: 12,
 };
 const MONTH_WORDS = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join("|");
 
+// Hebrew weekdays need "יום": "שני" alone also means "second".
 const DAY_WORDS: [RegExp, Weekday][] = [
-  [/\blundi\b|\bmonday\b|月曜/, "mon"],
-  [/\bmardi\b|\btuesday\b|火曜/, "tue"],
-  [/\bmercredi\b|\bwednesday\b|水曜/, "wed"],
-  [/\bjeudi\b|\bthursday\b|木曜/, "thu"],
-  [/\bvendredi\b|\bfriday\b|金曜/, "fri"],
-  [/\bsamedi\b|\bsaturday\b|土曜|週末|\bweek-?end\b/, "sat"],
-  [/\bdimanche\b|\bsunday\b|日曜/, "sun"],
+  [/\blundi\b|\bmonday\b|月曜|\blunes\b|יום שני/, "mon"],
+  [/\bmardi\b|\btuesday\b|火曜|\bmartes\b|יום שלישי/, "tue"],
+  [/\bmercredi\b|\bwednesday\b|水曜|\bmiercoles\b|יום רביעי/, "wed"],
+  [/\bjeudi\b|\bthursday\b|木曜|\bjueves\b|יום חמישי/, "thu"],
+  [/\bvendredi\b|\bfriday\b|金曜|\bviernes\b|יום שישי/, "fri"],
+  [/\bsamedi\b|\bsaturday\b|土曜|週末|\bweek-?end\b|\bsabado\b|fin de semana|שבת|סוף השבוע|סופ"ש|סופ״ש/, "sat"],
+  [/\bdimanche\b|\bsunday\b|日曜|\bdomingo\b|יום ראשון/, "sun"],
 ];
 
 function findDate(plain: string, lang: Lang, today: string, dayFirst?: boolean): string | null {
-  if (/apres[- ]demain|day after tomorrow|明後日|あさって/.test(plain)) return addDays(today, 2);
-  if (/\bdemain\b|\btomorrow\b|明日|あした|あす/.test(plain)) return addDays(today, 1);
-  if (/aujourd'?hui|aujourd’hui|ce soir|\btoday\b|\btonight\b|今日|きょう|今夜|今晩/.test(plain)) return today;
+  if (/apres[- ]demain|day after tomorrow|明後日|あさって|pasado manana|מחרתיים/.test(plain)) return addDays(today, 2);
+  // "mañana" is tomorrow, except "la mañana" (the morning).
+  if (/\bdemain\b|\btomorrow\b|明日|あした|あす|(?<!la )\bmanana\b|מחר/.test(plain)) return addDays(today, 1);
+  if (/aujourd'?hui|aujourd’hui|ce soir|\btoday\b|\btonight\b|今日|きょう|今夜|今晩|\bhoy\b|esta noche|היום|הערב/.test(plain)) return today;
 
-  let m = plain.match(new RegExp(`\\b(\\d{1,2})(?:er|st|nd|rd|th)?\\s+(?:of\\s+)?(${MONTH_WORDS})\\b`));
+  let m = plain.match(new RegExp(`\\b(\\d{1,2})(?:er|st|nd|rd|th)?\\s+(?:of\\s+|de\\s+)?(${MONTH_WORDS})\\b`));
   if (m) return explicitDate(Number(m[1]), MONTHS[m[2]], today);
   m = plain.match(new RegExp(`\\b(${MONTH_WORDS})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`));
   if (m) return explicitDate(Number(m[2]), MONTHS[m[1]], today);
@@ -109,7 +114,7 @@ function findDate(plain: string, lang: Lang, today: string, dayFirst?: boolean):
     const first = dayFirst === undefined ? lang === "fr" || (lang === "en" && a > 12) : dayFirst || a > 12;
     return first ? explicitDate(a, b, today) : explicitDate(b, a, today);
   }
-  m = plain.match(/\ble (\d{1,2})(?:er)?\b(?!\s*h|\s*:)/) ?? plain.match(/(?<![\d月])(\d{1,2})日(?!曜)/);
+  m = plain.match(/\b(?:le|el) (\d{1,2})(?:er)?\b(?!\s*h|\s*:)/) ?? plain.match(/(?<![\d月])(\d{1,2})日(?!曜)/);
   if (m) return explicitDate(Number(m[1]), null, today);
 
   for (const [pattern, day] of DAY_WORDS) if (pattern.test(plain)) return nextWeekday(day, today);
@@ -122,12 +127,18 @@ function toTime(hour: number, minute: number): string | null {
 }
 
 const DAY_PARTS: [RegExp, string][] = [
-  [/petit[- ]dej|breakfast|朝食|モーニング/, "09:30"],
+  [/petit[- ]dej|breakfast|朝食|モーニング|\bdesayuno\b|ארוחת בוקר/, "09:30"],
   [/brunch|ブランチ/, "11:30"],
-  [/dejeuner|\bdej\b|\blunch\b|ランチ|昼食/, "12:30"],
+  [/dejeuner|\bdej\b|\blunch\b|ランチ|昼食|ארוחת צהריים/, "12:30"],
+  [/\bcomida\b/, "14:30"],
   [/gouter/, "16:00"],
   [/apero|\bdrinks?\b/, "19:00"],
-  [/\bdiner\b|\bdinner\b|ディナー|夕食|晩ご飯|晩ごはん/, "20:00"],
+  [/\bdiner\b|\bdinner\b|ディナー|夕食|晩ご飯|晩ごはん|ארוחת ערב/, "20:00"],
+  [/\bcena\b/, "20:30"],
+  [/en la tarde|por la tarde|אחר הצהריים|אחה"צ|אחה״צ/, "16:00"],
+  [/en la noche|por la noche|esta noche|בערב|הערב/, "20:00"],
+  [/en la manana|por la manana|de la manana|בבוקר/, "10:00"],
+  [/\bmediodia\b|בצהריים/, "12:30"],
   [/apres[- ]midi|\baprem\b|\bafternoon\b|午後/, "15:00"],
   [/\bmidi\b|\bnoon\b|お昼|昼/, "12:00"],
   [/\bminuit\b|\bmidnight\b/, "00:00"],
@@ -150,7 +161,13 @@ function findTime(plain: string): string | null {
     return toTime(hour, Number(m[2] ?? 0));
   }
   // "dîner à 8h", "dinner at 8": an evening word turns a morning hour into an evening one.
-  const evening = /du soir|de l'apres[- ]midi|de l’apres[- ]midi|de l'aprem|\bsoir\b|\bdiner\b|apero|\bdinner\b|\bevening\b|\btonight\b|\bdrinks?\b/.test(plain);
+  const evening = /du soir|de l'apres[- ]midi|de l’apres[- ]midi|de l'aprem|\bsoir\b|\bdiner\b|apero|\bdinner\b|\bevening\b|\btonight\b|\bdrinks?\b|de la tarde|de la noche|\bcena\b|esta noche|en la noche|בערב|ארוחת ערב|אחר הצהריים/.test(plain);
+  // "a las 5", "a la 1": Spanish hours, the afternoon or evening between 1 and 7.
+  m = plain.match(/\ba las? (\d{1,2})(?::(\d{2}))?\b/) ?? plain.match(/(?:בשעה|ב-|ב)\s?(\d{1,2})(?::(\d{2}))?(?!\d)/);
+  if (m) {
+    const hour = Number(m[1]);
+    return toTime(hour >= 1 && hour < 12 && (evening || hour <= 7) ? hour + 12 : hour, Number(m[2] ?? 0));
+  }
   m = plain.match(/\b(\d{1,2})\s?h\s?(\d{2})?\b/) ?? plain.match(/\b(\d{1,2}):(\d{2})\b/);
   if (m) {
     let hour = Number(m[1]);
@@ -168,11 +185,11 @@ function findTime(plain: string): string | null {
 }
 
 const TYPES: [VenueType, RegExp][] = [
-  ["home", /chez (?:moi|toi|nous|vous|lui|elle)\b|a la maison|my place|your place|at home|my house|at mine|at yours|家で|うちで|自宅/],
-  ["museum", /\bmusee|\bexpo\b|exposition|galerie|museum|exhibition|exhibit|gallery|美術館|博物館|展覧会|ギャラリー/],
-  ["park", /\bparc\b|jardin|balade|promenade|pique-?nique|\bsquare\b|\bpark\b|\bwalk\b|picnic|garden|stroll|公園|散歩|ピクニック|庭園/],
-  ["restaurant", /\bresto|restaurant|dejeuner|\bdej\b|\bdiner\b|brunch|manger|repas|\bpizza|sushi|\blunch\b|\bdinner\b|\beat\b|\bmeal\b|レストラン|ランチ|ディナー|食事|ごはん|ご飯|夕食|昼食|ラーメン|寿司/],
-  ["cafe", /\bcafe\b|\bverre\b|apero|\bbar\b|boire|gouter|chocolat chaud|\bcoffee\b|\btea\b|\bdrinks?\b|カフェ|コーヒー|お茶|喫茶|飲み|バー/],
+  ["home", /chez (?:moi|toi|nous|vous|lui|elle)\b|a la maison|my place|your place|at home|my house|at mine|at yours|家で|うちで|自宅|en (?:mi|tu|su) casa|\ben casa\b|אצלי|אצלך|אצלנו|בבית/],
+  ["museum", /\bmusee|\bexpo\b|exposition|galerie|museum|exhibition|exhibit|gallery|美術館|博物館|展覧会|ギャラリー|\bmuseo\b|exposicion|galeria|מוזיאון|תערוכה|גלריה/],
+  ["park", /\bparc\b|jardin|balade|promenade|pique-?nique|\bsquare\b|\bpark\b|\bwalk\b|picnic|garden|stroll|公園|散歩|ピクニック|庭園|\bparque\b|caminar|caminata|\bpaseo\b|פארק|טיול|הליכה|גינה/],
+  ["restaurant", /\bresto|restaurant|dejeuner|\bdej\b|\bdiner\b|brunch|manger|repas|\bpizza|sushi|\blunch\b|\bdinner\b|\beat\b|\bmeal\b|レストラン|ランチ|ディナー|食事|ごはん|ご飯|夕食|昼食|ラーメン|寿司|\bcomer\b|\bcomida\b|\bcena\b|almuerzo|desayuno|restaurante|\btacos\b|מסעדה|ארוחת|ארוחה|לאכול/],
+  ["cafe", /\bcafe\b|\bverre\b|apero|\bbar\b|boire|gouter|chocolat chaud|\bcoffee\b|\btea\b|\bdrinks?\b|カフェ|コーヒー|お茶|喫茶|飲み|バー|cafecito|\bchela\b|cerveza|\btrago\b|קפה|בירה|משקה/],
 ];
 
 function findType(plain: string, lang: Lang): VenueType | null {
@@ -184,11 +201,12 @@ function findType(plain: string, lang: Lang): VenueType | null {
 
 const CAP = "[A-ZÀ-ÖØ-Ý][\\p{L}'’-]*";
 const NOT_NAMES = new RegExp(
-  `^(?:${["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Demain", "Tomorrow", "Today", "Tonight"].join("|")})$`
+  `^(?:${["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Demain", "Tomorrow", "Today", "Tonight", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo", "Mañana", "Hoy"].join("|")})$`
 );
 const RELATIONS =
   "maman|papa|mamie|mami|papi|papy|ma m[eè]re|mon p[eè]re|ma s(?:œ|oe)ur|mon fr[eè]re|ma femme|mon mari|ma copine|mon copain|ma ch[eé]rie|mon ch[eé]ri|ma fille|mon fils|ma tante|mon oncle|ma cousine|mon cousin|ma grand-m[eè]re|mon grand-p[eè]re|mes parents|" +
-  "mom|mum|dad|grandma|grandpa|my sister|my brother|my wife|my husband|my girlfriend|my boyfriend|my partner|my daughter|my son|my aunt|my uncle|my cousin|my parents";
+  "mom|mum|dad|grandma|grandpa|my sister|my brother|my wife|my husband|my girlfriend|my boyfriend|my partner|my daughter|my son|my aunt|my uncle|my cousin|my parents|" +
+  "mi mama|mi papa|mama|papa|mi abuela|mi abuelo|mi hermana|mi hermano|mi novia|mi novio|mi esposa|mi esposo|mi hija|mi hijo|mi tia|mi tio|mi prima|mi primo|mi amiga|mi amigo|mis papas";
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -204,16 +222,19 @@ function stripJaTime(token: string): string {
 
 function findName(text: string, plain: string): string | null {
   // Relations are matched on the lowercase text, then given back as typed.
-  const rel = plain.match(new RegExp(`(?:^|\\s)(?:avec|with)\\s+(${RELATIONS})(?=\\s|$|[,.!?])`));
+  const rel = plain.match(new RegExp(`(?:^|\\s)(?:avec|with|con)\\s+(${RELATIONS})(?=\\s|$|[,.!?])`));
   if (rel && rel.index !== undefined) {
     const start = plain.indexOf(rel[1], rel.index);
     return capitalize(text.slice(start, start + rel[1].length));
   }
-  let m = text.match(new RegExp(`(?:^|\\s)(?:avec|with|w/)\\s+(${CAP}(?:\\s+${CAP})?)`, "u"));
+  let m = text.match(new RegExp(`(?:^|\\s)(?:avec|with|w/|con)\\s+(${CAP}(?:\\s+${CAP})?)`, "u"));
   if (m) {
     const words = m[1].split(/\s+/).filter((w) => !NOT_NAMES.test(w));
     if (words.length) return words.join(" ").slice(0, 40);
   }
+  // Hebrew has no capitals: the word after "עם", unless it's a day or a time.
+  m = text.match(/(?:^|\s)עם\s+([\u0590-\u05FF"״׳'-]+)/u);
+  if (m && !/^(?:מחר|מחרתיים|היום|הערב|בערב|בבוקר)$/.test(m[1])) return m[1];
   m = text.match(/(?:^|[\s、,。])([^\s、,。]{1,14}?)と(?:一緒に)?/u);
   if (m) {
     const name = stripJaTime(m[1]);
@@ -230,7 +251,7 @@ function findAddress(text: string): string | null {
 }
 
 // Either case for the first letter only: the name after it must stay capitalized.
-const PLACE_WORD = ["parc", "jardin", "square", "mus[ée]e", "caf[ée]", "restaurant", "resto", "bar", "place", "march[ée]", "quai", "canal", "bois", "butte"]
+const PLACE_WORD = ["parc", "jardin", "square", "mus[ée]e", "caf[ée]", "restaurant", "resto", "bar", "place", "march[ée]", "quai", "canal", "bois", "butte", "parque", "museo", "restaurante", "mercado", "plaza", "jard[íi]n"]
   .map((w) => `[${w[0].toUpperCase()}${w[0]}]${w.slice(1)}`)
   .join("|");
 
@@ -243,7 +264,7 @@ function findVenue(text: string, name: string | null): string | null {
   const connectors = `(?:\\s+(?:(?:de|du|des|la|le|les|l['’]|d['’]|sur|en|et|of|the|and)\\s+)?${CAP})*`;
   m = text.match(
     new RegExp(
-      `(?:^|\\s)(?:vers|pr[eè]s\\s+d[eu]|[àa]\\s+c[oô]t[eé]\\s+d[eu]|du\\s+c[oô]t[eé]\\s+d[eu]|dans\\s+(?:le|la|les|l['’])|au|aux|[àa]\\s+la|[àa]\\s+l['’]|[àa]|sur|near|around|at|in|by)\\s+(${CAP}${connectors})`,
+      `(?:^|\\s)(?:vers|pr[eè]s\\s+d[eu]|[àa]\\s+c[oô]t[eé]\\s+d[eu]|du\\s+c[oô]t[eé]\\s+d[eu]|dans\\s+(?:le|la|les|l['’])|au|aux|[àa]\\s+la|[àa]\\s+l['’]|[àa]|sur|near|around|at|in|by|en\\s+(?:la|el)|en|cerca\\s+de|cerca\\s+del|por)\\s+(${CAP}${connectors})`,
       "u"
     )
   );

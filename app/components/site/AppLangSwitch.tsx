@@ -8,7 +8,7 @@ import { LOCALES, LOCALE_LABEL, type Locale } from "@/lib/i18n";
 import { MUTED } from "@/lib/theme";
 import { useLang } from "@/app/components/site/LangProvider";
 
-const NAV_LABEL: Record<Locale, string> = { fr: "Langue", en: "Language", ja: "言語" };
+const NAV_LABEL: Record<Locale, string> = { fr: "Langue", en: "Language", ja: "言語", es: "Idioma", he: "שפה" };
 
 export function AppLangSwitch({ className = "" }: { className?: string }) {
   const { lang, setLang } = useLang();

@@ -52,6 +52,26 @@ const COPY: Record<
     submit: "登録する",
     error: "エラーが発生しました。もう一度お試しください。",
   },
+  es: {
+    already: "Ya estás en la lista. ¡Gracias!",
+    done: "¡Listo, gracias!",
+    followUp: "Te escribimos en cuanto haya un lugar para probar Ittsui antes que nadie.",
+    title: "Acceso anticipado",
+    lede: "¿Quieres probar Ittsui antes que nadie? Deja tu correo.",
+    placeholder: "tu@ejemplo.com",
+    submit: "Apuntarme",
+    error: "Algo salió mal, inténtalo de nuevo.",
+  },
+  he: {
+    already: "כבר נרשמת. תודה!",
+    done: "נרשם, תודה!",
+    followUp: "ניצור קשר ברגע שיתפנה מקום לנסות את Ittsui לפני כולם.",
+    title: "גישה מוקדמת",
+    lede: "רוצים לנסות את Ittsui לפני כולם? השאירו את המייל.",
+    placeholder: "you@example.com",
+    submit: "להירשם",
+    error: "משהו השתבש, נסו שוב.",
+  },
 };
 
 export function EarlyAccessForm({ lang = "fr" }: { lang?: Locale } = {}) {

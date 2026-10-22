@@ -5,6 +5,8 @@
 // route handlers) — inline styles throughout since email clients don't
 // reliably support external stylesheets or even <style> blocks.
 
+import type { Locale } from "@/lib/i18n";
+
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
@@ -13,9 +15,24 @@ export function escapeHtml(value: string): string {
 // terracotta, matching lib/theme.ts) and a hosted mascot header image —
 // character choice is per call site (Pika for anything about an
 // invitation/request actually being delivered, matching "The Messenger").
-export function emailShell({ mascotName, title, bodyHtml }: { mascotName: string; title: string; bodyHtml: string }): string {
+/** The wrapper's direction attributes: Hebrew mail reads right to left. */
+export function emailDirection(lang?: Locale): string {
+  return lang === "he" ? ' dir="rtl" lang="he"' : "";
+}
+
+export function emailShell({
+  mascotName,
+  title,
+  bodyHtml,
+  lang,
+}: {
+  mascotName: string;
+  title: string;
+  bodyHtml: string;
+  lang?: Locale;
+}): string {
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; background: #FFFDF9; padding: 32px 24px; color: #1C1917;">
+    <div${emailDirection(lang)} style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; background: #FFFDF9; padding: 32px 24px; color: #1C1917;">
       <img src="${process.env.NEXT_PUBLIC_APP_URL}/images/mascots/${mascotName}.png" alt="Ittsui" width="72" height="72" style="display: block; margin: 0 auto 16px;" />
       <h1 style="font-size: 20px; font-weight: 600; text-align: center; margin: 0 0 16px;">${title}</h1>
       ${bodyHtml}

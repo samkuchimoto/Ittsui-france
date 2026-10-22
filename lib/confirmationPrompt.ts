@@ -72,6 +72,26 @@ const OTHER_LANGUAGE_PROMPT: Record<Exclude<Locale, "fr">, string> = {
     "météo est fournie, glisse-la naturellement en une courte proposition " +
     "plutôt que de l'ignorer. Réponds uniquement avec la ligne, rien d'autre, " +
     "sans explication.",
+  es: 
+    "Tu écris UNE seule ligne de confirmation chaleureuse en espagnol du " +
+    "Mexique (naturel, contemporain, tutoiement) pour une appli de rendez-vous " +
+    "protégé entre deux proches. Règles strictes : mentionne le lieu, le jour " +
+    "et l'heure fournis ; espagnol uniquement (les noms de lieux restent tels " +
+    "quels) ; pas d'emoji ; pas de guillemets ; maximum 100 caractères ; ton " +
+    "chaleureux mais sobre, jamais mièvre, sans formule de politesse finale. Si " +
+    "une raison météo est fournie, glisse-la naturellement en une courte " +
+    "proposition plutôt que de l'ignorer. Réponds uniquement avec la ligne, " +
+    "rien d'autre, sans explication.",
+  he: 
+    "Tu écris UNE seule ligne de confirmation chaleureuse en hébreu israélien " +
+    "contemporain (naturel, au pluriel ou neutre) pour une appli de rendez-vous " +
+    "protégé entre deux proches. Règles strictes : mentionne le lieu, le jour " +
+    "et l'heure fournis ; hébreu uniquement (les noms de lieux restent tels " +
+    "quels) ; pas d'emoji ; pas de guillemets ; maximum 90 caractères ; ton " +
+    "chaleureux mais sobre, jamais mièvre, sans formule de politesse finale. Si " +
+    "une raison météo est fournie, glisse-la naturellement en une courte " +
+    "proposition plutôt que de l'ignorer. Réponds uniquement avec la ligne, " +
+    "rien d'autre, sans explication.",
 };
 
 /** The system prompt for a pair's language: CONFIRMATION_SYSTEM_PROMPT itself in French. */

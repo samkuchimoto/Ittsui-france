@@ -159,10 +159,77 @@ const COPY: Record<
     noneFound: "メールを認識できませんでした。受信トレイの行か、差出人と件名のあるメールを貼り付けてください。",
     mode: "ブラウザの中で要約しました。何も送信されていません。",
   },
+  // Not translated yet: shown in English.
+  es: {
+    home: "← Home",
+    title: "Sum up your emails",
+    intro:
+      "Paste your inbox or a screenshot: Ittsui pulls out the priorities, the deadlines and the meetings to set up, and puts the noise aside.",
+    privacy: "Everything happens in your browser: your emails and screenshots are sent nowhere.",
+    tabsLabel: "Where the emails come from",
+    tabs: { text: "Paste my emails", image: "Screenshot", sample: "Try an example" },
+    pasteLabel: "Paste your emails",
+    pasteHelp:
+      "In Gmail or Outlook, select 10 to 100 rows of your inbox (or Ctrl+A), copy with Ctrl+C and paste here. Whole emails (From, Subject, Date) work too.",
+    placeholder: "Sender\tSubject - message preview\t10:42\n…",
+    drop: "Drop a screenshot here, paste it (Ctrl+V) or tap to choose one",
+    dropHint: "A Gmail or Outlook screenshot, as PNG, JPG or WebP.",
+    imageAlt: "Your inbox screenshot",
+    ocrLoading: "Loading the text reader (once per visit)…",
+    ocrReading: (percent) => `Reading the screenshot… ${percent}%`,
+    ocrError: "The screenshot couldn't be read. Try another image, or paste the text.",
+    ocrRead: (lines) => `Text read from the screenshot (${lines} lines): check or correct it`,
+    ocrTextLabel: "Text read from the screenshot",
+    sample:
+      "Fifteen fictional emails, as Gmail gives them when you copy inbox rows. They're put in the text box and summed up right away.",
+    sampleButton: "Load the 15 sample emails",
+    analyze: "Sum up my emails →",
+    badFormat: "Accepted formats: PNG, JPG or WebP.",
+    tooBig: "Image too large (15 MB maximum).",
+    stillReading: "The screenshot is still being read.",
+    nothingRead: "No text was read from the screenshot. Try a sharper one, or paste the text.",
+    nothingPasted: "Paste some emails first, add a screenshot, or load the example.",
+    noneFound: "No email recognised. Paste rows from your inbox, or a whole email with From and Subject.",
+    mode: "Summed up in your browser: nothing was sent.",
+  },
+  he: {
+    home: "← Home",
+    title: "Sum up your emails",
+    intro:
+      "Paste your inbox or a screenshot: Ittsui pulls out the priorities, the deadlines and the meetings to set up, and puts the noise aside.",
+    privacy: "Everything happens in your browser: your emails and screenshots are sent nowhere.",
+    tabsLabel: "Where the emails come from",
+    tabs: { text: "Paste my emails", image: "Screenshot", sample: "Try an example" },
+    pasteLabel: "Paste your emails",
+    pasteHelp:
+      "In Gmail or Outlook, select 10 to 100 rows of your inbox (or Ctrl+A), copy with Ctrl+C and paste here. Whole emails (From, Subject, Date) work too.",
+    placeholder: "Sender\tSubject - message preview\t10:42\n…",
+    drop: "Drop a screenshot here, paste it (Ctrl+V) or tap to choose one",
+    dropHint: "A Gmail or Outlook screenshot, as PNG, JPG or WebP.",
+    imageAlt: "Your inbox screenshot",
+    ocrLoading: "Loading the text reader (once per visit)…",
+    ocrReading: (percent) => `Reading the screenshot… ${percent}%`,
+    ocrError: "The screenshot couldn't be read. Try another image, or paste the text.",
+    ocrRead: (lines) => `Text read from the screenshot (${lines} lines): check or correct it`,
+    ocrTextLabel: "Text read from the screenshot",
+    sample:
+      "Fifteen fictional emails, as Gmail gives them when you copy inbox rows. They're put in the text box and summed up right away.",
+    sampleButton: "Load the 15 sample emails",
+    analyze: "Sum up my emails →",
+    badFormat: "Accepted formats: PNG, JPG or WebP.",
+    tooBig: "Image too large (15 MB maximum).",
+    stillReading: "The screenshot is still being read.",
+    nothingRead: "No text was read from the screenshot. Try a sharper one, or paste the text.",
+    nothingPasted: "Paste some emails first, add a screenshot, or load the example.",
+    noneFound: "No email recognised. Paste rows from your inbox, or a whole email with From and Subject.",
+    mode: "Summed up in your browser: nothing was sent.",
+  },
 };
 
 export default function TriageClient({ fontClass, displayFamily }: { fontClass: string; displayFamily: string }) {
   const { lang } = useLang();
+  // The summary engine knows French, English and Japanese: English for the rest.
+  const engineLang = lang === "es" || lang === "he" ? "en" : lang;
   const t = COPY[lang];
   // Signed in first (SignInGate.tsx); null while Firebase checks.
   const [user, setUser] = useState<User | false | null>(null);
@@ -186,7 +253,7 @@ export default function TriageClient({ fontClass, displayFamily }: { fontClass: 
   );
 
   useEffect(() => {
-    if (source !== null) setBrief(triage(source, lang));
+    if (source !== null) setBrief(triage(source, engineLang));
   }, [lang, source]);
 
   useEffect(() => {
@@ -211,7 +278,7 @@ export default function TriageClient({ fontClass, displayFamily }: { fontClass: 
       setBrief(null);
       setImage({ blob: file, url: URL.createObjectURL(file) });
       setOcr({ status: "running", stage: "loading", progress: 0, text: "" });
-      readScreenshot(file, lang, (progress) => setOcr((current) => ({ ...current, ...progress })))
+      readScreenshot(file, engineLang, (progress) => setOcr((current) => ({ ...current, ...progress })))
         .then((read) => setOcr({ status: "done", stage: "reading", progress: 1, text: read }))
         .catch(() => setOcr({ status: "error", stage: "reading", progress: 0, text: "" }));
     },
@@ -242,7 +309,7 @@ export default function TriageClient({ fontClass, displayFamily }: { fontClass: 
       setError(fromImage ? (ocr.status === "running" ? t.stillReading : t.nothingRead) : t.nothingPasted);
       return;
     }
-    const result = triage(value, lang);
+    const result = triage(value, engineLang);
     if (!result.counts.total) {
       setSource(null);
       setBrief(null);
@@ -254,7 +321,7 @@ export default function TriageClient({ fontClass, displayFamily }: { fontClass: 
   }
 
   function loadSample() {
-    const sample = SAMPLE_INBOX[lang];
+    const sample = SAMPLE_INBOX[engineLang];
     setText(sample);
     setTab("text");
     analyze(sample);

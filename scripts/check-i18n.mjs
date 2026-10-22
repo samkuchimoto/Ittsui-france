@@ -1,7 +1,7 @@
 // scripts/check-i18n.mjs — `npm run check:i18n`
 // For every app file that uses a translation catalog (`*.i18n.ts`, see
 // lib/translate.ts), lists:
-//   1. t("…") keys missing from the catalog's English or Japanese half;
+//   1. t("…") keys missing from one of the catalog's languages (en, ja, es, he);
 //   2. French-looking text still written straight into the JSX, outside
 //      t() — accented words between tags, or a quoted French string in a
 //      prop — so a screen can't quietly stay half-translated.
@@ -50,7 +50,7 @@ for (const file of [...files(join(ROOT, "app")), ...files(join(ROOT, "lib"))]) {
 
   const code = stripComments(source);
   const keys = [...code.matchAll(/\bt\(\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g)].map((m) => unquote(m[1]));
-  const missing = [...new Set(keys)].filter((key) => !has("en", key) || !has("ja", key));
+  const missing = [...new Set(keys)].filter((key) => ["en", "ja", "es", "he"].some((lang) => !has(lang, key)));
 
   // Text between tags with a French accent or apostrophe-word, not inside {…}.
   const loose = [...code.matchAll(/>\s*([^<>{}\n]*[A-Za-zÀ-ÿ][^<>{}\n]*)\s*</g)]

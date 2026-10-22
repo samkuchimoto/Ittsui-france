@@ -41,7 +41,7 @@ export function LanguagePicker({ onPick }: { onPick: (lang: Locale) => void }) {
               type="button"
               lang={choice.lang}
               onClick={() => onPick(choice.lang)}
-              className="flex min-h-[56px] items-center justify-between rounded-2xl border bg-white px-5 text-left transition-transform hover:scale-[1.01]"
+              className="flex min-h-[56px] items-center justify-between rounded-2xl border bg-white px-5 text-start transition-transform hover:scale-[1.01]"
               style={{ borderColor: BORDER }}
             >
               <span className="text-lg font-medium">{choice.label}</span>

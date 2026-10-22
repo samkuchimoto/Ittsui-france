@@ -1082,7 +1082,7 @@ export default function RequestFormClient() {
                     own copy of this for a first-time visitor) — the real
                     moment someone might wonder why not just text them
                     directly instead of sending this link. */}
-                <div className="mt-4 flex items-start gap-3 rounded-xl border p-3 text-left" style={{ borderColor: BORDER }}>
+                <div className="mt-4 flex items-start gap-3 rounded-xl border p-3 text-start" style={{ borderColor: BORDER }}>
                   <MascotAvatar characterId="hikari" variant="bust" size={28} className="shrink-0" />
                   <p className="text-xs" style={{ color: MUTED }}>
                     {t(
@@ -1444,7 +1444,7 @@ export default function RequestFormClient() {
                         key={p.id}
                         type="button"
                         onClick={() => pickPartner(p)}
-                        className="rounded-2xl border px-4 py-2.5 text-left"
+                        className="rounded-2xl border px-4 py-2.5 text-start"
                         style={{ borderColor: draft.partnerId === p.id ? ACCENT : BORDER, backgroundColor: draft.partnerId === p.id ? `${ACCENT}0D` : "white" }}
                       >
                         <span className="block text-sm font-medium" style={{ color: INK }}>
@@ -1510,7 +1510,7 @@ export default function RequestFormClient() {
                           key={`${m.name}|${m.address}`}
                           type="button"
                           onClick={() => pickVenue(m)}
-                          className="block w-full border-b px-3 py-2 text-left last:border-b-0"
+                          className="block w-full border-b px-3 py-2 text-start last:border-b-0"
                           style={{ borderColor: BORDER }}
                         >
                           <span className="block text-sm" style={{ color: INK }}>

@@ -44,7 +44,8 @@ import { tapHaptic } from "@/lib/haptics";
 import { registerPasskey, listPasskeys, removePasskey, type PasskeySummary } from "@/lib/passkeyClient";
 import { RequestsPanel } from "@/app/dashboard/RequestsPanel";
 import { PlanCard } from "@/app/components/PlanCard";
-import { PLUS_PRICE_LABEL } from "@/lib/planConfig";
+import { plusOffer } from "@/lib/planConfig";
+import { initialCity } from "@/app/components/CityPicker";
 import { INK, MUTED, ACCENT, BORDER } from "@/lib/theme";
 import { VENUE_PHOTOS } from "@/lib/venuePhotos";
 import { VenueDirections } from "@/app/components/VenueDirections";
@@ -899,7 +900,7 @@ function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean
   return (
     <p className="mt-2 text-xs" style={{ color: MUTED }}>
       <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
-        {t("Ittsui Plus, {price}/mois", { price: PLUS_PRICE_LABEL[lang] })}
+        {t("Ittsui Plus, {price}/mois", { price: plusOffer(lang, initialCity()).label })}
       </Link>{" "}
       {t("— le prix d'un café pour garder ce lien vivant.")}
     </p>
@@ -913,7 +914,7 @@ function PartnerNote({ week }: { week: Week }) {
   const label = (perk: string) => (perk ? t("Partenaire · {perk}", { perk }) : t("Partenaire Ittsui"));
   if (week.status === "confirmed" && week.visit) {
     return (
-      <div className="mt-3 rounded-xl border p-3 text-left" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
+      <div className="mt-3 rounded-xl border p-3 text-start" style={{ borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}0D` }}>
         <p className="text-sm font-medium" style={{ color: ACCENT }}>
           {label(week.visit.perk)}
         </p>

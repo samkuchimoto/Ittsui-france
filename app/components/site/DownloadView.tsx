@@ -10,6 +10,7 @@ import { fraunces, workSans } from "@/app/fonts";
 import QRCode from "qrcode";
 import { INK, MUTED, BORDER } from "@/lib/theme";
 import { pagePath, type Locale } from "@/lib/i18n";
+import { plusOffer } from "@/lib/planConfig";
 import DownloadClient from "@/app/download/DownloadClient";
 import { PageMascotHeader } from "@/app/components/PageMascotHeader";
 import { DocumentLang } from "@/app/components/site/DocumentLang";
@@ -26,7 +27,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "Est-ce gratuit ?",
-        "Oui, pour un rendez-vous par mois. Chaque nouveau compte commence avec 14 jours d'Ittsui Plus offerts, sans carte bancaire. Ensuite, Ittsui Plus coûte 4,99 €/mois pour des rendez-vous chaque semaine, sans limite, et se résilie à tout moment.",
+        "Oui, pour un rendez-vous par mois. Chaque nouveau compte commence avec 14 jours d'Ittsui Plus offerts, sans carte bancaire. Ensuite, Ittsui Plus coûte {price}/mois pour des rendez-vous chaque semaine, sans limite, et se résilie à tout moment.",
       ],
       [
         "Mes données sont-elles synchronisées entre le web et l'application ?",
@@ -45,7 +46,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "Is it free?",
-        "Yes, for one rendez-vous a month. Every new account starts with 14 days of Ittsui Plus, free, no card needed. After that, Ittsui Plus is €4.99/month for rendez-vous every week, with no limit, and you can cancel anytime.",
+        "Yes, for one rendez-vous a month. Every new account starts with 14 days of Ittsui Plus, free, no card needed. After that, Ittsui Plus is {price}/month for rendez-vous every week, with no limit, and you can cancel anytime.",
       ],
       [
         "Is my data synced between the web and the app?",
@@ -64,7 +65,7 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
     faq: [
       [
         "無料ですか？",
-        "はい、月1回のランデヴーまでは無料です。新規アカウントは、Ittsui Plusを14日間無料でお試しいただけます（カード不要）。その後は月額4.99ユーロで、毎週、回数の制限なくご利用いただけます。いつでも解約できます。",
+        "はい、月1回のランデヴーまでは無料です。新規アカウントは、Ittsui Plusを14日間無料でお試しいただけます（カード不要）。その後は月額{price}で、毎週、回数の制限なくご利用いただけます。いつでも解約できます。",
       ],
       [
         "Webとアプリでデータは同期されますか？",
@@ -73,6 +74,44 @@ const COPY: Record<Locale, { title: string; intro: string; faqTitle: string; faq
       [
         "データを失わずにアプリをアンインストールできますか？",
         "はい。データは端末ではなくアカウントに保存されています。Webでログインし直すか、アプリを再インストールすれば、すべて元どおりです。",
+      ],
+    ],
+  },
+  es: {
+    title: "Descarga Ittsui",
+    intro: "Un ritual semanal para cuidar tus relaciones más cercanas, en tu celular o directamente en el navegador.",
+    faqTitle: "Preguntas frecuentes",
+    faq: [
+      [
+        "¿Es gratis?",
+        "Sí, para un encuentro al mes. Cada cuenta nueva empieza con 14 días de Ittsui Plus gratis, sin tarjeta. Después, Ittsui Plus cuesta {price} al mes para tener encuentros cada semana, sin límite, y puedes cancelar cuando quieras.",
+      ],
+      [
+        "¿Mis datos se sincronizan entre la web y la app?",
+        "Sí: la misma cuenta y el mismo backend de Firebase en ambos lados, sin datos separados que administrar.",
+      ],
+      [
+        "¿Puedo desinstalar la app sin perder mis datos?",
+        "Sí, tus datos están en tu cuenta, no en el dispositivo. Recuperas todo al volver a iniciar sesión, en la web o después de reinstalar la app.",
+      ],
+    ],
+  },
+  he: {
+    title: "הורדת Ittsui",
+    intro: "ריטואל שבועי לטיפוח הקשרים הכי קרובים שלכם, בטלפון או ישירות בדפדפן.",
+    faqTitle: "שאלות נפוצות",
+    faq: [
+      [
+        "זה בחינם?",
+        "כן, למפגש אחד בחודש. כל חשבון חדש מתחיל עם 14 ימי Ittsui Plus בחינם, בלי כרטיס אשראי. אחר כך Ittsui Plus עולה {price} לחודש למפגשים בכל שבוע, בלי הגבלה, ואפשר לבטל מתי שרוצים.",
+      ],
+      [
+        "הנתונים שלי מסונכרנים בין האתר לאפליקציה?",
+        "כן: אותו חשבון ואותו שרת Firebase בשני הצדדים, בלי נתונים נפרדים לנהל.",
+      ],
+      [
+        "אפשר להסיר את האפליקציה בלי לאבד את הנתונים?",
+        "כן, הנתונים נשמרים בחשבון, לא במכשיר. הכול חוזר אחרי התחברות מחדש, באתר או אחרי התקנה מחדש של האפליקציה.",
       ],
     ],
   },
@@ -106,7 +145,7 @@ export async function DownloadView({ lang }: { lang: Locale }) {
 
         <DownloadClient qrSvg={qrSvg} lang={lang} />
 
-        <div className="mt-16 border-t pt-8 text-left text-sm" style={{ borderColor: BORDER, color: MUTED }}>
+        <div className="mt-16 border-t pt-8 text-start text-sm" style={{ borderColor: BORDER, color: MUTED }}>
           <h2 className="text-base" style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: INK }}>
             {t.faqTitle}
           </h2>
@@ -116,7 +155,7 @@ export async function DownloadView({ lang }: { lang: Locale }) {
                 <dt className="font-medium" style={{ color: INK }}>
                   {question}
                 </dt>
-                <dd className="mt-1">{answer}</dd>
+                <dd className="mt-1">{answer.replace("{price}", plusOffer(lang).label)}</dd>
               </div>
             ))}
           </dl>

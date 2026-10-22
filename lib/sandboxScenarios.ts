@@ -154,10 +154,10 @@ export const SANDBOX_SCENARIOS: SandboxScenario[] = [
   },
 ];
 
-// The English and Japanese homepages run the same demo: the same five
-// real places (French names and addresses, because they are French
-// addresses), with the descriptions, the duo labels and the sample names
-// translated. The invitee's message is shown in the page's language,
+// The English, Japanese, Spanish and Hebrew homepages run the same demo:
+// the same five real places (French names and addresses, because they are
+// French addresses), with the descriptions, the duo labels and the sample
+// names translated. No local venue is invented for the other cities. The invitee's message is shown in the page's language,
 // which is the language the app writes invitations in for that reader.
 
 type VenueText = Pick<SandboxVenue, "shortLabel" | "metro" | "ambience" | "photoAlt">;
@@ -226,6 +226,72 @@ const JA = {
     metro: "Varenne（メトロ13号線）· Invalides（8・13号線、RER C線）",
     ambience: ["彫刻の庭園", "静か", "1時間で回れる"],
     photoAlt: "並んで歩く父と成人した息子。",
+  }),
+};
+
+const ES = {
+  industrie: translated(CAFE_INDUSTRIE, {
+    shortLabel: "Café de l'Industrie · París 11",
+    metro: "Bréguet-Sabin (línea 5) · Bastille (1, 5, 8)",
+    ambience: ["Ideal para platicar", "Mesas grandes", "Bastille"],
+    photoAlt: "Dos amigos platican en una terraza, en una calle empedrada.",
+  }),
+  flore: translated(CAFE_FLORE, {
+    shortLabel: "Café de Flore · París 6",
+    metro: "Saint-Germain-des-Prés (línea 4)",
+    ambience: ["Terraza", "Saint-Germain-des-Prés", "Abierto hasta tarde"],
+    photoAlt: "Un café parisino, dos personas sentadas junto a la ventana.",
+  }),
+  janou: translated(CHEZ_JANOU, {
+    shortLabel: "Chez Janou · París 3",
+    metro: "Chemin Vert (línea 8)",
+    ambience: ["Bistró provenzal", "Le Marais", "Mejor reservar"],
+    photoAlt: "Una pareja platica con la luz cálida de la tarde.",
+  }),
+  luxembourg: translated(LUXEMBOURG, {
+    shortLabel: "Jardin du Luxembourg · París 6",
+    metro: "Odéon (4, 10) · RER B Luxembourg",
+    ambience: ["Al aire libre", "Tranquilo", "Gratis"],
+    photoAlt: "Una abuela y su nieta sentadas en una banca del parque.",
+  }),
+  rodin: translated(RODIN, {
+    shortLabel: "Musée Rodin · París 7",
+    metro: "Varenne (línea 13) · Invalides (8, 13, RER C)",
+    ambience: ["Jardín de esculturas", "Tranquilo", "Basta una hora"],
+    photoAlt: "Un padre y su hijo adulto caminan lado a lado.",
+  }),
+};
+
+const HE = {
+  industrie: translated(CAFE_INDUSTRIE, {
+    shortLabel: "Café de l'Industrie · פריז 11",
+    metro: "Bréguet-Sabin (קו 5) · Bastille (1, 5, 8)",
+    ambience: ["טוב לשיחה", "שולחנות גדולים", "בסטיליה"],
+    photoAlt: "שני חברים משוחחים במרפסת של בית קפה, ברחוב מרוצף.",
+  }),
+  flore: translated(CAFE_FLORE, {
+    shortLabel: "Café de Flore · פריז 6",
+    metro: "Saint-Germain-des-Prés (קו 4)",
+    ambience: ["מרפסת", "סן־ז׳רמן־דה־פרה", "פתוח עד מאוחר"],
+    photoAlt: "בית קפה פריזאי, שני אנשים יושבים ליד החלון.",
+  }),
+  janou: translated(CHEZ_JANOU, {
+    shortLabel: "Chez Janou · פריז 3",
+    metro: "Chemin Vert (קו 8)",
+    ambience: ["ביסטרו פרובנסלי", "המארה", "מומלץ להזמין מקום"],
+    photoAlt: "זוג משוחח באור הערב החמים.",
+  }),
+  luxembourg: translated(LUXEMBOURG, {
+    shortLabel: "Jardin du Luxembourg · פריז 6",
+    metro: "Odéon (4, 10) · RER B Luxembourg",
+    ambience: ["בחוץ", "שקט", "בחינם"],
+    photoAlt: "סבתא ונכדתה יושבות על ספסל בפארק.",
+  }),
+  rodin: translated(RODIN, {
+    shortLabel: "Musée Rodin · פריז 7",
+    metro: "Varenne (קו 13) · Invalides (8, 13, RER C)",
+    ambience: ["גן פסלים", "שקט", "מספיקה שעה"],
+    photoAlt: "אב ובנו הבוגר הולכים זה לצד זה.",
   }),
 };
 
@@ -321,6 +387,98 @@ const SCENARIOS_BY_LOCALE: Record<Locale, SandboxScenario[]> = {
       tileAlt: "ぶどう畑を並んで歩く父と成人した息子。",
       primary: JA.rodin,
       alternative: JA.luxembourg,
+    },
+  ],
+  es: [
+    {
+      id: "amis",
+      label: "Tus amigos cercanos",
+      sampleRecipient: "Diego",
+      when: "Sábado · 15:30",
+      whenSentence: "el sábado a las 15:30",
+      tilePhoto: "/friends-cafe-terrace.jpg",
+      tileAlt: "Dos amigos platican en una terraza, en una calle empedrada.",
+      primary: ES.industrie,
+      alternative: ES.luxembourg,
+    },
+    {
+      id: "partenaire",
+      label: "Tu pareja",
+      sampleRecipient: "Valeria",
+      when: "Viernes · 20:00",
+      whenSentence: "el viernes a las 20:00",
+      tilePhoto: "/couple-living-room.jpg",
+      tileAlt: "Una pareja platica en un sillón con la luz cálida de la tarde.",
+      primary: ES.janou,
+      alternative: ES.flore,
+    },
+    {
+      id: "famille",
+      label: "Tu familia",
+      sampleRecipient: "Abuela",
+      when: "Domingo · 15:00",
+      whenSentence: "el domingo a las 15:00",
+      tilePhoto: "/grandmother-granddaughter-park.jpg",
+      tileAlt: "Una abuela y su nieta sentadas en una banca del parque.",
+      primary: ES.luxembourg,
+      alternative: ES.flore,
+    },
+    {
+      id: "parents",
+      label: "Tus papás",
+      sampleRecipient: "Papá",
+      when: "Domingo · 11:00",
+      whenSentence: "el domingo a las 11:00",
+      tilePhoto: "/hero-father-son-vineyard.jpg.jpg",
+      tileAlt: "Un padre y su hijo adulto caminan lado a lado entre los viñedos.",
+      primary: ES.rodin,
+      alternative: ES.luxembourg,
+    },
+  ],
+  he: [
+    {
+      id: "amis",
+      label: "החברים הקרובים שלכם",
+      sampleRecipient: "יואב",
+      when: "שבת · 15:30",
+      whenSentence: "בשבת בשעה 15:30",
+      tilePhoto: "/friends-cafe-terrace.jpg",
+      tileAlt: "שני חברים משוחחים במרפסת של בית קפה, ברחוב מרוצף.",
+      primary: HE.industrie,
+      alternative: HE.luxembourg,
+    },
+    {
+      id: "partenaire",
+      label: "בן או בת הזוג",
+      sampleRecipient: "נועה",
+      when: "שישי · 20:00",
+      whenSentence: "ביום שישי בשעה 20:00",
+      tilePhoto: "/couple-living-room.jpg",
+      tileAlt: "זוג משוחח על ספה באור הערב החמים.",
+      primary: HE.janou,
+      alternative: HE.flore,
+    },
+    {
+      id: "famille",
+      label: "המשפחה שלכם",
+      sampleRecipient: "סבתא",
+      when: "ראשון · 15:00",
+      whenSentence: "ביום ראשון בשעה 15:00",
+      tilePhoto: "/grandmother-granddaughter-park.jpg",
+      tileAlt: "סבתא ונכדתה יושבות על ספסל בפארק.",
+      primary: HE.luxembourg,
+      alternative: HE.flore,
+    },
+    {
+      id: "parents",
+      label: "ההורים שלכם",
+      sampleRecipient: "אבא",
+      when: "ראשון · 11:00",
+      whenSentence: "ביום ראשון בשעה 11:00",
+      tilePhoto: "/hero-father-son-vineyard.jpg.jpg",
+      tileAlt: "אב ובנו הבוגר הולכים זה לצד זה בין הכרמים.",
+      primary: HE.rodin,
+      alternative: HE.luxembourg,
     },
   ],
 };

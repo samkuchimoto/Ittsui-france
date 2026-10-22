@@ -52,7 +52,7 @@ function route(request: NextRequest) {
 
   if (pathname === "/") {
     const saved = request.cookies.get(LANG_COOKIE)?.value;
-    if (saved === "en" || saved === "ja") {
+    if (saved && saved !== "fr" && isLocale(saved)) {
       const url = request.nextUrl.clone();
       url.pathname = `/${saved}`;
       return NextResponse.redirect(url, 307);
@@ -67,6 +67,8 @@ export const config = {
     "/",
     "/en",
     "/ja",
+    "/es",
+    "/he",
     "/setup/:path*",
     "/dashboard/:path*",
     "/contacts/:path*",

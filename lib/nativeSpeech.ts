@@ -24,7 +24,7 @@ import { Capacitor } from "@capacitor/core";
 import type { Locale } from "@/lib/i18n";
 
 // Recognition language follows the app's language (lib/i18n.ts).
-const SPEECH_LANGUAGE: Record<Locale, string> = { fr: "fr-FR", en: "en-GB", ja: "ja-JP" };
+const SPEECH_LANGUAGE: Record<Locale, string> = { fr: "fr-FR", en: "en-GB", ja: "ja-JP", es: "es-MX", he: "he-IL" };
 
 // null covers every non-happy path identically (web platform, feature
 // unavailable, permission denied, nothing understood, or the person just

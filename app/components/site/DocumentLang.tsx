@@ -9,14 +9,16 @@
 // leave the document claiming to be English.
 
 import { useEffect } from "react";
-import type { Locale } from "@/lib/i18n";
+import { dirOf, type Locale } from "@/lib/i18n";
 
 export function DocumentLang({ lang }: { lang: Locale }) {
   useEffect(() => {
     if (lang === "fr") return;
     document.documentElement.lang = lang;
+    document.documentElement.dir = dirOf(lang);
     return () => {
       document.documentElement.lang = "fr";
+      document.documentElement.dir = "ltr";
     };
   }, [lang]);
   return null;

@@ -20,6 +20,8 @@ const DAY_LABELS: Record<string, string> = {
 const OTHER_DAY_LABELS: Record<Exclude<Locale, "fr">, Record<string, string>> = {
   en: { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" },
   ja: { mon: "月曜日", tue: "火曜日", wed: "水曜日", thu: "木曜日", fri: "金曜日", sat: "土曜日", sun: "日曜日" },
+  es: { mon: "lunes", tue: "martes", wed: "miércoles", thu: "jueves", fri: "viernes", sat: "sábado", sun: "domingo" },
+  he: { mon: "יום שני", tue: "יום שלישי", wed: "יום רביעי", thu: "יום חמישי", fri: "יום שישי", sat: "שבת", sun: "יום ראשון" },
 };
 
 // Falls back to the input unchanged for anything unrecognized — values

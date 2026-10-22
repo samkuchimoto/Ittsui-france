@@ -112,7 +112,7 @@ export function PhoneContactPicker({
                 key={`${c.name}-${c.phone ?? c.email}-${i}`}
                 type="button"
                 onClick={() => pick(c)}
-                className="block w-full py-3 text-left"
+                className="block w-full py-3 text-start"
               >
                 <span className="block truncate text-sm font-medium" style={{ color: INK }}>
                   {c.name}

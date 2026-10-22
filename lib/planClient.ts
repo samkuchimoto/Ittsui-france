@@ -5,7 +5,7 @@
 
 import type { User } from "firebase/auth";
 import type { Locale } from "@/lib/i18n";
-import type { Plan } from "@/lib/planConfig";
+import type { Plan, PlanCurrency } from "@/lib/planConfig";
 
 export type { Plan };
 
@@ -28,9 +28,9 @@ export async function fetchPlan(user: User): Promise<Plan | null> {
 }
 
 /** Sends the browser to Stripe Checkout; on failure, says why. */
-export async function startPlusCheckout(user: User, lang: Locale): Promise<"not_configured" | "error" | null> {
+export async function startPlusCheckout(user: User, lang: Locale, currency: PlanCurrency = "EUR"): Promise<"not_configured" | "error" | null> {
   try {
-    const res = await post(user, "/api/stripe/checkout", { lang });
+    const res = await post(user, "/api/stripe/checkout", { lang, currency });
     if (res.status === 501) return "not_configured";
     const data = await res.json();
     if (!res.ok || !data.url) return "error";

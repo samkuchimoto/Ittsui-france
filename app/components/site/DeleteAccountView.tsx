@@ -21,7 +21,7 @@
 import Link from "next/link";
 import { INK, MUTED, ACCENT } from "@/lib/theme";
 import { pagePath, type Locale } from "@/lib/i18n";
-import { LegalShell, Item } from "@/app/components/site/LegalShell";
+import { LegalShell, Item, legalLang } from "@/app/components/site/LegalShell";
 
 const strong = (text: string) => <strong style={{ color: INK }}>{text}</strong>;
 const dashboard = (
@@ -54,7 +54,7 @@ type Copy = {
   privacyLabel: string;
 };
 
-const COPY: Record<Locale, Copy> = {
+const COPY: Record<"fr" | "en" | "ja", Copy> = {
   fr: {
     title: "Supprimer mon compte",
     intro: (
@@ -181,12 +181,12 @@ const COPY: Record<Locale, Copy> = {
 };
 
 export function DeleteAccountView({ lang }: { lang: Locale }) {
-  const t = COPY[lang];
+  const t = COPY[legalLang(lang)];
   return (
     <LegalShell page="deleteAccount" lang={lang} title={t.title} intro={t.intro}>
       <div className="mt-8">
         <Item title={t.stepsTitle}>
-          <ol className="ml-4 list-decimal space-y-1.5">
+          <ol className="ms-4 list-decimal space-y-1.5">
             {t.steps.map((step, i) => (
               <li key={i}>{step}</li>
             ))}
@@ -196,7 +196,7 @@ export function DeleteAccountView({ lang }: { lang: Locale }) {
         <Item title={t.noAccessTitle}>{t.noAccess}</Item>
 
         <Item title={t.deletedTitle}>
-          <ul className="ml-4 list-disc space-y-1.5">
+          <ul className="ms-4 list-disc space-y-1.5">
             {t.deleted.map((line) => (
               <li key={line}>{line}</li>
             ))}
