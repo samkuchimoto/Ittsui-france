@@ -86,8 +86,8 @@ export default function MentionsLegalesPage() {
           </Item>
           <Item title="Contact">
             <p>
-              <a href="mailto:hello@ittsui.fr" style={{ color: ACCENT }}>
-                hello@ittsui.fr
+              <a href="mailto:contact@kuchimoto.com" style={{ color: ACCENT }}>
+                contact@kuchimoto.com
               </a>
             </p>
           </Item>

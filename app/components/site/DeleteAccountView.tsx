@@ -30,8 +30,8 @@ const dashboard = (
   </Link>
 );
 const mail = (subject: string) => (
-  <a href={`mailto:hello@ittsui.fr?subject=${encodeURIComponent(subject)}`} className="underline underline-offset-4" style={{ color: ACCENT }}>
-    hello@ittsui.fr
+  <a href={`mailto:contact@kuchimoto.com?subject=${encodeURIComponent(subject)}`} className="underline underline-offset-4" style={{ color: ACCENT }}>
+    contact@kuchimoto.com
   </a>
 );
 

@@ -19,8 +19,8 @@ import type { Locale } from "@/lib/i18n";
 import { LegalShell, Item } from "@/app/components/site/LegalShell";
 
 const Mail = () => (
-  <a href="mailto:hello@ittsui.fr" style={{ color: ACCENT }}>
-    hello@ittsui.fr
+  <a href="mailto:contact@kuchimoto.com" style={{ color: ACCENT }}>
+    contact@kuchimoto.com
   </a>
 );
 
