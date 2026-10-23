@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { INK, MUTED, ACCENT, BORDER, CREAM } from "@/lib/theme";
 import { IconArrowRight } from "@/app/components/HomeIcons";
-import type { Locale } from "@/lib/i18n";
+import { withLang, type Locale } from "@/lib/i18n";
 
 const COPY: Record<Locale, { label: string; placeholder: string; start: string; helper: string }> = {
   fr: {
@@ -67,7 +67,9 @@ export function StartRitualField({ onDark = false, lang = "fr" }: { onDark?: boo
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    router.push(trimmed ? `/setup?avec=${encodeURIComponent(trimmed)}` : "/setup");
+    // Straight to a real invitation (2026-10-23 pivot): the one-off request,
+    // which ends on the WhatsApp/SMS link to send now.
+    router.push(withLang(trimmed ? `/request/new?avec=${encodeURIComponent(trimmed)}` : "/request/new", lang));
   }
 
   return (

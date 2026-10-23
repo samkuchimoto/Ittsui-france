@@ -294,6 +294,9 @@ export default function RequestFormClient() {
         // corrupt draft, ignore and keep the empty default
       }
     }
+    // The name typed in the homepage hero (StartRitualField).
+    const avec = searchParams.get("avec")?.trim();
+    if (avec) setDraft((d) => ({ ...d, recipientName: avec.slice(0, 200) }));
     if (searchParams.get("simple") === "1") {
       localStorage.setItem(SIMPLE_MODE_KEY, "1");
       setSimpleMode(true);

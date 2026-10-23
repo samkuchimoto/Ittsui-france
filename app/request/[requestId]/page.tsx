@@ -33,6 +33,7 @@ import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { REQUEST_PAGE } from "./request-page.i18n";
 import { YourTurn } from "@/app/components/PlanCard";
+import { CheckInButton } from "@/app/components/CheckInButton";
 import { cityOf } from "@/lib/cities";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
@@ -462,6 +463,7 @@ export default function RequestResponsePage() {
             next step is trying the sending side themselves. The link
             carries the sender's invite code, so if they start, both get a
             month of Plus (lib/referral.ts). */}
+        <CheckInButton requestId={params.requestId} />
         <YourTurn senderName={invite.name} senderRef={invite.ref} />
       </Shell>
     );

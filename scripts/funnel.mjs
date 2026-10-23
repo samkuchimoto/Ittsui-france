@@ -41,6 +41,7 @@ show("Requests accepted (city / language)", count((await events("custom_rendezvo
 show("Weekly rituals started (city / language)", count(await events("invite_activated"), where));
 show("Weekly proposals sent (city)", count(await events("proposal_shown"), (e) => e.cityId ?? "(before cities)"));
 show("Weeks confirmed", count(await events("week_confirmed"), () => "all cities"));
+show("Meetings completed: both checked in at the venue (city / language)", count(await events("meeting_completed"), where));
 
 // Repeat usage: people who sent more than one request in the period, and
 // active rituals by how many weeks both people confirmed (all time).

@@ -35,7 +35,10 @@ export type AnalyticsEvent =
   | "plan_limit_reached"
   | "checkout_started"
   | "subscription_started"
-  | "subscription_ended";
+  | "subscription_ended"
+  // "I'm here" at the venue, and both people there: a completed meeting.
+  | "checked_in"
+  | "meeting_completed";
 
 /** Returns the write, for the rare caller whose whole job it is (it never rejects). */
 export function logEvent(name: AnalyticsEvent, properties: Record<string, string | number | boolean | null> = {}): Promise<void> {

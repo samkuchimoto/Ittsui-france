@@ -19,6 +19,8 @@ import { DATE_LOCALE, type Locale } from "@/lib/i18n";
 import { useLang, useT } from "@/app/components/site/LangProvider";
 import { REQUESTS } from "./requests.i18n";
 import { cityOf } from "@/lib/cities";
+import { zonedNow } from "@/lib/timezone";
+import { CheckInButton } from "@/app/components/CheckInButton";
 
 const VENUE_TYPE_LABEL: Record<string, string> = {
   cafe: "Café",
@@ -163,6 +165,10 @@ function RequestRow({
         >
           {t("Ajouter à Google Agenda")}
         </a>
+      )}
+      {/* On the day, in the meeting city's own date: "I'm here" at the venue. */}
+      {request.status === "accepted" && zonedNow(cityOf(request.cityId).timezone).dateStr === request.date && (
+        <CheckInButton requestId={request.id} />
       )}
       {/* Real gap found live: a sent request stuck in "En attente" had no
           way to be withdrawn at all — an accumulating list of stale
