@@ -119,7 +119,7 @@ function extractNameFromVoiceTranscript(transcript: string): string {
 // had `image`/`video` set for any entry, unlike SetupClient's own
 // DISCOVERY_TILES — so every tile here depended entirely on the AI mood
 // illustration fallback, which has no FAL_API_KEY configured (see
-// app/api/ai-venue-mood/route.ts's own honest 501), meaning all five
+// the former app/api/ai-venue-mood route (deleted 2026-10-23)'s own honest 501), meaning all five
 // tiles have always rendered as a blank tinted block in production.
 const TYPE_PLURAL: Record<Exclude<VenueType, "home">, string> = {
   cafe: "cafés",

@@ -225,7 +225,7 @@ export interface MeetingRequest {
   // already uses for venue-type preferences elsewhere in the app, rather
   // than inventing a second image mechanism. Never a photo of the specific
   // address itself (this app has no real per-address photo source) — see
-  // app/api/ai-venue-mood/route.ts's own reasoning for why that distinction
+  // the former app/api/ai-venue-mood route (deleted 2026-10-23)'s own reasoning for why that distinction
   // is what makes the feature honest.
   venueType?: VenueType;
   date: string; // "YYYY-MM-DD", Europe/Paris calendar date
@@ -313,7 +313,7 @@ export interface VenuePartner {
 //     review, not as a variant of "curated".
 //   - "painting": a real AI-generated illustration, not a mockup — reuses
 //     the same Fal.ai image-generation infrastructure already wired for
-//     app/api/ai-venue-mood/route.ts (honest 501 when FAL_API_KEY isn't
+//     the former app/api/ai-venue-mood route (deleted 2026-10-23) (honest 501 when FAL_API_KEY isn't
 //     configured, same as that route, never a fabricated image). Added
 //     2026-08-27 per direct feedback that a category picker with no real
 //     backend behind it "does not bring value" — this is the one mode

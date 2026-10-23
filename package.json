@@ -23,7 +23,6 @@
     "@capgo/capacitor-share-target": "^8.0.49",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
-    "@vercel/postgres": "^0.10.0",
     "firebase": "^10.12.4",
     "firebase-admin": "^12.3.0",
     "framer-motion": "^13.1.1",

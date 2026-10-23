@@ -7,7 +7,7 @@
 // Modes that trigger a REAL backend action, not just a link-out or a
 // stored intent:
 //   - "painting": calls the same Fal.ai image-generation infrastructure
-//     already wired for app/api/ai-venue-mood/route.ts.
+//     already wired for the former app/api/ai-venue-mood route (deleted 2026-10-23).
 //   - "own" used to collect the sender's home address here so a real
 //     Stuart bike courier could be dispatched to collect the object.
 //     Removed 2026-09-13 as a deliberate scope deletion — see
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
 }
 
 // Real generation, not a mockup — the exact same fal-ai/fast-sdxl call
-// already proven in app/api/ai-venue-mood/route.ts, with the sender's own
+// already proven in the former app/api/ai-venue-mood route (deleted 2026-10-23), with the sender's own
 // note as the creative brief instead of a fixed category prompt. A style
 // suffix keeps output looking like a considered illustration regardless
 // of how little (or how much) the sender wrote, without ever inventing

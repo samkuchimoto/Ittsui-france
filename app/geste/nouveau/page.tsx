@@ -22,7 +22,7 @@
 //     of the whole feature.
 //   - "painting": a REAL AI-generated illustration (not a mockup) —
 //     calls the same Fal.ai infrastructure already proven in
-//     app/api/ai-venue-mood/route.ts. This is the one mode that produces
+//     the former app/api/ai-venue-mood route (deleted 2026-10-23). This is the one mode that produces
 //     something the sender didn't have before, per direct feedback that
 //     a pure category picker "does not bring value" on its own.
 

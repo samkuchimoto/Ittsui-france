@@ -9,7 +9,7 @@
 // for /triage. "Assistance par IA" because the page never said that the
 // confirmation text and "Décrire en une phrase" go to Mistral AI (Groq as
 // the fallback): see lib/confirmationText.ts and lib/parseMeetingRequest.ts.
-// fal.ai (app/api/ai-venue-mood) isn't named: it is dormant (no
+// fal.ai isn't named: the venue-mood route is deleted (2026-10-23) and gestures are hidden (no
 // FAL_API_KEY in production) and only ever receives a venue category.
 // Also 2026-10-20: who is responsible (the publisher in /mentions-legales),
 // which the page never said.
