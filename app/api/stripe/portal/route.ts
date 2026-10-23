@@ -9,7 +9,7 @@ import { verifyRequestUser } from "@/lib/firebaseAdmin";
 import { getBilling } from "@/lib/plan";
 import { stripe } from "@/lib/stripe";
 
-const bodySchema = z.object({ lang: z.enum(["fr", "en", "ja"]).optional() });
+const bodySchema = z.object({ lang: z.enum(["fr", "en", "ja", "es", "he"]).optional() });
 
 export async function POST(request: Request) {
   const uid = await verifyRequestUser(request);
@@ -24,7 +24,8 @@ export async function POST(request: Request) {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: billing.stripeCustomerId,
-    locale: lang,
+    // Stripe's portal has no Hebrew interface: Hebrew readers get it in English.
+    locale: lang === "he" ? "en" : lang,
     return_url: `${appUrl}/dashboard`,
   });
   return NextResponse.json({ url: session.url });

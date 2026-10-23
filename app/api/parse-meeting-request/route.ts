@@ -9,7 +9,7 @@ import { z } from "zod";
 import { verifyRequestUser } from "@/lib/firebaseAdmin";
 import { parseMeetingRequestText } from "@/lib/parseMeetingRequest";
 
-const bodySchema = z.object({ text: z.string().trim().min(3).max(400), lang: z.enum(["fr", "en", "ja"]).optional() });
+const bodySchema = z.object({ text: z.string().trim().min(3).max(400), lang: z.enum(["fr", "en", "ja", "es", "he"]).optional() });
 
 const EMPTY_RESULT = {
   recipientName: null,

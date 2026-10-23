@@ -81,7 +81,7 @@ const bodySchema = z
     }),
     // The inviter's app language: both emails below go out in it, and it's
     // kept on the pair for the ones sent later (see lib/types.ts Pair.lang).
-    lang: z.enum(["fr", "en", "ja"]).optional(),
+    lang: z.enum(["fr", "en", "ja", "es", "he"]).optional(),
   })
   .refine((data) => data.partnerEmail || data.partnerPhone, { message: "e-mail ou téléphone requis" });
 

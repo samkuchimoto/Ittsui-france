@@ -55,7 +55,7 @@ const createSchema = z
     time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure invalide"),
     // The sender's app language: the email below goes out in it, and
     // /request/{id} opens in it (see lib/types.ts MeetingRequest.lang).
-    lang: z.enum(["fr", "en", "ja"]).optional(),
+    lang: z.enum(["fr", "en", "ja", "es", "he"]).optional(),
     // A partner venue picked in the form (lib/partnerPilot.ts); checked below.
     partnerId: z.string().max(64).optional(),
     // The meeting's city (lib/cities.ts); Paris when absent (older app builds).

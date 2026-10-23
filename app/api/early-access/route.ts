@@ -10,8 +10,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 const bodySchema = z.object({
   email: z.string().trim().toLowerCase().email().max(320),
-  // The page's language (/, /en, /ja), so testers can be invited in it.
-  lang: z.enum(["fr", "en", "ja"]).optional(),
+  // The page's language (/, /en, /ja, /es, /he), so testers can be invited in it.
+  lang: z.enum(["fr", "en", "ja", "es", "he"]).optional(),
 });
 
 export async function POST(request: Request) {
