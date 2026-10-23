@@ -14,11 +14,11 @@ import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
 
-// ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
-// call to Resend's /domains API before removing the old TODO here, not
-// assumed) — this address genuinely delivers. Keep in sync with the same
-// constant in app/api/invite-partner/route.ts; they're not shared.
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+// contact@kuchimoto.com since 2026-10-23: a real inbox, so replies reach
+// Samuel (ittsui.fr has no MX record: hello@ittsui.fr sent but received
+// nothing). Keep in sync with the same constant in
+// app/api/invite-partner/route.ts; they're not shared.
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 // Decline only needs the pairId, it's a bearer-style link mailed to one
 // address, and requiring login just to opt out would be exactly the kind

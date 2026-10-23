@@ -27,7 +27,7 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 export async function GET(_request: Request, { params }: { params: { gestureId: string } }) {
   const snap = await adminDb.collection("gestures").doc(params.gestureId).get();

@@ -17,10 +17,10 @@ import type { Translate } from "@/lib/translate";
 
 const PENDING_EXPIRY_DAYS = 14;
 
-// ittsui.fr verified in Resend as of 2026-08-10 (confirmed via a real
-// call to Resend's /domains API before removing the old TODO here, not
-// assumed) — real invites do deliver to real partners.
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+// contact@kuchimoto.com since 2026-10-23: a real inbox, so replies reach
+// Samuel (ittsui.fr has no MX record: hello@ittsui.fr sent but received
+// nothing).
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 // "hebdomadaire" was accurate for every invite before Pair.cadence
 // existed — now the invite email needs to describe whichever recurrence

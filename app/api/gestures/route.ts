@@ -38,7 +38,7 @@ import { emailShell, escapeHtml } from "@/lib/emailTemplates";
 import { CURATED_ITEM_LABEL } from "@/lib/gestureLinks";
 import type { CuratedGestureItem, PaintingStatus } from "@/lib/types";
 
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 const CURATED_ITEM_VALUES = ["fleurs", "livre", "chocolat", "plante", "bougie", "papeterie", "repas", "autre"] as const;
 const PAINTING_GENERATION_TIMEOUT_MS = 20000;
 

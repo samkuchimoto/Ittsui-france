@@ -73,7 +73,7 @@ export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyR
             Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: "Ittsui <hello@ittsui.fr>",
+            from: "Ittsui <contact@kuchimoto.com>",
             to: user.email,
             subject: makeT(langOf(pair.lang), EMAILS)(CADENCE_SUBJECT[pair.cadence ?? "weekly"]),
             text,

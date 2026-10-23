@@ -11,7 +11,7 @@ import crypto from "crypto";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, emailButton } from "@/lib/emailTemplates";
 
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const auth = request.headers.get("authorization");

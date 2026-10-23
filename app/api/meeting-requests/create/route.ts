@@ -21,10 +21,10 @@ import { CITY_IDS, cityOf } from "@/lib/cities";
 
 const REQUEST_EXPIRY_DAYS = 14; // same window as a Pair invite
 
-// ittsui.fr verified in Resend as of 2026-08-10 — keep in sync with the
-// same constant in invite-partner/route.ts and activate-pending-pair/route.ts;
-// not shared on purpose, each route owns its own copy.
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+// contact@kuchimoto.com since 2026-10-23, a real inbox for replies — keep
+// in sync with the same constant in invite-partner/route.ts and
+// activate-pending-pair/route.ts; not shared on purpose, each route owns its own copy.
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 const VENUE_TYPES = ["cafe", "restaurant", "home", "park", "museum"] as const;
 

@@ -15,7 +15,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { emailShell, emailButton, escapeHtml } from "@/lib/emailTemplates";
 import type { VenuePartnerSlot } from "@/lib/types";
 
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 const bodySchema = z
   .object({

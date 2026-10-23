@@ -61,7 +61,7 @@ export async function notifyPlanLimit(pair: Pair, month: string): Promise<void> 
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: "Ittsui <hello@ittsui.fr>",
+        from: "Ittsui <contact@kuchimoto.com>",
         to: email,
         subject: c.subject,
         text: `${body}\n\n${c.button} : ${link}\n\n${c.after}`,

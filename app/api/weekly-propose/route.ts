@@ -567,7 +567,7 @@ async function tryFreeVenueApiForOptionB(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FREE_VENUE_API_TIMEOUT_MS);
-  const userAgent = "Ittsui/1.0 (+https://www.ittsui.fr; hello@ittsui.fr)";
+  const userAgent = "Ittsui/1.0 (+https://www.ittsui.fr; contact@kuchimoto.com)";
 
   try {
     const geoRes = await fetch(

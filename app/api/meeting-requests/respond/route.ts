@@ -32,7 +32,7 @@ import { EMAILS } from "@/lib/emails.i18n";
 import { recordVisit } from "@/lib/partnerPilot";
 import { cityOf } from "@/lib/cities";
 
-const FROM_ADDRESS = "Ittsui <hello@ittsui.fr>";
+const FROM_ADDRESS = "Ittsui <contact@kuchimoto.com>";
 
 // userId/userEmail are now optional even for accept — the handler below
 // decides whether they're actually required, once it knows if this
