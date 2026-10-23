@@ -5,6 +5,11 @@ import type { Catalog } from "@/lib/translate";
 
 export const PLAN: Catalog = {
   en: {
+    "Rendez-vous bloqué. À votre tour.": "Rendez-vous locked. Your turn.",
+    "Téléchargez Ittsui sur Google Play et proposez votre propre rendez-vous en un geste, chaque semaine si vous voulez.":
+      "Get Ittsui on Google Play and propose your own rendez-vous in one tap, every week if you like.",
+    "Télécharger sur Google Play": "Get it on Google Play",
+    "Ou continuer sur le web": "Or continue on the web",
     // PlanCard
     "✓ Ittsui Plus": "✓ Ittsui Plus",
     "Rendez-vous sans limite, chaque semaine.": "Unlimited rendez-vous, every week.",
@@ -50,6 +55,11 @@ export const PLAN: Catalog = {
     "Connexion échouée.": "Sign-in failed.",
   },
   ja: {
+    "Rendez-vous bloqué. À votre tour.": "約束が確定しました。次はあなたの番です。",
+    "Téléchargez Ittsui sur Google Play et proposez votre propre rendez-vous en un geste, chaque semaine si vous voulez.":
+      "Google PlayでIttsuiをダウンロードして、あなたからも約束をワンタップで提案しましょう。毎週でも。",
+    "Télécharger sur Google Play": "Google Playで入手",
+    "Ou continuer sur le web": "ウェブで続ける",
     // PlanCard
     "✓ Ittsui Plus": "✓ Ittsui Plus",
     "Rendez-vous sans limite, chaque semaine.": "毎週、回数の制限なくランデヴーを。",
@@ -95,6 +105,11 @@ export const PLAN: Catalog = {
     "Connexion échouée.": "ログインに失敗しました。",
   },
   es: {
+    "Rendez-vous bloqué. À votre tour.": "Encuentro confirmado. Ahora te toca.",
+    "Téléchargez Ittsui sur Google Play et proposez votre propre rendez-vous en un geste, chaque semaine si vous voulez.":
+      "Descarga Ittsui en Google Play y propón tu propio encuentro con un toque, cada semana si quieres.",
+    "Télécharger sur Google Play": "Descargar en Google Play",
+    "Ou continuer sur le web": "O sigue en la web",
     "✓ Ittsui Plus": "✓ Ittsui Plus",
     "Rendez-vous sans limite, chaque semaine.": "Encuentros ilimitados, cada semana.",
     "Gérer l'abonnement": "Administrar suscripción",
@@ -140,6 +155,11 @@ export const PLAN: Catalog = {
     "Connexion échouée.": "No se pudo iniciar sesión.",
   },
   he: {
+    "Rendez-vous bloqué. À votre tour.": "המפגש נקבע. עכשיו תורך.",
+    "Téléchargez Ittsui sur Google Play et proposez votre propre rendez-vous en un geste, chaque semaine si vous voulez.":
+      "הורידו את Ittsui מ-Google Play והציעו מפגש משלכם בנגיעה אחת, כל שבוע אם תרצו.",
+    "Télécharger sur Google Play": "להורדה מ-Google Play",
+    "Ou continuer sur le web": "או להמשיך באתר",
     "✓ Ittsui Plus": "✓ Ittsui Plus",
     "Rendez-vous sans limite, chaque semaine.": "מפגשים ללא הגבלה, כל שבוע.",
     "Gérer l'abonnement": "ניהול המינוי",

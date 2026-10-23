@@ -199,27 +199,56 @@ export function PlusOffer({ user, before }: { user: User; before?: () => void })
  * sender's invite code (middleware.ts keeps it), so if the guest starts,
  * both get a month of Plus.
  */
+const PLAY_URL = "https://play.google.com/store/apps/details?id=fr.ittsui.app";
+
+// The guest's screen right after "I'm in": the viral loop (2026-10-23 pivot).
+// On an Android browser the next step is the app on Google Play, with the
+// sender's invite code in Play's install referrer; elsewhere (iPhone, which
+// has no Ittsui app yet, or already inside the app) the web sign-up.
 export function YourTurn({ senderName, senderRef }: { senderName: string | null; senderRef: string | null }) {
   const t = useT(PLAN);
   const href = senderRef ? `/request/new?ref=${senderRef}` : "/request/new";
+  const [android, setAndroid] = useState(false);
+  useEffect(() => {
+    const native = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+    setAndroid(!native && /android/i.test(navigator.userAgent));
+  }, []);
+  const playHref = `${PLAY_URL}&referrer=${encodeURIComponent(`utm_source=guest&utm_campaign=your-turn${senderRef ? `&ref=${senderRef}` : ""}`)}`;
   return (
     <div className="mt-6 rounded-2xl border px-5 py-5 text-start" style={{ borderColor: ACCENT }}>
-      <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.2rem", color: INK }}>{t("À votre tour")}</p>
+      <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "1.2rem", color: INK }}>
+        {t("Rendez-vous bloqué. À votre tour.")}
+      </p>
       <p className="mt-2 text-sm" style={{ color: MUTED }}>
-        {t("Bloquez du temps avec les personnes qui comptent pour vous : Ittsui propose le lieu et l'heure, il ne reste qu'à confirmer.")}
+        {t("Téléchargez Ittsui sur Google Play et proposez votre propre rendez-vous en un geste, chaque semaine si vous voulez.")}
       </p>
       <p className="mt-2 text-xs font-medium" style={{ color: ACCENT }}>
         {senderRef && senderName
           ? t("Avec l'invitation de {name} : 14 jours de Plus, plus un mois offert.", { name: senderName })
           : t("14 jours de Plus offerts, sans carte bancaire.")}
       </p>
-      <Link
-        href={href}
-        className="mt-4 inline-flex w-full items-center justify-center rounded-full py-3 text-sm font-medium text-white"
-        style={{ backgroundColor: ACCENT }}
-      >
-        {t("Commencer")}
-      </Link>
+      {android ? (
+        <>
+          <a
+            href={playHref}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-full py-3 text-sm font-medium text-white"
+            style={{ backgroundColor: ACCENT }}
+          >
+            {t("Télécharger sur Google Play")}
+          </a>
+          <Link href={href} className="mt-3 block text-center text-sm underline underline-offset-4" style={{ color: MUTED }}>
+            {t("Ou continuer sur le web")}
+          </Link>
+        </>
+      ) : (
+        <Link
+          href={href}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-full py-3 text-sm font-medium text-white"
+          style={{ backgroundColor: ACCENT }}
+        >
+          {t("Commencer")}
+        </Link>
+      )}
     </div>
   );
 }

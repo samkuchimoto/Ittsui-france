@@ -15,7 +15,7 @@ const COPY: Record<
   { line: string; about: string; partners: string; privacy: string; terms: string; legal: string; cities: string }
 > = {
   fr: {
-    line: "© 2026 Ittsui France. Conçu avec retenue.",
+    line: "© 2026 Ittsui France.",
     about: "À propos",
     partners: "Partenaires",
     privacy: "Confidentialité",
@@ -24,7 +24,7 @@ const COPY: Record<
     cities: "Ittsui à",
   },
   en: {
-    line: "© 2026 Ittsui France. Designed with restraint.",
+    line: "© 2026 Ittsui France.",
     about: "About",
     partners: "Partners (in French)",
     privacy: "Privacy",
@@ -33,7 +33,7 @@ const COPY: Record<
     cities: "Ittsui in",
   },
   ja: {
-    line: "© 2026 Ittsui France. 控えめに、丁寧につくっています。",
+    line: "© 2026 Ittsui France.",
     about: "Ittsuiについて",
     partners: "パートナー（フランス語）",
     privacy: "プライバシー",
@@ -42,7 +42,7 @@ const COPY: Record<
     cities: "Ittsuiの都市",
   },
   es: {
-    line: "© 2026 Ittsui France. Diseñado con sobriedad.",
+    line: "© 2026 Ittsui France.",
     about: "Acerca de",
     partners: "Socios (en francés)",
     privacy: "Privacidad",
@@ -51,7 +51,7 @@ const COPY: Record<
     cities: "Ittsui en",
   },
   he: {
-    line: "© 2026 Ittsui France. מעוצב באיפוק.",
+    line: "© 2026 Ittsui France.",
     about: "אודות",
     partners: "שותפים (בצרפתית)",
     privacy: "פרטיות",

@@ -9,6 +9,7 @@ import type { Catalog } from "@/lib/translate";
 
 export const EMAILS: Catalog = {
   en: {
+    "Rappel :": "Reminder:",
     // The partner pilot (lib/partnerPilot.ts)
     "Partenaire Ittsui : {perk}": "Ittsui partner: {perk}",
     "Partenaire Ittsui : {perk}, pour vous deux.": "Ittsui partner: {perk}, for both of you.",
@@ -80,6 +81,7 @@ export const EMAILS: Catalog = {
     "Le rituel Ittsui avec cette personne a été annulé.": "The Ittsui ritual with this person has been cancelled.",
   },
   ja: {
+    "Rappel :": "リマインダー：",
     // The partner pilot (lib/partnerPilot.ts)
     "Partenaire Ittsui : {perk}": "Ittsuiパートナー：{perk}",
     "Partenaire Ittsui : {perk}, pour vous deux.": "Ittsuiパートナー：{perk}（おふたりに）",
@@ -145,6 +147,7 @@ export const EMAILS: Catalog = {
     "Le rituel Ittsui avec cette personne a été annulé.": "この方とのIttsuiの約束は取り消されました。",
   },
   es: {
+    "Rappel :": "Recordatorio:",
     "Partenaire Ittsui : {perk}": "Aliado de Ittsui: {perk}",
     "Partenaire Ittsui : {perk}, pour vous deux.": "Aliado de Ittsui: {perk}, para los dos.",
     "Code à montrer au comptoir : {code}": "Código para mostrar en caja: {code}",
@@ -211,6 +214,7 @@ export const EMAILS: Catalog = {
     "Le rituel Ittsui avec cette personne a été annulé.": "Se canceló el ritual de Ittsui con esta persona.",
   },
   he: {
+    "Rappel :": "תזכורת:",
     "Partenaire Ittsui : {perk}": "שותף של Ittsui: {perk}",
     "Partenaire Ittsui : {perk}, pour vous deux.": "שותף של Ittsui: {perk}, לשניכם.",
     "Code à montrer au comptoir : {code}": "קוד להצגה בקופה: {code}",

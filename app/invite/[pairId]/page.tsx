@@ -24,6 +24,7 @@ import { useLang, useT } from "@/app/components/site/LangProvider";
 import { AppLangSwitch } from "@/app/components/site/AppLangSwitch";
 import { localeTypography } from "@/app/components/site/typography";
 import { INVITE } from "./invite.i18n";
+import { YourTurn } from "@/app/components/PlanCard";
 
 type Status = "checking" | "ready" | "declining" | "declined" | "activating" | "activated" | "error";
 
@@ -223,6 +224,7 @@ export default function InvitePage() {
         <Link href="/setup" className="mt-4 block text-sm underline underline-offset-4" style={{ color: MUTED }}>
           {t("Faire pareil avec quelqu'un d'autre")}
         </Link>
+        <YourTurn senderName={null} senderRef={null} />
       </Shell>
     );
   }

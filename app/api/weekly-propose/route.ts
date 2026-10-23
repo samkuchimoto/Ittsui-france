@@ -91,6 +91,7 @@ import { getPlan, recordRendezVous } from "@/lib/plan";
 import { notifyPlanLimit } from "@/lib/planEmails";
 import { partnerForRitual } from "@/lib/partnerPilot";
 import { makeT } from "@/lib/translate";
+import { FieldValue } from "firebase-admin/firestore";
 import { EMAILS } from "@/lib/emails.i18n";
 
 const RAG_TIMEOUT_MS = 1500;
@@ -150,6 +151,10 @@ export async function GET(request: Request) {
       results.push({ pairId: pair.id, status: "paused" });
       continue;
     }
+
+    // One reminder for a proposal nobody has answered (1 answer in 140 emails
+    // by 2026-10-23), the day after it went out, while the rendez-vous is ahead.
+    await remindUnanswered(pair, weekOf).catch((err) => console.error(`weekly-propose: reminder failed for pair ${pair.id}`, err));
 
     if (!isDueToday(pair, today)) continue;
 
@@ -673,6 +678,21 @@ async function getShortlist(pair: Pair): Promise<VenueCandidate[]> {
 // pair's notice (notifyDaysBefore), not today: a pair told two days ahead
 // meets on agreedDay, and used to get a proposedTime two days early. The
 // clock is the city's (lib/cities.ts), DST included.
+async function remindUnanswered(pair: Pair, weekOf: string): Promise<void> {
+  const ref = adminDb.collection("pairs").doc(pair.id).collection("weeks").doc(weekOf);
+  const week = (await ref.get()).data();
+  if (!week || week.status !== "proposed" || week.reminderSentAt) return;
+  if (Object.values(week.responses ?? {}).some((answer) => answer !== null)) return;
+  const sentAt: string | undefined = week.notificationLog?.[0]?.sentAt;
+  if (!sentAt || Date.now() - new Date(sentAt).getTime() < 20 * 60 * 60 * 1000) return;
+  if (week.proposedTime && new Date(week.proposedTime).getTime() < Date.now()) return;
+  const lang = langOf(pair.lang);
+  const answerUrl = withLang(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`, lang);
+  const results = await notifyBothUsers(pair, `${makeT(lang, EMAILS)("Rappel :")} ${week.confirmationText}`, answerUrl);
+  const now = new Date().toISOString();
+  await ref.update({ reminderSentAt: now, notificationLog: FieldValue.arrayUnion({ event: "reminder", sentAt: now, results }) });
+}
+
 function buildProposedTime(pair: Pair, city: City, localToday: string): string {
   const meeting = new Date(`${localToday}T12:00:00.000Z`);
   meeting.setUTCDate(meeting.getUTCDate() + (pair.notifyDaysBefore ?? 0));

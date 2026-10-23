@@ -901,8 +901,7 @@ function PlusNudge({ status, lapsed }: { status: Week["status"]; lapsed: boolean
     <p className="mt-2 text-xs" style={{ color: MUTED }}>
       <Link href={`${pagePath("home", lang)}#plus`} className="underline underline-offset-4">
         {t("Ittsui Plus, {price}/mois", { price: plusOffer(lang, initialCity()).label })}
-      </Link>{" "}
-      {t("— le prix d'un café pour garder ce lien vivant.")}
+      </Link>
     </p>
   );
 }
