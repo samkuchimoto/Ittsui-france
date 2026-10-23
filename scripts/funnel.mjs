@@ -42,6 +42,16 @@ show("Weekly rituals started (city / language)", count(await events("invite_acti
 show("Weekly proposals sent (city)", count(await events("proposal_shown"), (e) => e.cityId ?? "(before cities)"));
 show("Weeks confirmed", count(await events("week_confirmed"), () => "all cities"));
 
+// Repeat usage: people who sent more than one request in the period, and
+// active rituals by how many weeks both people confirmed (all time).
+const requests = (await db.collection("meetingRequests").where("createdAt", ">=", since).get()).docs.map((d) => d.data());
+show("People sending requests (1 / 2+ in the period)", count(Object.values(count(requests, (r) => r.senderId ?? "?")), (n) => (n > 1 ? "2+ requests" : "1 request")));
+const confirmedWeeks = [];
+for (const pair of (await db.collection("pairs").where("status", "==", "active").get()).docs) {
+  confirmedWeeks.push((await pair.ref.collection("weeks").where("status", "==", "confirmed").get()).size);
+}
+show("Active rituals by confirmed weeks (all time)", count(confirmedWeeks, (n) => (n > 1 ? "2+ weeks" : `${n} week${n === 1 ? "" : "s"}`)));
+
 // Willingness to pay: the free month used up, then a checkout, then a payment.
 show("Free month used up (request refused / ritual week skipped)", count(await events("plan_limit_reached"), (e) => `${e.source} · ${e.cityId ?? "?"} / ${e.lang ?? "-"}`));
 show("Plus checkouts opened (currency / language · plan)", count(await events("checkout_started"), (e) => `${e.currency} / ${e.lang} · ${e.tier}`));

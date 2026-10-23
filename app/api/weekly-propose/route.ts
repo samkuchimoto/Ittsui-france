@@ -86,7 +86,7 @@ import { type Metro, departmentFromPostalCode, STATIC_CATALOG } from "@/lib/venu
 import { parisNow, parisMondayISO, mondayISO, wallClockToUTCISOString, zonedNow, WEEKDAYS } from "@/lib/timezone";
 import { cityOf, type City } from "@/lib/cities";
 import { fetchVenuesOfType } from "@/lib/geoVenueSuggestions";
-import { langOf } from "@/lib/i18n";
+import { langOf, withLang } from "@/lib/i18n";
 import { getPlan, recordRendezVous } from "@/lib/plan";
 import { notifyPlanLimit } from "@/lib/planEmails";
 import { partnerForRitual } from "@/lib/partnerPilot";
@@ -249,7 +249,9 @@ export async function GET(request: Request) {
     });
     if (!unlimited) await recordRendezVous(pair.userIds[0]);
 
-    const notifyResults = await notifyBothUsers(pair, confirmationText);
+    // Answered on the dashboard, in the pair's language (lib/i18n.ts withLang).
+    const answerUrl = withLang(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`, langOf(pair.lang));
+    const notifyResults = await notifyBothUsers(pair, confirmationText, answerUrl);
     await weekRef.update({
       notificationLog: [{ event: "proposed", sentAt: new Date().toISOString(), results: notifyResults }],
     });

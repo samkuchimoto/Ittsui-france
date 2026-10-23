@@ -8,6 +8,7 @@ import type { Pair, User } from "@/lib/types";
 import { langOf } from "@/lib/i18n";
 import { makeT } from "@/lib/translate";
 import { EMAILS } from "@/lib/emails.i18n";
+import { emailButton, emailShell, escapeHtml } from "@/lib/emailTemplates";
 
 // No signup path in this repo has ever written notificationPrefs onto a
 // user's Firestore doc — lib/firebase.ts's post-sign-in write only sets
@@ -39,8 +40,25 @@ export interface NotifyResult {
 // callers persist this onto the pair/week doc so "was this actually
 // delivered" is a real, visible fact afterward, not something only this
 // one request ever knew for the few seconds it ran.
-export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyResult[]> {
+//
+// `answerUrl` is where the weekly proposal is answered (the dashboard). Until
+// 2026-10-23 the proposal email was the sentence alone, nothing to tap: 1
+// answer in 140 emails. With it, the email says where to say yes, as text and
+// as a button.
+export async function notifyBothUsers(pair: Pair, text: string, answerUrl?: string): Promise<NotifyResult[]> {
   const results: NotifyResult[] = [];
+  const lang = langOf(pair.lang);
+  const t = makeT(lang, EMAILS);
+  const subject = t(CADENCE_SUBJECT[pair.cadence ?? "weekly"]);
+  const emailText = answerUrl ? `${text}\n\n${t("Répondre ici : {url}", { url: answerUrl })}` : text;
+  const emailHtml = answerUrl
+    ? emailShell({
+        lang,
+        mascotName: "pika",
+        title: escapeHtml(subject),
+        bodyHtml: `<p style="font-size: 15px; line-height: 1.5; color: #565049; text-align: center;">${escapeHtml(text)}</p>${emailButton(answerUrl, t("Répondre"))}`,
+      })
+    : undefined;
 
   for (const userId of pair.userIds) {
     const userSnap = await adminDb.collection("users").doc(userId).get();
@@ -75,8 +93,9 @@ export async function notifyBothUsers(pair: Pair, text: string): Promise<NotifyR
           body: JSON.stringify({
             from: "Ittsui <contact@kuchimoto.com>",
             to: user.email,
-            subject: makeT(langOf(pair.lang), EMAILS)(CADENCE_SUBJECT[pair.cadence ?? "weekly"]),
-            text,
+            subject,
+            text: emailText,
+            ...(emailHtml ? { html: emailHtml } : {}),
           }),
         });
         results.push({ userId, status: res.ok ? "email" : "failed" });

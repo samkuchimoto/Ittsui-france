@@ -65,6 +65,8 @@ export const EMAILS: Catalog = {
     "Votre demande de rendez-vous a été acceptée": "Your rendez-vous request was accepted",
     "{name} a accepté.": "{name} accepted.",
     "Rendez-vous confirmé sur Ittsui": "Rendez-vous confirmed on Ittsui",
+    "Répondre ici : {url}": "Answer here: {url}",
+    Répondre: "Answer",
     "Rendez-vous verrouillé : {venue}.": "Rendez-vous locked in: {venue}.",
     "Votre demande de rendez-vous a été déclinée": "Your rendez-vous request was declined",
     "{name} a décliné votre demande pour {venue}, le {date} à {time}.":
@@ -129,6 +131,8 @@ export const EMAILS: Catalog = {
     "Votre demande de rendez-vous a été acceptée": "約束のリクエストが承諾されました",
     "{name} a accepté.": "{name}さんが承諾しました。",
     "Rendez-vous confirmé sur Ittsui": "Ittsuiで約束が確定しました",
+    "Répondre ici : {url}": "こちらから返事できます：{url}",
+    Répondre: "返事をする",
     "Rendez-vous verrouillé : {venue}.": "約束が確定しました：{venue}。",
     "Votre demande de rendez-vous a été déclinée": "約束のリクエストが辞退されました",
     "{name} a décliné votre demande pour {venue}, le {date} à {time}.":
@@ -193,6 +197,8 @@ export const EMAILS: Catalog = {
     "Votre demande de rendez-vous a été acceptée": "Aceptaron tu solicitud de encuentro",
     "{name} a accepté.": "{name} aceptó.",
     "Rendez-vous confirmé sur Ittsui": "Encuentro confirmado en Ittsui",
+    "Répondre ici : {url}": "Responde aquí: {url}",
+    Répondre: "Responder",
     "Rendez-vous verrouillé : {venue}.": "Encuentro confirmado: {venue}.",
     "Votre demande de rendez-vous a été déclinée": "Rechazaron tu solicitud de encuentro",
     "{name} a décliné votre demande pour {venue}, le {date} à {time}.":
@@ -254,6 +260,8 @@ export const EMAILS: Catalog = {
     "Votre demande de rendez-vous a été acceptée": "בקשת המפגש שלך אושרה",
     "{name} a accepté.": "התקבל אישור מ-{name}.",
     "Rendez-vous confirmé sur Ittsui": "המפגש אושר ב-Ittsui",
+    "Répondre ici : {url}": "אפשר לענות כאן: {url}",
+    Répondre: "לענות",
     "Rendez-vous verrouillé : {venue}.": "המפגש נקבע: {venue}.",
     "Votre demande de rendez-vous a été déclinée": "בקשת המפגש שלך נדחתה",
     "{name} a décliné votre demande pour {venue}, le {date} à {time}.":
